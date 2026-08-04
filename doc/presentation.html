@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>NVHSpectro - Présentation des Fonctionnalités</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+        
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #1E293B;
+            background-color: #F8FAFC;
+            font-size: 13px;
+            line-height: 1.5;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .page {
+            width: 210mm;
+            height: 297mm;
+            padding: 20mm 18mm 18mm 18mm;
+            position: relative;
+            background: #FFFFFF;
+            page-break-after: always;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .page:last-child {
+            page-break-after: avoid;
+        }
+
+        /* Header Style */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2.5px solid #0EA5E9;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+
+        .brand-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #0F172A;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-subtitle {
+            font-size: 11px;
+            font-weight: 600;
+            color: #0EA5E9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .page-badge {
+            background: #F1F5F9;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid #E2E8F0;
+        }
+
+        /* Hero Banner for Page 1 */
+        .hero-banner {
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            color: #FFFFFF;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        }
+
+        .hero-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #38BDF8;
+        }
+
+        .hero-desc {
+            font-size: 12.5px;
+            color: #94A3B8;
+            line-height: 1.6;
+        }
+
+        /* Section Cards */
+        .section-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            flex: 1;
+        }
+
+        .card {
+            background: #FFFFFF;
+            border: 1.5px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+            position: relative;
+        }
+
+        .card-accent-blue { border-left: 5px solid #0EA5E9; }
+        .card-accent-green { border-left: 5px solid #10B981; }
+        .card-accent-purple { border-left: 5px solid #8B5CF6; }
+        .card-accent-amber { border-left: 5px solid #F59E0B; }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .card-icon {
+            font-size: 18px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #F8FAFC;
+            border-radius: 8px;
+            border: 1px solid #E2E8F0;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0F172A;
+        }
+
+        .card-desc {
+            font-size: 12px;
+            color: #334155;
+            margin-bottom: 10px;
+        }
+
+        /* Feature Bullet Points */
+        .feature-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 16px;
+        }
+
+        .feature-list-single {
+            grid-template-columns: 1fr;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 11.5px;
+            color: #475569;
+        }
+
+        .feature-dot {
+            width: 6px;
+            height: 6px;
+            background: #0EA5E9;
+            border-radius: 50%;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+
+        .feature-item strong {
+            color: #1E293B;
+            font-weight: 600;
+        }
+
+        /* Highlight Pill */
+        .pill {
+            display: inline-block;
+            padding: 3px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 4px;
+            margin-right: 4px;
+        }
+
+        .pill-blue { background: #E0F2FE; color: #0369A1; }
+        .pill-green { background: #D1FAE5; color: #047857; }
+        .pill-purple { background: #EDE9FE; color: #6D28D9; }
+        .pill-amber { background: #FEF3C7; color: #B45309; }
+
+        /* Footer */
+        .footer {
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid #E2E8F0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            color: #94A3B8;
+        }
+
+        .footer-logo {
+            font-weight: 700;
+            color: #64748B;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PAGE 1 -->
+    <div class="page">
+        <div class="header">
+            <div>
+                <div class="brand-title">NVHSpectro</div>
+                <div class="brand-subtitle">Application Mobile d'Analyse NVH & Acoustique Embarquée</div>
+            </div>
+            <div class="page-badge">Page 1 / 3</div>
+        </div>
+
+        <div class="hero-banner">
+            <div class="hero-title">📱 Solution Mobile pour Essais Routiers & Diagnostics Acoustiques</div>
+            <div class="hero-desc">
+                NVHSpectro transforme votre smartphone Android en un analyseur acoustique autonome haute précision. Spécialement conçue pour les ingénieurs et techniciens NVH, l'application permet de mesurer, visualiser et analyser les émergences sonores et le comportement vibratoire directement à bord du véhicule.
+            </div>
+        </div>
+
+        <div class="section-grid">
+            <div class="card card-accent-blue">
+                <div class="card-header">
+                    <div class="card-icon">🌊</div>
+                    <div class="card-title">1. Visualisation Acoustique Temp Réel (Sonogramme HD)</div>
+                </div>
+                <div class="card-desc">
+                    Affichage dynamique en temps réel du spectre sonore du véhicule avec un taux de rafraîchissement fluide pour capturer tous les phénomènes acoustiques.
+                </div>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Mode Niveau Absolue (dBFS) :</strong> Mesure des amplitudes brutes du signal acoustique.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Mode Émergence Tonale (TTNR) :</strong> Isolement des bruits tonants et émergences selon la norme ECMA-74.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Palette de Couleurs NVH :</strong> Palette de nuances thermiques optimisée pour la lisibilité sur le terrain.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Plages Réglables :</strong> Ajustement à la volée des limites d'amplitude (dB) et des fréquences (Hz).</div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card card-accent-green">
+                <div class="card-header">
+                    <div class="card-icon">⏸️</div>
+                    <div class="card-title">2. Contrôle d'Acquisition & Gel d'Écran</div>
+                </div>
+                <div class="card-desc">
+                    Maîtrise totale de la capture sonore pendant la conduite pour analyser des phénomènes éphémères sans perdre de données.
+                </div>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Fonction Figer / Dégeler :</strong> Arrêt instantané du défilement pour inspecter un bruit suspect.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Démarrage / Pause rapide :</strong> Gestion simple du flux de mesure directement depuis l'écran principal.</div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card card-accent-purple">
+                <div class="card-header">
+                    <div class="card-icon">🛰️</div>
+                    <div class="card-title">3. Télémétrie Véhicule Synchronisée (GPS & Capteurs)</div>
+                </div>
+                <div class="card-desc">
+                    Synchronisation permanente entre les mesures acoustiques et l'état dynamique du véhicule.
+                </div>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Vitesse Véhicule (km/h) :</strong> Lecture directe de la vitesse réelle via le récepteur GPS haute précision.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Accélération (g) :</strong> Mesure des phases d'accélération et de décélération du véhicule.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>LED Témoin GPS :</strong> Indicateur visuel d'état de la connexion satellite et de la qualité du signal.</div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-logo">NVHSpectro • Notice de Présentation</div>
+            <div>Présentation des Fonctionnalités • Page 1</div>
+        </div>
+    </div>
+
+    <!-- PAGE 2 -->
+    <div class="page">
+        <div class="header">
+            <div>
+                <div class="brand-title">NVHSpectro</div>
+                <div class="brand-subtitle">Analyse Cinématique Moteur (GMPe) & Suivi d'Ordres</div>
+            </div>
+            <div class="page-badge">Page 2 / 3</div>
+        </div>
+
+        <div class="section-grid">
+            <div class="card card-accent-amber">
+                <div class="card-header">
+                    <div class="card-icon">⚙️</div>
+                    <div class="card-title">4. Étude Cinématique Moteur & Powertrain (GMPe)</div>
+                </div>
+                <div class="card-desc">
+                    Calcul automatique des régimes moteur et des fréquences fondamentales à partir de la vitesse GPS et des caractéristiques de la chaîne cinématique.
+                </div>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Régime Moteur Calculé (RPM) :</strong> Déduction continue du régime de rotation du moteur électrique/thermique.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Fréquence Fondamentale H1 :</strong> Calcul instantané de la fréquence de référence H1 (Hz).</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Méthodes de Saisie Flexibles :</strong> Définition par Vitesse V1000, Rapport Global ou Chaîne Détaillée (pont, réducteur, pneus).</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Calcul Dynamique Pneu :</strong> Rayon effectif sous charge calculé automatiquement selon le marquage flanc (ex: 205/55 R16).</div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card card-accent-blue">
+                <div class="card-header">
+                    <div class="card-icon">📈</div>
+                    <div class="card-title">5. Suivi d'Ordres Harmoniques en Temps Réel</div>
+                </div>
+                <div class="card-desc">
+                    Isolateur dynamique d'harmonique pour suivre le niveau sonore d'un ordre spécifique au fur et à mesure que la vitesse varie.
+                </div>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Sélection Libre d'Ordre :</strong> Choix rapide d'harmoniques standard (H1, H2, H6, H18, H36, H48) ou saisie personnalisée (ex: H7.4, H22.2).</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Indicateur KPI Instantané :</strong> Affichage de l'amplitude instantanée en dBFS de l'ordre sélectionné sur le tableau de bord.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Graphique 2D Temporel :</strong> Visualisation des courbes d'évolution temporelle de la vitesse, de l'accélération ou de l'ordre traqué.</div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card card-accent-green">
+                <div class="card-header">
+                    <div class="card-icon">🎯</div>
+                    <div class="card-title">6. Filtrage Avancé par Harmoniques Attendues (Cibles)</div>
+                </div>
+                <div class="card-desc">
+                    Mode de sélection ciblée permettant d'isoler uniquement les harmoniques d'intérêt mécanique et d'ignorer tout bruit parasite environnant.
+                </div>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Liste Blanche Cibles :</strong> Saisie simple de la liste des ordres cibles à surveiller (ex: <span class="pill pill-blue">7.4</span><span class="pill pill-blue">18</span><span class="pill pill-blue">22.2</span><span class="pill pill-blue">36</span>).</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Filtrage Exclusif :</strong> Restreint l'affichage des étiquettes visuelles et du rapport aux seuls ordres spécifiés.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Bandeau d'État Expert AAA :</strong> Indicateur néon haute lisibilité sur le spectrogramme confirmant les cibles actives.</div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-logo">NVHSpectro • Notice de Présentation</div>
+            <div>Présentation des Fonctionnalités • Page 2</div>
+        </div>
+    </div>
+
+    <!-- PAGE 3 -->
+    <div class="page">
+        <div class="header">
+            <div>
+                <div class="brand-title">NVHSpectro</div>
+                <div class="brand-subtitle">Détection d'Émergence, Synthèse & Exportation</div>
+            </div>
+            <div class="page-badge">Page 3 / 3</div>
+        </div>
+
+        <div class="section-grid">
+            <div class="card card-accent-purple">
+                <div class="card-header">
+                    <div class="card-icon">🏷️</div>
+                    <div class="card-title">7. Détecteur Automatique d'Émergences Acoustiques</div>
+                </div>
+                <div class="card-desc">
+                    Recherche intelligente et marquage visuel automatique des pics de bruits émergents gênants pendant les phases de roulage.
+                </div>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Étiquettes Visuelles Rémanentes :</strong> Incrustation automatique de l'ordre (ex: H18) avec son niveau d'émergence directement sur le sonogramme.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Seuils Réglables :</strong> Ajustement du seuil d'émergence (dB) et de la porte d'amplitude minimale (dBFS) pour s'adapter à l'environnement.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Durée de Rémanence :</strong> Réglage du temps d'affichage visuel des étiquettes à l'écran.</div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card card-accent-amber">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">8. Rapport Synthétique d'Émergences NVH</div>
+                </div>
+                <div class="card-desc">
+                    Compilation automatique d'un bilan d'essai récapitulant les bruits critiques observés pendant l'acquisition.
+                </div>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Synthèse par Harmonique :</strong> Tableau récapitulatif listant chaque ordre détecté.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Plages de Vitesse & Régime :</strong> Affichage des vitesses (km/h) et régimes (RPM) où chaque émergence s'est manifestée.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Plages de Fréquences (Hz) :</strong> Identification précise de la bande de fréquence de chaque bruit.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Niveau d'Émergence Maximal :</strong> Consignation de l'émergence maximale enregistrée (en dB).</div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card card-accent-blue">
+                <div class="card-header">
+                    <div class="card-icon">📸</div>
+                    <div class="card-title">9. Exportation, Galerie & Traçabilité des Essais</div>
+                </div>
+                <div class="card-desc">
+                    Sauvegarde complète de l'essai sous forme d'image haute définition prête à être intégrée dans les rapports d'essai d'entreprise.
+                </div>
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Capture d'Écran Haute Résolution :</strong> Enregistrement dans la galerie du téléphone avec toutes les courbes et étiquettes.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Fiche d'Identification Intégrée :</strong> Traçabilité complète comprenant Nom du Véhicule, Modèle Moteur et Date/Heure.</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-dot"></div>
+                        <div><strong>Notes d'Essai Libres :</strong> Saisie de commentaires terrain directement archivés avec le rapport d'émergences.</div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-logo">NVHSpectro • Notice de Présentation</div>
+            <div>Présentation des Fonctionnalités • Page 3</div>
+        </div>
+    </div>
+
+</body>
+</html>

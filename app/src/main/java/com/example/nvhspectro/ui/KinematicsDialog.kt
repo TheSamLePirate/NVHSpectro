@@ -43,12 +43,13 @@ fun KinematicsDialog(
     var motorName by remember { mutableStateOf(currentConfig.motorName) }
     var comments by remember { mutableStateOf(currentConfig.comments) }
     var holdTimeText by remember { mutableStateOf(currentConfig.holdTimeSec.toString()) }
+    var targetHarmonicsText by remember { mutableStateOf(currentConfig.targetHarmonicsText) }
 
     // Construction de la configuration temporaire pour calculs en temps réel
     val tempConfig = remember(
         isEnabled, selectedMode, v1000Text, globalRatioText, 
         reductionRatioText, axleRatioText, tireWidthText, tireAspectRatioText, 
-        rimDiameterText, wheelRadiusText, vehicleName, motorName, comments, holdTimeText
+        rimDiameterText, wheelRadiusText, vehicleName, motorName, comments, holdTimeText, targetHarmonicsText
     ) {
         KinematicsConfig(
             isEnabled = isEnabled,
@@ -64,7 +65,8 @@ fun KinematicsDialog(
             vehicleName = vehicleName,
             motorName = motorName,
             comments = comments,
-            holdTimeSec = holdTimeText.toDoubleOrNull() ?: 3.0
+            holdTimeSec = holdTimeText.toDoubleOrNull() ?: 3.0,
+            targetHarmonicsText = targetHarmonicsText
         )
     }
 
@@ -295,6 +297,28 @@ fun KinematicsDialog(
                         )
                     }
                 }
+
+                Divider()
+
+                // Harmoniques Attendues / Liste Blanche
+                Text("🎯 Harmoniques Attendues (Filtrage Rapport & Spectro)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                OutlinedTextField(
+                    value = targetHarmonicsText,
+                    onValueChange = { targetHarmonicsText = it },
+                    label = { Text("Harmoniques cibles (ex: 7.4, 18, 22.2, 36)") },
+                    placeholder = { Text("Ex: 7.4, 18, 22.2, 36") },
+                    supportingText = {
+                        Text(
+                            text = if (targetHarmonicsText.isNotBlank())
+                                "✓ Seules les harmoniques renseignées apparaîtront dans le rapport et sur le spectrogramme."
+                            else
+                                "Laisser vide pour tout détecter. Saisissez des ordres séparés par des virgules (ex: 7.4, 18, 22.2).",
+                            fontSize = 11.sp,
+                            color = if (targetHarmonicsText.isNotBlank()) Color(0xFF00E5FF) else Color.Gray
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 Divider()
 

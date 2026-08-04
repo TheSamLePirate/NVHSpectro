@@ -21,8 +21,23 @@ data class KinematicsConfig(
     val motorName: String = "",               // Identification du moteur / GMPe
     val comments: String = "",                // Notes d'essai
     val holdTimeSec: Double = 3.0,            // Durée de rémanence visuelle des étiquettes (secondes)
-    val selectedTrackedOrder: Double = 18.0   // Ordre spécifique sélectionné pour traçage 2D (ex: H18)
+    val selectedTrackedOrder: Double = 18.0,  // Ordre spécifique sélectionné pour traçage 2D (ex: H18)
+    val targetHarmonicsText: String = ""      // Harmoniques cibles / liste blanche (ex: "7.4, 18, 22.2, 36")
 ) {
+    /**
+     * Retourne la liste des ordres cibles renseignés par l'utilisateur (ex: [7.4, 18.0, 22.2, 36.0]).
+     * Si la chaîne est vide, retourne une liste vide (mode détection ouverte).
+     */
+    fun parsedTargetOrders(): List<Double> {
+        if (targetHarmonicsText.isBlank()) return emptyList()
+        return targetHarmonicsText
+            .split(',', ';', ' ', '\n')
+            .mapNotNull { token ->
+                val cleaned = token.trim().replace(',', '.').removePrefix("H").removePrefix("h")
+                cleaned.toDoubleOrNull()
+            }
+            .filter { it > 0.0 }
+    }
     /**
      * Calcule le rayon dynamique sous charge de la roue (en mètres) à partir des dimensions pneu vendeur.
      */

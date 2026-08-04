@@ -187,7 +187,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // 1. Mettre à jour l'état GPS instantané
         viewModelScope.launch {
             telemetryRepository.startTelemetry().collect { data ->
-                _telemetryState.value = data
+                val current = _telemetryState.value
+                _telemetryState.value = data.copy(
+                    ttnrDb = current.ttnrDb,
+                    trackedOrderDbFS = current.trackedOrderDbFS,
+                    trackedOrderEmergenceDb = current.trackedOrderEmergenceDb
+                )
             }
         }
         
@@ -288,11 +293,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         if (h1FreqHz >= 0.5) {
                             val nyquistFreq = 44100 / 2.0
                             val totalBins = ttnrSpectrum.size
+                            val df = nyquistFreq / totalBins
                             val targetFreqHz = kConfig.selectedTrackedOrder * h1FreqHz
-                            val targetBin = ((targetFreqHz / nyquistFreq) * totalBins).toInt().coerceIn(0, totalBins - 1)
+                            val centerBin = Math.round(targetFreqHz / df).toInt().coerceIn(0, totalBins - 1)
 
-                            trackedDbFS = if (targetBin in magnitudes.indices) magnitudes[targetBin] else -120.0
-                            trackedEmergence = if (targetBin in ttnrSpectrum.indices) ttnrSpectrum[targetBin] else 0.0
+                            var maxMag = -120.0
+                            var maxEm = 0.0
+                            val searchMin = (centerBin - 1).coerceAtLeast(0)
+                            val searchMax = (centerBin + 1).coerceAtMost(totalBins - 1)
+
+                            for (b in searchMin..searchMax) {
+                                if (b in magnitudes.indices && magnitudes[b] > maxMag) {
+                                    maxMag = magnitudes[b]
+                                }
+                                if (b in ttnrSpectrum.indices && ttnrSpectrum[b] > maxEm) {
+                                    maxEm = ttnrSpectrum[b]
+                                }
+                            }
+                            trackedDbFS = maxMag
+                            trackedEmergence = maxEm
                         }
                     }
 
@@ -303,6 +322,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         trackedOrderDbFS = trackedDbFS,
                         trackedOrderEmergenceDb = trackedEmergence
                     )
+
+                    _telemetryState.value = telemWithTtnr
 
                     val curTelem = _telemetryHistory.value.toMutableList()
                     curTelem.add(0, telemWithTtnr)
@@ -322,6 +343,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             val gateDbFS = _magnitudeGateDbFS.value
                             val currentRpmInt = kConfig.calculateRpm(speedKmh).toInt()
 
+                            val targetOrders = kConfig.parsedTargetOrders()
+                            val isWhitelistActive = targetOrders.isNotEmpty()
+
                             val updatedTrackersThisFrame = mutableSetOf<CandidateHarmonicTracker>()
                             
                             for (i in 1 until totalBins - 1) {
@@ -336,45 +360,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                         val exactOrderRatio = freqHz / h1FreqHz
                                         
                                         if (exactOrderRatio >= 0.5) {
-                                            // Recherche d'un candidat existant à +-0.10 d'ordre (ex: 22.1 à 22.3 pour 22.2)
-                                            val existingTracker = candidateTrackerList.find { 
-                                                Math.abs(it.currentMeanOrder - exactOrderRatio) <= 0.10 
+                                            var candidateOrder = exactOrderRatio
+                                            var isAllowed = true
+
+                                            if (isWhitelistActive) {
+                                                val matchedTarget = targetOrders.find { target -> Math.abs(exactOrderRatio - target) <= 0.25 }
+                                                if (matchedTarget != null) {
+                                                    candidateOrder = matchedTarget
+                                                } else {
+                                                    isAllowed = false
+                                                }
                                             }
 
-                                            if (existingTracker != null) {
-                                                existingTracker.orderSum += exactOrderRatio
-                                                existingTracker.count++
-                                                existingTracker.lastSeenTimestampMs = nowMs
-                                                existingTracker.lastFreqHz = freqHz.toInt()
-                                                existingTracker.maxTtnrDb = maxOf(existingTracker.maxTtnrDb, ttnrVal)
-                                                existingTracker.maxAbsDbFS = maxOf(existingTracker.maxAbsDbFS, absVal)
-                                                existingTracker.minSpeedKmh = minOf(existingTracker.minSpeedKmh, speedKmh)
-                                                existingTracker.maxSpeedKmh = maxOf(existingTracker.maxSpeedKmh, speedKmh)
-                                                existingTracker.minRpm = minOf(existingTracker.minRpm, currentRpmInt)
-                                                existingTracker.maxRpm = maxOf(existingTracker.maxRpm, currentRpmInt)
-                                                existingTracker.minFreqHz = minOf(existingTracker.minFreqHz, freqHz.toInt())
-                                                existingTracker.maxFreqHz = maxOf(existingTracker.maxFreqHz, freqHz.toInt())
-                                                existingTracker.binIndex = i
-                                                updatedTrackersThisFrame.add(existingTracker)
-                                            } else {
-                                                val newTracker = CandidateHarmonicTracker(
-                                                    orderSum = exactOrderRatio,
-                                                    count = 1,
-                                                    firstSeenTimestampMs = nowMs,
-                                                    lastSeenTimestampMs = nowMs,
-                                                    lastFreqHz = freqHz.toInt(),
-                                                    maxTtnrDb = ttnrVal,
-                                                    maxAbsDbFS = absVal,
-                                                    minSpeedKmh = speedKmh,
-                                                    maxSpeedKmh = speedKmh,
-                                                    minRpm = currentRpmInt,
-                                                    maxRpm = currentRpmInt,
-                                                    minFreqHz = freqHz.toInt(),
-                                                    maxFreqHz = freqHz.toInt(),
-                                                    binIndex = i
-                                                )
-                                                candidateTrackerList.add(newTracker)
-                                                updatedTrackersThisFrame.add(newTracker)
+                                            if (isAllowed) {
+                                                // Recherche d'un candidat existant à +-0.10 d'ordre (ex: 22.1 à 22.3 pour 22.2)
+                                                val existingTracker = candidateTrackerList.find { 
+                                                    Math.abs(it.currentMeanOrder - candidateOrder) <= 0.10 
+                                                }
+
+                                                if (existingTracker != null) {
+                                                    existingTracker.orderSum += candidateOrder
+                                                    existingTracker.count++
+                                                    existingTracker.lastSeenTimestampMs = nowMs
+                                                    existingTracker.lastFreqHz = freqHz.toInt()
+                                                    existingTracker.maxTtnrDb = maxOf(existingTracker.maxTtnrDb, ttnrVal)
+                                                    existingTracker.maxAbsDbFS = maxOf(existingTracker.maxAbsDbFS, absVal)
+                                                    existingTracker.minSpeedKmh = minOf(existingTracker.minSpeedKmh, speedKmh)
+                                                    existingTracker.maxSpeedKmh = maxOf(existingTracker.maxSpeedKmh, speedKmh)
+                                                    existingTracker.minRpm = minOf(existingTracker.minRpm, currentRpmInt)
+                                                    existingTracker.maxRpm = maxOf(existingTracker.maxRpm, currentRpmInt)
+                                                    existingTracker.minFreqHz = minOf(existingTracker.minFreqHz, freqHz.toInt())
+                                                    existingTracker.maxFreqHz = maxOf(existingTracker.maxFreqHz, freqHz.toInt())
+                                                    existingTracker.binIndex = i
+                                                    updatedTrackersThisFrame.add(existingTracker)
+                                                } else {
+                                                    val newTracker = CandidateHarmonicTracker(
+                                                        orderSum = candidateOrder,
+                                                        count = 1,
+                                                        firstSeenTimestampMs = nowMs,
+                                                        lastSeenTimestampMs = nowMs,
+                                                        lastFreqHz = freqHz.toInt(),
+                                                        maxTtnrDb = ttnrVal,
+                                                        maxAbsDbFS = absVal,
+                                                        minSpeedKmh = speedKmh,
+                                                        maxSpeedKmh = speedKmh,
+                                                        minRpm = currentRpmInt,
+                                                        maxRpm = currentRpmInt,
+                                                        minFreqHz = freqHz.toInt(),
+                                                        maxFreqHz = freqHz.toInt(),
+                                                        binIndex = i
+                                                    )
+                                                    candidateTrackerList.add(newTracker)
+                                                    updatedTrackersThisFrame.add(newTracker)
+                                                }
                                             }
                                         }
                                     }

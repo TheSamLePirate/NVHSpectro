@@ -253,12 +253,13 @@ fun AppScreen(viewModel: MainViewModel) {
                         }
                     }
 
-                    // Bannière Cinématique GMPe (Positionnée sous les chips pour éviter tout chevauchement)
+                    // Bannière Cinématique GMPe & Bannière Harmoniques Cibles
                     if (kinematicsConfig.isEnabled) {
                         val effV1000 = kinematicsConfig.getEffectiveV1000()
                         val curSpeed = telemetry.speedKmh
                         val isActiveSpeed = curSpeed > 1.0f
 
+                        // 1. Bannière initiale d'état GMPe
                         Surface(
                             color = Color(0xCC121212),
                             shape = RoundedCornerShape(6.dp)
@@ -268,7 +269,7 @@ fun AppScreen(viewModel: MainViewModel) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                // LED d'état agrandie (12dp) : ROUGE si Vitesse <= 1 km/h (Inactif), VERTE si > 1 km/h (Actif)
+                                // LED d'état (12dp) : ROUGE si Vitesse <= 1 km/h, VERTE si > 1 km/h
                                 Box(
                                     modifier = Modifier
                                         .size(12.dp)
@@ -294,6 +295,37 @@ fun AppScreen(viewModel: MainViewModel) {
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFFFFCDD2)
+                                    )
+                                }
+                            }
+                        }
+
+                        // 2. Bannière additionnelle des Harmoniques Cibles (si renseignées)
+                        val targetOrdersList = kinematicsConfig.parsedTargetOrders()
+                        if (targetOrdersList.isNotEmpty()) {
+                            val targetStr = targetOrdersList.joinToString(", ") { if (it % 1.0 == 0.0) "H${it.toInt()}" else "H%.1f".format(it) }
+
+                            Surface(
+                                color = Color(0xF00F172A),
+                                shape = RoundedCornerShape(6.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.8f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .background(Color(0xFF00E5FF), CircleShape)
+                                    )
+                                    Text(
+                                        text = "🎯 FILTRE CIBLES : $targetStr",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFF00E5FF),
+                                        letterSpacing = 0.5.sp
                                     )
                                 }
                             }
