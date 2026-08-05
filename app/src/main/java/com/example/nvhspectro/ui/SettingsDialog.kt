@@ -35,7 +35,9 @@ fun SettingsDialog(
     emergenceThresholdDb: Double = 2.5,
     onEmergenceThresholdChange: (Double) -> Unit = {},
     magnitudeGateDbFS: Double = -90.0,
-    onMagnitudeGateChange: (Double) -> Unit = {}
+    onMagnitudeGateChange: (Double) -> Unit = {},
+    isWavAnalyzerMode: Boolean = false,
+    wavDurationSec: Double = 0.0
 ) {
     val sampleRate = 44100.0
     val stepSize = fftSize / 2.0
@@ -116,13 +118,29 @@ fun SettingsDialog(
                 }
 
                 // Temps d'affichage
-                Column {
-                    Text("Temps d'affichage : ${String.format("%.1f", timeWindowSec)} s", style = MaterialTheme.typography.bodyMedium)
-                    Slider(
-                        value = timeWindowSec.toFloat(),
-                        onValueChange = { onTimeWindowChange(it.toDouble()) },
-                        valueRange = 3f..30f
-                    )
+                if (isWavAnalyzerMode) {
+                    Column {
+                        Text(
+                            text = "Temps d'affichage (Auto WAV) : ${String.format("%.1f", wavDurationSec)} s",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFFF59E0B),
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "💡 En mode Analyseur WAV, la durée d'affichage est automatique et calée sur la durée réelle de l'enregistrement audio (${String.format("%.1f", wavDurationSec)} s).",
+                            fontSize = 11.sp,
+                            color = Color.LightGray
+                        )
+                    }
+                } else {
+                    Column {
+                        Text("Temps d'affichage (Direct) : ${String.format("%.1f", timeWindowSec)} s", style = MaterialTheme.typography.bodyMedium)
+                        Slider(
+                            value = timeWindowSec.toFloat(),
+                            onValueChange = { onTimeWindowChange(it.toDouble()) },
+                            valueRange = 3f..30f
+                        )
+                    }
                 }
 
                 // dB Min / Max

@@ -7,11 +7,19 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Typeface
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nvhspectro.data.*
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlin.math.max
@@ -20,6 +28,11 @@ import kotlin.math.min
 enum class DisplayMode(val label: String) {
     ABSOLUTE("Absolue (dBFS)"),
     TTNR("TTNR (Emergence)")
+}
+
+enum class AudioSourceMode {
+    LIVE,
+    WAV_ANALYZER
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -44,11 +57,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateKinematicsConfig(config: KinematicsConfig) {
         _kinematicsConfig.value = config
+        if (_audioSourceMode.value == AudioSourceMode.WAV_ANALYZER && _loadedWavData.value != null) {
+            processWavFrameAt(_wavPlaybackPositionMs.value)
+        }
     }
 
     fun updateSelectedTrackedOrder(order: Double) {
         val currentConfig = _kinematicsConfig.value
         _kinematicsConfig.value = currentConfig.copy(selectedTrackedOrder = order)
+        if (_audioSourceMode.value == AudioSourceMode.WAV_ANALYZER && _loadedWavData.value != null) {
+            processWavFrameAt(_wavPlaybackPositionMs.value)
+        }
     }
 
     fun clearEmergenceReport() {
@@ -95,6 +114,432 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectMetric(metric: com.example.nvhspectro.ui.TelemetryMetric) {
         _selectedMetric.value = metric
+    }
+
+    // Mode Source Audio (Live vs Analyseur WAV)
+    private val _audioSourceMode = MutableStateFlow(AudioSourceMode.LIVE)
+    val audioSourceMode: StateFlow<AudioSourceMode> = _audioSourceMode.asStateFlow()
+
+    private val _showAudioModeMenu = MutableStateFlow(false)
+    val showAudioModeMenu: StateFlow<Boolean> = _showAudioModeMenu.asStateFlow()
+
+    private val _showWavSelectionDialog = MutableStateFlow(false)
+    val showWavSelectionDialog: StateFlow<Boolean> = _showWavSelectionDialog.asStateFlow()
+
+    private val _loadedWavData = MutableStateFlow<LoadedWavData?>(null)
+    val loadedWavData: StateFlow<LoadedWavData?> = _loadedWavData.asStateFlow()
+
+    private val _loadedWavFileName = MutableStateFlow<String?>(null)
+    val loadedWavFileName: StateFlow<String?> = _loadedWavFileName.asStateFlow()
+
+    private val _wavPlaybackPositionMs = MutableStateFlow(0L)
+    val wavPlaybackPositionMs: StateFlow<Long> = _wavPlaybackPositionMs.asStateFlow()
+
+    private val _isWavPlaying = MutableStateFlow(false)
+    val isWavPlaying: StateFlow<Boolean> = _isWavPlaying.asStateFlow()
+
+    private var wavPlaybackJob: Job? = null
+
+    fun toggleAudioModeMenu() {
+        _showAudioModeMenu.value = !_showAudioModeMenu.value
+    }
+
+    fun setAudioSourceMode(mode: AudioSourceMode) {
+        _showAudioModeMenu.value = false
+        if (_audioSourceMode.value == mode) return
+        _audioSourceMode.value = mode
+
+        if (mode == AudioSourceMode.LIVE) {
+            stopWavPlayback()
+            _loadedWavData.value = null
+            _loadedWavFileName.value = null
+            _fftHistoryAbsolute.value = emptyList()
+            _fftHistoryTTNR.value = emptyList()
+        } else {
+            stopWavPlayback()
+            _fftHistoryAbsolute.value = emptyList()
+            _fftHistoryTTNR.value = emptyList()
+        }
+    }
+
+    fun openWavSelectionDialog() {
+        _showWavSelectionDialog.value = true
+    }
+
+    fun closeWavSelectionDialog() {
+        _showWavSelectionDialog.value = false
+    }
+
+    private var mediaPlayer: MediaPlayer? = null
+
+    private fun initMediaPlayer(wavFile: File? = null, uri: android.net.Uri? = null, context: android.content.Context? = null) {
+        try {
+            mediaPlayer?.release()
+            mediaPlayer = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .build()
+                )
+                if (wavFile != null) {
+                    setDataSource(wavFile.absolutePath)
+                } else if (uri != null && context != null) {
+                    setDataSource(context, uri)
+                }
+                prepare()
+                setOnCompletionListener {
+                    _isWavPlaying.value = false
+                    _loadedWavData.value?.let { d -> _wavPlaybackPositionMs.value = d.durationMs }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun loadWavFile(wavFile: File, jsonFile: File?) {
+        _showWavSelectionDialog.value = false
+        stopWavPlayback()
+        val data = WavDataReader.readWavFile(wavFile, jsonFile)
+        if (data != null) {
+            initMediaPlayer(wavFile = wavFile)
+            val exactDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 } ?: data.durationMs
+            val updatedData = data.copy(durationMs = exactDuration)
+
+            _loadedWavData.value = updatedData
+            _loadedWavFileName.value = wavFile.name
+            _wavPlaybackPositionMs.value = 0L
+            processFullWavSpectrogram(updatedData)
+            processWavFrameAt(0L)
+        }
+    }
+
+    fun loadWavFromUri(context: android.content.Context, uri: android.net.Uri) {
+        _showWavSelectionDialog.value = false
+        stopWavPlayback()
+        val data = WavDataReader.readWavFromUri(context, uri)
+        if (data != null) {
+            initMediaPlayer(uri = uri, context = context)
+            val exactDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 } ?: data.durationMs
+            val updatedData = data.copy(durationMs = exactDuration)
+
+            _loadedWavData.value = updatedData
+            _loadedWavFileName.value = uri.lastPathSegment?.substringAfterLast("/") ?: "fichier.wav"
+            _wavPlaybackPositionMs.value = 0L
+            processFullWavSpectrogram(updatedData)
+            processWavFrameAt(0L)
+        }
+    }
+
+    private fun processFullWavSpectrogram(data: LoadedWavData) {
+        val sampleRate = data.sampleRate
+        val fftN = _fftSize.value
+        val stepSize = fftN / 2
+        val totalSamples = data.pcmSamples.size
+        
+        if (totalSamples < fftN) {
+            _fftHistoryAbsolute.value = emptyList()
+            _fftHistoryTTNR.value = emptyList()
+            _telemetryHistory.value = emptyList()
+            return
+        }
+
+        val frameCount = ((totalSamples - fftN) / stepSize).coerceAtLeast(1)
+        val absList = ArrayList<DoubleArray>(frameCount)
+        val ttnrList = ArrayList<DoubleArray>(frameCount)
+
+        val frameBuffer = ShortArray(fftN)
+        for (i in 0 until frameCount) {
+            val startSample = i * stepSize
+            val avail = totalSamples - startSample
+            val copyLen = avail.coerceAtMost(fftN)
+            if (copyLen > 0) {
+                System.arraycopy(data.pcmSamples, startSample, frameBuffer, 0, copyLen)
+            } else {
+                java.util.Arrays.fill(frameBuffer, 0.toShort())
+            }
+            val magnitudes = fftProcessor.processFFT(frameBuffer)
+            val rawTtnr = fftProcessor.computeTTNR(magnitudes, sampleRate)
+            absList.add(magnitudes)
+            ttnrList.add(rawTtnr)
+        }
+
+        _fftHistoryAbsolute.value = absList
+        _fftHistoryTTNR.value = ttnrList
+
+        if (data.telemetryList.isNotEmpty()) {
+            _telemetryHistory.value = data.telemetryList
+        } else {
+            val synthetic = List(frameCount) { TelemetryData(gpsStatus = GpsStatus.NONE) }
+            _telemetryHistory.value = synthetic
+        }
+    }
+
+    fun toggleWavPlayPause() {
+        if (_isWavPlaying.value) {
+            pauseWavPlayback()
+        } else {
+            startWavPlayback()
+        }
+    }
+
+    fun startWavPlayback() {
+        val data = _loadedWavData.value ?: return
+        if (_isWavPlaying.value) return
+        _isWavPlaying.value = true
+
+        try {
+            mediaPlayer?.let { player ->
+                if (_wavPlaybackPositionMs.value >= data.durationMs) {
+                    _wavPlaybackPositionMs.value = 0L
+                    player.seekTo(0)
+                } else {
+                    player.seekTo(_wavPlaybackPositionMs.value.toInt())
+                }
+                player.start()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        wavPlaybackJob?.cancel()
+        wavPlaybackJob = viewModelScope.launch {
+            val sampleRate = data.sampleRate
+            val stepSize = _fftSize.value / 2
+            val stepMs = ((stepSize.toDouble() / sampleRate.toDouble()) * 1000.0).toLong().coerceAtLeast(15L)
+
+            while (_isWavPlaying.value && _wavPlaybackPositionMs.value < data.durationMs) {
+                val currentMpPos = mediaPlayer?.currentPosition?.toLong() ?: _wavPlaybackPositionMs.value
+                _wavPlaybackPositionMs.value = currentMpPos.coerceIn(0L, data.durationMs)
+                processWavFrameAt(_wavPlaybackPositionMs.value)
+                delay(stepMs)
+            }
+
+            if (_wavPlaybackPositionMs.value >= data.durationMs) {
+                _isWavPlaying.value = false
+                _wavPlaybackPositionMs.value = data.durationMs
+            }
+        }
+    }
+
+    fun pauseWavPlayback() {
+        _isWavPlaying.value = false
+        wavPlaybackJob?.cancel()
+        wavPlaybackJob = null
+        try {
+            if (mediaPlayer?.isPlaying == true) {
+                mediaPlayer?.pause()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun stopWavPlayback() {
+        pauseWavPlayback()
+        _wavPlaybackPositionMs.value = 0L
+        try {
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+            mediaPlayer = null
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun seekWavTo(posMs: Long) {
+        val data = _loadedWavData.value ?: return
+        val clamped = posMs.coerceIn(0L, data.durationMs)
+        _wavPlaybackPositionMs.value = clamped
+        try {
+            mediaPlayer?.seekTo(clamped.toInt())
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        processWavFrameAt(clamped)
+    }
+
+    fun stepWavSeconds(offsetSec: Int) {
+        val data = _loadedWavData.value ?: return
+        val newPos = (_wavPlaybackPositionMs.value + offsetSec * 1000L).coerceIn(0L, data.durationMs)
+        seekWavTo(newPos)
+    }
+
+    private fun processWavFrameAt(posMs: Long) {
+        val data = _loadedWavData.value ?: return
+        val totalMs = data.durationMs.coerceAtLeast(1L)
+        val ratio = (posMs.toDouble() / totalMs.toDouble()).coerceIn(0.0, 1.0)
+
+        val absList = _fftHistoryAbsolute.value
+        val ttnrList = _fftHistoryTTNR.value
+        var currentAbs = DoubleArray(0)
+        var currentTtnr = DoubleArray(0)
+
+        if (absList.isNotEmpty()) {
+            val frameIdx = (ratio * (absList.size - 1)).toInt().coerceIn(0, absList.size - 1)
+            if (frameIdx in absList.indices) {
+                currentAbs = absList[frameIdx]
+            }
+            if (frameIdx in ttnrList.indices) {
+                currentTtnr = ttnrList[frameIdx]
+                _latestTTNRSpectrum.value = currentTtnr
+            }
+        }
+
+        val teleHist = _telemetryHistory.value
+        var telem = TelemetryData(gpsStatus = GpsStatus.NONE)
+        if (teleHist.isNotEmpty()) {
+            val teleIdx = (ratio * (teleHist.size - 1)).toInt().coerceIn(0, teleHist.size - 1)
+            telem = teleHist[teleIdx]
+        } else if (data.telemetryList.isNotEmpty()) {
+            val teleIdx = (ratio * (data.telemetryList.size - 1)).toInt().coerceIn(0, data.telemetryList.size - 1)
+            telem = data.telemetryList[teleIdx]
+        }
+
+        val kConfig = _kinematicsConfig.value
+        if (kConfig.isEnabled && telem.speedKmh > 1.0f && currentAbs.isNotEmpty() && currentTtnr.isNotEmpty()) {
+            val speedKmh = telem.speedKmh
+            val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
+            if (h1FreqHz >= 0.5) {
+                val nyquistFreq = 44100 / 2.0
+                val totalBins = currentAbs.size
+                val df = nyquistFreq / totalBins
+                val targetFreqHz = kConfig.selectedTrackedOrder * h1FreqHz
+                val centerBin = Math.round(targetFreqHz / df).toInt().coerceIn(0, totalBins - 1)
+
+                var maxMag = -120.0
+                var maxEm = 0.0
+                val searchMin = (centerBin - 1).coerceAtLeast(0)
+                val searchMax = (centerBin + 1).coerceAtMost(totalBins - 1)
+
+                for (b in searchMin..searchMax) {
+                    if (b in currentAbs.indices && currentAbs[b] > maxMag) {
+                        maxMag = currentAbs[b]
+                    }
+                    if (b in currentTtnr.indices && currentTtnr[b] > maxEm) {
+                        maxEm = currentTtnr[b]
+                    }
+                }
+
+                telem = telem.copy(
+                    ttnrDb = (currentTtnr.maxOrNull() ?: 0.0).toFloat(),
+                    trackedOrderDbFS = maxMag,
+                    trackedOrderEmergenceDb = maxEm
+                )
+            }
+        }
+
+        _telemetryState.value = telem
+    }
+
+    // Module Enregistrement Audio (Max 30s) & Télémétrie
+    private val _isAudioRecording = MutableStateFlow(false)
+    val isAudioRecording: StateFlow<Boolean> = _isAudioRecording.asStateFlow()
+
+    private val _recordingElapsedSec = MutableStateFlow(0)
+    val recordingElapsedSec: StateFlow<Int> = _recordingElapsedSec.asStateFlow()
+
+    private val _showSaveRecordingDialog = MutableStateFlow(false)
+    val showSaveRecordingDialog: StateFlow<Boolean> = _showSaveRecordingDialog.asStateFlow()
+
+    private val recordedPcmList = java.util.Collections.synchronizedList(mutableListOf<ShortArray>())
+    private val recordedTelemetryList = java.util.Collections.synchronizedList(mutableListOf<TelemetryData>())
+    private var audioRecordingTimerJob: Job? = null
+
+    fun toggleAudioRecording() {
+        if (_isAudioRecording.value) {
+            stopAudioRecording()
+        } else {
+            startAudioRecording()
+        }
+    }
+
+    fun startAudioRecording() {
+        if (_isAudioRecording.value) return
+        recordedPcmList.clear()
+        recordedTelemetryList.clear()
+        _recordingElapsedSec.value = 0
+        _isAudioRecording.value = true
+
+        audioRecordingTimerJob?.cancel()
+        audioRecordingTimerJob = viewModelScope.launch {
+            while (_isAudioRecording.value && _recordingElapsedSec.value < 30) {
+                delay(1000L)
+                if (_isAudioRecording.value) {
+                    _recordingElapsedSec.value += 1
+                }
+            }
+            if (_isAudioRecording.value && _recordingElapsedSec.value >= 30) {
+                stopAudioRecording()
+            }
+        }
+    }
+
+    fun stopAudioRecording() {
+        if (!_isAudioRecording.value) return
+        _isAudioRecording.value = false
+        audioRecordingTimerJob?.cancel()
+        audioRecordingTimerJob = null
+
+        if (recordedPcmList.isNotEmpty()) {
+            _showSaveRecordingDialog.value = true
+        }
+    }
+
+    fun cancelSaveAudioRecording() {
+        recordedPcmList.clear()
+        recordedTelemetryList.clear()
+        _showSaveRecordingDialog.value = false
+    }
+
+    fun saveAudioRecording(userCustomName: String) {
+        val rawName = userCustomName.trim()
+        val cleanName = if (rawName.isEmpty()) "Essai" else rawName.take(20).replace("[^a-zA-Z0-9_\\-]".toRegex(), "_")
+        
+        val timeStamp = SimpleDateFormat("yyyy-MM-dd_HH'h'mm's'ss", Locale.getDefault()).format(Date())
+        val folderName = "${cleanName}_${timeStamp}"
+        
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val exportFolder = File(downloadsDir, "NVH_Spectro_Exports/$folderName")
+        exportFolder.mkdirs()
+
+        // 1. Fichier WAV
+        val totalSamples = recordedPcmList.sumOf { it.size }
+        val fullPcm = ShortArray(totalSamples)
+        var offset = 0
+        synchronized(recordedPcmList) {
+            for (block in recordedPcmList) {
+                System.arraycopy(block, 0, fullPcm, offset, block.size)
+                offset += block.size
+            }
+        }
+        val wavFile = File(exportFolder, "${folderName}.wav")
+        WavAudioWriter.writePcmToWav(fullPcm, wavFile, 44100)
+
+        // 2. Fichier JSON Télémétrie
+        val jsonFile = File(exportFolder, "${folderName}_telemetrie.json")
+        val jsonContent = StringBuilder()
+        jsonContent.append("{\n")
+        jsonContent.append("  \"folderName\": \"$folderName\",\n")
+        jsonContent.append("  \"durationSec\": ${_recordingElapsedSec.value},\n")
+        jsonContent.append("  \"sampleRate\": 44100,\n")
+        jsonContent.append("  \"telemetryCount\": ${recordedTelemetryList.size},\n")
+        jsonContent.append("  \"telemetryData\": [\n")
+        
+        synchronized(recordedTelemetryList) {
+            val items = recordedTelemetryList.mapIndexed { idx, item ->
+                "    {\"index\": $idx, \"speedKmh\": ${item.speedKmh}, \"accelerationG\": ${item.accelerationG}, \"lat\": ${item.latitude}, \"lng\": ${item.longitude}, \"gpsStatus\": \"${item.gpsStatus}\"}"
+            }
+            jsonContent.append(items.joinToString(",\n"))
+        }
+        jsonContent.append("\n  ]\n}")
+        
+        jsonFile.writeText(jsonContent.toString())
+
+        recordedPcmList.clear()
+        recordedTelemetryList.clear()
+        _showSaveRecordingDialog.value = false
     }
     
     // Paramètres réglables
@@ -199,7 +644,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // 2. Lancer la capture Audio et Synchronisation 1-to-1 du Spectrogramme ET de la Télémétrie
         viewModelScope.launch {
             audioRepository.startAudioCapture(_fftSize.value).collect { audioBuffer ->
-                if (!_isFrozen.value) {
+                if (_audioSourceMode.value == AudioSourceMode.LIVE) {
+                    if (_isAudioRecording.value) {
+                        val stepSize = audioBuffer.size / 2
+                        val rawChunk = audioBuffer.copyOfRange(audioBuffer.size - stepSize, audioBuffer.size)
+                        recordedPcmList.add(rawChunk)
+                        recordedTelemetryList.add(_telemetryState.value.copy())
+                    }
+                    if (!_isFrozen.value) {
                     val maxHist = historySize
 
                     // Traitement FFT Absolu
@@ -492,6 +944,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+}
 
     private fun stopRecording() {
         _isRecording.value = false

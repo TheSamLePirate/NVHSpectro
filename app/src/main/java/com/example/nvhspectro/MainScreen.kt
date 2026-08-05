@@ -85,6 +85,30 @@ fun AppScreen(viewModel: MainViewModel) {
     val trackedHarmonicTags by viewModel.trackedHarmonicTags.collectAsState()
     val emergenceReportEntries by viewModel.emergenceReportEntries.collectAsState()
     
+    val isAudioRecording by viewModel.isAudioRecording.collectAsState()
+    val recordingElapsedSec by viewModel.recordingElapsedSec.collectAsState()
+    val showSaveRecordingDialog by viewModel.showSaveRecordingDialog.collectAsState()
+
+    val audioSourceMode by viewModel.audioSourceMode.collectAsState()
+    val showAudioModeMenu by viewModel.showAudioModeMenu.collectAsState()
+    val showWavSelectionDialog by viewModel.showWavSelectionDialog.collectAsState()
+    val loadedWavData by viewModel.loadedWavData.collectAsState()
+    val loadedWavFileName by viewModel.loadedWavFileName.collectAsState()
+    val wavPlaybackPositionMs by viewModel.wavPlaybackPositionMs.collectAsState()
+    val isWavPlaying by viewModel.isWavPlaying.collectAsState()
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val wavPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.loadWavFromUri(context, uri)
+        }
+    }
+
+    val isWavMode = (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER)
+    val wavProgress = if (loadedWavData != null && (loadedWavData?.durationMs ?: 0L) > 0) (wavPlaybackPositionMs.toFloat() / loadedWavData!!.durationMs.toFloat()) else 0f
+
     var showInfoDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
@@ -158,40 +182,132 @@ fun AppScreen(viewModel: MainViewModel) {
                         )
                     }
 
-                    // 3. Bouton Figer / Dégeler
-                    Button(
-                        onClick = { viewModel.toggleFreeze() },
+                    // 3. Bouton Figer / Dégeler (avec sous-option Exporter au-dessus si Figer est actif)
+                    Box(
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isFrozen) Color(0xFFD32F2F) else MaterialTheme.colorScheme.secondary
-                        )
+                        contentAlignment = Alignment.BottomCenter
                     ) {
-                        Text(
-                            text = if (isFrozen) "▶ Dégeler" else "⏸ Figer",
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom
+                        ) {
+                            if (isFrozen) {
+                                Button(
+                                    onClick = { showExportDialog = true },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(34.dp)
+                                        .padding(bottom = 3.dp),
+                                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF0275D8),
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Text(
+                                        text = "📸 Exporter",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+                            Button(
+                                onClick = { viewModel.toggleFreeze() },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(38.dp),
+                                contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isFrozen) Color(0xFFD32F2F) else MaterialTheme.colorScheme.secondary,
+                                    contentColor = Color.White
+                                )
+                            ) {
+                                Text(
+                                    text = if (isFrozen) "▶ Dégeler" else "⏸ Figer",
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
                     }
 
-                    // 4. Bouton Exporter (GARANTI VISIBLE !)
-                    Button(
-                        onClick = { showExportDialog = true },
+                    // 4. Bouton Audio (avec sous-options En direct et Analyseur WAV empilées au-dessus)
+                    Box(
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF0275D8)
-                        )
+                        contentAlignment = Alignment.BottomCenter
                     ) {
-                        Text(
-                            text = "📸 Exporter",
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom
+                        ) {
+                            if (showAudioModeMenu) {
+                                Button(
+                                    onClick = { viewModel.setAudioSourceMode(com.example.nvhspectro.AudioSourceMode.LIVE) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(34.dp)
+                                        .padding(bottom = 3.dp),
+                                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.LIVE) Color(0xFF15803D) else Color(0xFF334155),
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Text(
+                                        text = "🔴 En direct",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+
+                                Button(
+                                    onClick = { viewModel.setAudioSourceMode(com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(34.dp)
+                                        .padding(bottom = 3.dp),
+                                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER) Color(0xFFD97706) else Color(0xFF334155),
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Text(
+                                        text = "📁 Analyseur WAV",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+
+                            Button(
+                                onClick = { viewModel.toggleAudioModeMenu() },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(38.dp),
+                                contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER) Color(0xFFD97706) else Color(0xFF673AB7),
+                                    contentColor = Color.White
+                                )
+                            ) {
+                                Text(
+                                    text = if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER) "📁 Audio (WAV)" else "🎙️ Audio",
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -220,23 +336,25 @@ fun AppScreen(viewModel: MainViewModel) {
                     maxFreq = maxFreq,
                     fftSize = fftSize,
                     sampleRate = 44100,
-                    historySize = viewModel.historySize,
+                    historySize = if (isWavMode && fftHistoryAbsolute.isNotEmpty()) fftHistoryAbsolute.size else viewModel.historySize,
                     displayMode = displayMode,
                     isDetectorEnabled = isDetectorEnabled,
                     emergenceThresholdDb = emergenceThresholdDb,
                     magnitudeGateDbFS = magnitudeGateDbFS,
                     trackedHarmonicTags = trackedHarmonicTags,
-                    kinematicsConfig = kinematicsConfig
+                    kinematicsConfig = kinematicsConfig,
+                    isWavAnalyzerMode = isWavMode,
+                    wavPlaybackProgress = wavProgress
                 )
 
                 // Superposition d'éléments en haut à gauche (Sélecteur de Mode + Bannière Cinématique GMPe en dessous)
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(start = 12.dp, top = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        .padding(start = 8.dp, top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    // Sélecteur de Mode (Absolue vs TTNR)
+                    // Sélecteur de Mode (Absolue vs TTNR) + Bouton Enregistrement
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -247,10 +365,90 @@ fun AppScreen(viewModel: MainViewModel) {
                                 label = { Text(mode.label, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    containerColor = Color(0xDD1E2430),
+                                    labelColor = Color(0xFFE0E0E0)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = (displayMode == mode),
+                                    borderColor = Color(0x66FFFFFF),
+                                    selectedBorderColor = MaterialTheme.colorScheme.primary
                                 )
                             )
                         }
+
+                        // Bouton Enregistrement (Live) OU Bouton Charger WAV (Analyseur WAV)
+                        if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER) {
+                            FilterChip(
+                                selected = (loadedWavFileName != null),
+                                onClick = { viewModel.openWavSelectionDialog() },
+                                label = {
+                                    Text(
+                                        text = if (loadedWavFileName != null) "📂 ${loadedWavFileName!!.take(14)}" else "📂 Charger WAV",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFFD97706),
+                                    selectedLabelColor = Color.White,
+                                    containerColor = Color(0xDD1E2430),
+                                    labelColor = Color(0xFFE0E0E0)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = (loadedWavFileName != null),
+                                    borderColor = Color(0x66FFFFFF),
+                                    selectedBorderColor = Color(0xFFF59E0B)
+                                )
+                            )
+                        } else {
+                            FilterChip(
+                                selected = isAudioRecording,
+                                onClick = { viewModel.toggleAudioRecording() },
+                                label = {
+                                    if (isAudioRecording) {
+                                        val secStr = String.format("%02d:%02d", recordingElapsedSec / 60, recordingElapsedSec % 60)
+                                        Text("🔴 STOP ($secStr / 00:30)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    } else {
+                                        Text("🎙️ Enregistrement", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE0E0E0))
+                                    }
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFFD32F2F),
+                                    selectedLabelColor = Color.White,
+                                    containerColor = Color(0xDD1E2430),
+                                    labelColor = Color(0xFFE0E0E0)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = isAudioRecording,
+                                    borderColor = Color(0x66FFFFFF),
+                                    selectedBorderColor = Color(0xFFEF5350)
+                                )
+                            )
+                        }
+                    }
+
+                    // Indication dynamique Min & Max (Police ultra-compacte et discrète)
+                    val rangeText = if (displayMode == DisplayMode.TTNR) {
+                        "Dynamique : Min 0 | Max +20 dB (TTNR)"
+                    } else {
+                        "Dynamique : Min ${minDb.toInt()} | Max ${maxDb.toInt()} dBFS"
+                    }
+                    Surface(
+                        color = Color(0xAA121212),
+                        shape = RoundedCornerShape(3.dp)
+                    ) {
+                        Text(
+                            text = rangeText,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFCFD8DC),
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        )
                     }
 
                     // Bannière Cinématique GMPe & Bannière Harmoniques Cibles
@@ -262,17 +460,17 @@ fun AppScreen(viewModel: MainViewModel) {
                         // 1. Bannière initiale d'état GMPe
                         Surface(
                             color = Color(0xCC121212),
-                            shape = RoundedCornerShape(6.dp)
+                            shape = RoundedCornerShape(4.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                // LED d'état (12dp) : ROUGE si Vitesse <= 1 km/h, VERTE si > 1 km/h
+                                // LED d'état (10dp) : ROUGE si Vitesse <= 1 km/h, VERTE si > 1 km/h
                                 Box(
                                     modifier = Modifier
-                                        .size(12.dp)
+                                        .size(10.dp)
                                         .background(
                                             if (isActiveSpeed) Color(0xFF00E676) else Color(0xFFFF1744),
                                             CircleShape
@@ -285,14 +483,14 @@ fun AppScreen(viewModel: MainViewModel) {
                                     val curRpm = kinematicsConfig.calculateRpm(curSpeed).toInt()
                                     Text(
                                         text = "🚘 $titleText | V1000: %.1f km/h | H1: %.1fHz (%d RPM)".format(effV1000, h1Hz, curRpm),
-                                        fontSize = 11.sp,
+                                        fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White
                                     )
                                 } else {
                                     Text(
                                         text = "🚘 $titleText | Inactif (< 1 km/h) | V1000: %.1f km/h".format(effV1000),
-                                        fontSize = 11.sp,
+                                        fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFFFFCDD2)
                                     )
@@ -307,25 +505,25 @@ fun AppScreen(viewModel: MainViewModel) {
 
                             Surface(
                                 color = Color(0xF00F172A),
-                                shape = RoundedCornerShape(6.dp),
+                                shape = RoundedCornerShape(4.dp),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.8f))
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(10.dp)
+                                            .size(8.dp)
                                             .background(Color(0xFF00E5FF), CircleShape)
                                     )
                                     Text(
                                         text = "🎯 FILTRE CIBLES : $targetStr",
-                                        fontSize = 11.sp,
+                                        fontSize = 9.5.sp,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = Color(0xFF00E5FF),
-                                        letterSpacing = 0.5.sp
+                                        letterSpacing = 0.4.sp
                                     )
                                 }
                             }
@@ -333,9 +531,37 @@ fun AppScreen(viewModel: MainViewModel) {
                     }
                 }
                 
-                if (fftHistory.isEmpty()) {
+                if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER && loadedWavFileName == null) {
+                    Surface(
+                        color = Color(0xEE121212),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Pas de données WAV chargées\nCliquez sur '📂 Charger WAV' pour ouvrir un fichier",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                } else if (fftHistory.isEmpty()) {
                     Text("Analyse audio & sonogramme en cours...", color = Color.White)
                 }
+            }
+
+            // Lecteur WAV (si un fichier est chargé en mode Analyseur WAV)
+            if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER && loadedWavData != null) {
+                com.example.nvhspectro.ui.WavPlayerBar(
+                    fileName = loadedWavFileName ?: "fichier.wav",
+                    currentPosMs = wavPlaybackPositionMs,
+                    totalDurationMs = loadedWavData?.durationMs ?: 0L,
+                    isPlaying = isWavPlaying,
+                    onPlayToggle = { viewModel.toggleWavPlayPause() },
+                    onSeekTo = { pos -> viewModel.seekWavTo(pos) },
+                    onStepSeconds = { sec -> viewModel.stepWavSeconds(sec) }
+                )
             }
 
             // Zone 2: Données Véhicule (45% hauteur)
@@ -439,13 +665,15 @@ fun AppScreen(viewModel: MainViewModel) {
                         TelemetryGraph(
                             history = telemetryHistory,
                             metric = selectedMetric,
-                            timeWindowSec = timeWindowSec,
-                            historySize = viewModel.historySize,
+                            timeWindowSec = if (isWavMode && loadedWavData != null) ((loadedWavData?.durationMs ?: 0L) / 1000.0) else timeWindowSec,
+                            historySize = if (isWavMode && fftHistoryAbsolute.isNotEmpty()) fftHistoryAbsolute.size else viewModel.historySize,
                             ttnrSpectrum = latestTTNRSpectrum,
                             minFreq = minFreq,
                             maxFreq = maxFreq,
                             isKinematicsEnabled = kinematicsConfig.isEnabled,
-                            selectedOrderName = ordLabel
+                            selectedOrderName = ordLabel,
+                            isWavAnalyzerMode = isWavMode,
+                            wavPlaybackProgress = wavProgress
                         )
                     }
                 }
@@ -494,7 +722,9 @@ fun AppScreen(viewModel: MainViewModel) {
                 magnitudeGateDbFS = magnitudeGateDbFS,
                 onMagnitudeGateChange = { gate ->
                     viewModel.updateDetectorSettings(isDetectorEnabled, emergenceThresholdDb, gate)
-                }
+                },
+                isWavAnalyzerMode = isWavMode,
+                wavDurationSec = (loadedWavData?.durationMs ?: 0L) / 1000.0
             )
         }
         
@@ -526,6 +756,31 @@ fun AppScreen(viewModel: MainViewModel) {
                 kinematicsConfig = kinematicsConfig,
                 onDismiss = { showEmergenceReportDialog = false },
                 onClearReport = { viewModel.clearEmergenceReport() }
+            )
+        }
+
+        if (showSaveRecordingDialog) {
+            com.example.nvhspectro.ui.SaveRecordingDialog(
+                durationSec = recordingElapsedSec,
+                onSave = { customName ->
+                    viewModel.saveAudioRecording(customName)
+                },
+                onDismiss = {
+                    viewModel.cancelSaveAudioRecording()
+                }
+            )
+        }
+
+        if (showWavSelectionDialog) {
+            com.example.nvhspectro.ui.WavSelectionDialog(
+                onDismiss = { viewModel.closeWavSelectionDialog() },
+                onSelectEntry = { wavFile, jsonFile ->
+                    viewModel.loadWavFile(wavFile, jsonFile)
+                },
+                onImportExternal = {
+                    viewModel.closeWavSelectionDialog()
+                    wavPickerLauncher.launch("audio/*")
+                }
             )
         }
     }

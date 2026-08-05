@@ -38,6 +38,8 @@ fun TelemetryGraph(
     sampleRate: Int = 44100,
     isKinematicsEnabled: Boolean = false,
     selectedOrderName: String = "H18",
+    isWavAnalyzerMode: Boolean = false,
+    wavPlaybackProgress: Float = 0f,
     modifier: Modifier = Modifier
 ) {
     val textPaint = remember {
@@ -135,30 +137,22 @@ fun TelemetryGraph(
                 val native = canvas.nativeCanvas
 
                 // 1. Grille Horizontale d'Émergence (0 dB, 5 dB, 10 dB, 15 dB, 20 dB)
-                val dbSteps = 4 // 0, 5, 10, 15, 20 dB
+                val dbSteps = 4
                 for (step in 0..dbSteps) {
                     val dbVal = step * (maxTtnrDb / dbSteps)
                     val y = (marginTop + plotHeight) - (step.toFloat() / dbSteps) * plotHeight
-
-                    // Ligne de grille fine
                     native.drawLine(marginLeft, y, marginLeft + plotWidth, y, fineGridPaint)
-
-                    // Graduation Y
                     val label = if (step == dbSteps) "+20 dB" else if (step == 0) "0 dB" else "+${dbVal.toInt()} dB"
                     native.drawText(label, 15f, y + 8f, tickTextPaint)
                 }
 
-                // 2. Grille Verticale de Fréquence (5 paliers réguliers : 0 Hz, 25%, 50%, 75%, 100% maxFreq)
+                // 2. Grille Verticale de Fréquence
                 val freqSteps = 4
                 for (step in 0..freqSteps) {
                     val fraction = step.toFloat() / freqSteps
                     val x = marginLeft + fraction * plotWidth
                     val freqVal = minFreq + (fraction * (maxFreq - minFreq)).toInt()
-
-                    // Ligne de grille verticale fine
                     native.drawLine(x, marginTop, x, marginTop + plotHeight, fineGridPaint)
-
-                    // Graduation X
                     val label = "${freqVal} Hz"
                     val labelW = tickTextPaint.measureText(label)
                     var labelX = x - (labelW / 2f)
@@ -166,12 +160,10 @@ fun TelemetryGraph(
                     native.drawText(label, labelX, marginTop + plotHeight + 35f, tickTextPaint)
                 }
 
-                // Encadrement des Axes principaux
                 native.drawLine(marginLeft, marginTop, marginLeft, marginTop + plotHeight, axisPaint)
                 native.drawLine(marginLeft, marginTop + plotHeight, marginLeft + plotWidth, marginTop + plotHeight, axisPaint)
             }
 
-            // Tracé de la courbe du spectre d'émergence 2D AAA
             if (ttnrSpectrum.isNotEmpty() && displayedBins > 1) {
                 val path = Path()
                 var maxEmergence = 0.0
@@ -199,7 +191,6 @@ fun TelemetryGraph(
                     }
                 }
 
-                // Ombrage dégradé translucide sous la courbe (AAA Grade)
                 val fillPath = Path().apply {
                     addPath(path)
                     lineTo(marginLeft + plotWidth, marginTop + plotHeight)
@@ -216,14 +207,12 @@ fun TelemetryGraph(
                     )
                 )
 
-                // Tracé de la ligne Néon Magenta
                 drawPath(
                     path = path,
-                    color = Color(0xFFD500F9), // Neon Magenta
+                    color = Color(0xFFD500F9),
                     style = Stroke(width = 3.5f)
                 )
 
-                // Curseur Automatique Ultra-Précis et Alignement Pixel-Perfect du Pic (>= 3.0 dB)
                 if (maxEmergence >= 3.0 && maxEmergenceBin >= minBin) {
                     val peakFreq = ((maxEmergenceBin.toDouble() / totalBins) * nyquist).toInt()
                     val peakFractionX = (maxEmergenceBin - minBin).toFloat() / max(1, displayedBins - 1)
@@ -231,7 +220,6 @@ fun TelemetryGraph(
                     val peakNormY = (maxEmergence.coerceIn(0.0, maxTtnrDb) / maxTtnrDb).toFloat()
                     val peakY = (marginTop + plotHeight) - (peakNormY * plotHeight)
 
-                    // Ligne pointillée Cyan pour le pic
                     drawLine(
                         color = Color(0xFF00E5FF),
                         start = Offset(peakX, marginTop),
@@ -240,14 +228,12 @@ fun TelemetryGraph(
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
                     )
 
-                    // Dot au sommet du pic
                     drawCircle(
                         color = Color(0xFF00E5FF),
                         radius = 6f,
                         center = Offset(peakX, peakY)
                     )
 
-                    // Badge numérique en haut
                     drawIntoCanvas { canvas ->
                         val native = canvas.nativeCanvas
                         val badgeText = "${peakFreq} Hz | +${String.format("%.1f", maxEmergence)} dB"
@@ -268,9 +254,6 @@ fun TelemetryGraph(
                 }
             }
         } else if (metric == TelemetryMetric.ORDER && (!isKinematicsEnabled || (history.isNotEmpty() && history.first().speedKmh <= 1.0f))) {
-            // =========================================================================
-            // MODE ORDRE (GMPe INACTIF OU VITESSE <= 1 km/h) : MESSAGE D'AVERTISSEMENT
-            // =========================================================================
             drawIntoCanvas { canvas ->
                 val native = canvas.nativeCanvas
                 native.drawLine(marginLeft, marginTop, marginLeft, marginTop + plotHeight, axisPaint)
@@ -287,9 +270,6 @@ fun TelemetryGraph(
                 native.drawText(msg, msgX, msgY, warningTextPaint)
             }
         } else {
-            // =========================================================================
-            // MODES TÉLÉMÉTRIE (Vitesse, Accélération, Ordre GMPe) : ABSCISSE = TEMPS (s)
-            // =========================================================================
             val values = history.map { data ->
                 when (metric) {
                     TelemetryMetric.SPEED -> data.speedKmh.toDouble()
@@ -305,12 +285,9 @@ fun TelemetryGraph(
 
             drawIntoCanvas { canvas ->
                 val native = canvas.nativeCanvas
-
-                // Grille de fond
                 native.drawLine(marginLeft, marginTop, marginLeft, marginTop + plotHeight, axisPaint)
                 native.drawLine(marginLeft, marginTop + plotHeight, marginLeft + plotWidth, marginTop + plotHeight, axisPaint)
 
-                // Labels Y
                 val maxStr = String.format("%.1f %s", maxVal, metric.unit)
                 val minStr = String.format("%.1f %s", minVal, metric.unit)
                 native.drawText(maxStr, 12f, marginTop + 22f, textPaint)
@@ -319,29 +296,28 @@ fun TelemetryGraph(
 
             if (values.size > 1) {
                 val pointCount = values.size
-                val targetHistSize = max(historySize, pointCount)
+                val targetHistSize = if (isWavAnalyzerMode) pointCount else max(historySize, pointCount)
 
                 if (metric == TelemetryMetric.ORDER) {
-                    // Tracé avec nuancier dynamique d'émergence TTNR (Blanc -> Orange -> Rouge)
                     for (i in 0 until pointCount - 1) {
-                        val fractionX1 = i.toFloat() / max(1, targetHistSize - 1)
-                        val x1 = marginLeft + (1f - fractionX1) * plotWidth
+                        val fractionX1 = if (isWavAnalyzerMode) i.toFloat() / max(1, pointCount - 1) else i.toFloat() / max(1, targetHistSize - 1)
+                        val x1 = if (isWavAnalyzerMode) marginLeft + fractionX1 * plotWidth else marginLeft + (1f - fractionX1) * plotWidth
                         val normY1 = ((values[i] - minVal) / valRange).toFloat()
                         val y1 = (marginTop + plotHeight) - (normY1 * plotHeight)
 
-                        val fractionX2 = (i + 1).toFloat() / max(1, targetHistSize - 1)
-                        val x2 = marginLeft + (1f - fractionX2) * plotWidth
+                        val fractionX2 = if (isWavAnalyzerMode) (i + 1).toFloat() / max(1, pointCount - 1) else (i + 1).toFloat() / max(1, targetHistSize - 1)
+                        val x2 = if (isWavAnalyzerMode) marginLeft + fractionX2 * plotWidth else marginLeft + (1f - fractionX2) * plotWidth
                         val normY2 = ((values[i + 1] - minVal) / valRange).toFloat()
                         val y2 = (marginTop + plotHeight) - (normY2 * plotHeight)
 
                         val emergenceDb = history[i].trackedOrderEmergenceDb
                         val segColor = when {
-                            emergenceDb >= 20.0 -> Color(0xFFD50000) // 5. Rouge Pourpre Intense (Émergence extrême >= 20 dB)
-                            emergenceDb >= 15.0 -> Color(0xFFFF1744) // 4. Rouge Vif (Émergence très forte 15 à 20 dB)
-                            emergenceDb >= 10.0 -> Color(0xFFFF5722) // 3. Orange-Rouge Vermillon (Émergence forte 10 à 15 dB)
-                            emergenceDb >= 5.0  -> Color(0xFFFF9800) // 2. Orange Fluo (Émergence franche 5 à 10 dB)
-                            emergenceDb > 0.0   -> Color(0xFFFFB74D) // 1. Orange Clair / Ambre (Émergence débutante 0 à 5 dB)
-                            else -> Color.White                      // Blanc (Aucune émergence <= 0 dB)
+                            emergenceDb >= 20.0 -> Color(0xFFD50000)
+                            emergenceDb >= 15.0 -> Color(0xFFFF1744)
+                            emergenceDb >= 10.0 -> Color(0xFFFF5722)
+                            emergenceDb >= 5.0  -> Color(0xFFFF9800)
+                            emergenceDb > 0.0   -> Color(0xFFFFB74D)
+                            else -> Color.White
                         }
 
                         drawLine(
@@ -354,8 +330,8 @@ fun TelemetryGraph(
                 } else {
                     val path = Path()
                     for (i in 0 until pointCount) {
-                        val fractionX = i.toFloat() / max(1, targetHistSize - 1)
-                        val x = marginLeft + (1f - fractionX) * plotWidth
+                        val fractionX = if (isWavAnalyzerMode) i.toFloat() / max(1, pointCount - 1) else i.toFloat() / max(1, targetHistSize - 1)
+                        val x = if (isWavAnalyzerMode) marginLeft + fractionX * plotWidth else marginLeft + (1f - fractionX) * plotWidth
 
                         val normY = ((values[i] - minVal) / valRange).toFloat()
                         val y = (marginTop + plotHeight) - (normY * plotHeight)
@@ -368,8 +344,8 @@ fun TelemetryGraph(
                     }
 
                     val strokeColor = when (metric) {
-                        TelemetryMetric.SPEED -> Color(0xFF00E676) // Vert fluo
-                        TelemetryMetric.ACCELERATION -> Color(0xFFFF9100) // Orange vif
+                        TelemetryMetric.SPEED -> Color(0xFF00E676)
+                        TelemetryMetric.ACCELERATION -> Color(0xFFFF9100)
                         else -> Color.White
                     }
 
@@ -379,6 +355,22 @@ fun TelemetryGraph(
                         style = Stroke(width = 4f)
                     )
                 }
+            }
+
+            // Curseur de lecture vertical en mode Analyseur WAV
+            if (isWavAnalyzerMode) {
+                val xCursor = marginLeft + (wavPlaybackProgress.coerceIn(0f, 1f) * plotWidth)
+                drawLine(
+                    color = Color(0xFFF59E0B), // Amber Néon Vif
+                    start = Offset(xCursor, marginTop),
+                    end = Offset(xCursor, marginTop + plotHeight),
+                    strokeWidth = 4f
+                )
+                drawCircle(
+                    color = Color(0xFFF59E0B),
+                    radius = 7f,
+                    center = Offset(xCursor, marginTop)
+                )
             }
         }
     }

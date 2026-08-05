@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
@@ -76,7 +77,9 @@ fun SpectrogramCanvas(
     emergenceThresholdDb: Double = 2.5,
     magnitudeGateDbFS: Double = -90.0,
     trackedHarmonicTags: List<TrackedHarmonicTag> = emptyList(),
-    kinematicsConfig: KinematicsConfig = KinematicsConfig()
+    kinematicsConfig: KinematicsConfig = KinematicsConfig(),
+    isWavAnalyzerMode: Boolean = false,
+    wavPlaybackProgress: Float = 0f
 ) {
     if (history.isEmpty()) {
         Canvas(modifier = modifier.fillMaxSize()) {}
@@ -91,7 +94,7 @@ fun SpectrogramCanvas(
     val actualMinFreq = (minBin * nyquistFreq) / totalBinCount
     val actualMaxFreq = (maxBin * nyquistFreq) / totalBinCount
 
-    val bitmapWidth = historySize
+    val bitmapWidth = if (isWavAnalyzerMode && history.isNotEmpty()) history.size else historySize
     val bitmapHeight = displayedBinCount
 
     var cursorYRatio by remember { mutableFloatStateOf(0.5f) }
@@ -118,33 +121,58 @@ fun SpectrogramCanvas(
     val effectiveMin = if (displayMode == DisplayMode.TTNR) 0.0 else minDb
     val effectiveMax = if (displayMode == DisplayMode.TTNR) 20.0 else maxDb
 
-    LaunchedEffect(history, effectiveMin, effectiveMax, displayMode) {
+    LaunchedEffect(history, effectiveMin, effectiveMax, displayMode, isWavAnalyzerMode) {
         if (history.isNotEmpty()) {
-            val latestFrame = history.first()
+            if (isWavAnalyzerMode) {
+                val numFrames = history.size
+                for (x in 0 until bitmapWidth) {
+                    val frameIdx = (x * (numFrames - 1)) / maxOf(1, bitmapWidth - 1)
+                    val frame = if (frameIdx in history.indices) history[frameIdx] else DoubleArray(0)
 
-            // 1. Décalage vers la gauche
-            for (y in 0 until bitmapHeight) {
-                System.arraycopy(pixels, y * bitmapWidth + 1, pixels, y * bitmapWidth, bitmapWidth - 1)
-
-                val binIndex = (maxBin - 1) - (y * (displayedBinCount - 1)) / (bitmapHeight - 1)
-                val magnitude = if (binIndex in latestFrame.indices) latestFrame[binIndex] else effectiveMin
-                
-                val colorInt = if (displayMode == DisplayMode.TTNR && magnitude < 0.8) {
-                    AndroidColor.BLACK // Noir Mat Absolument Pur pour éteindre 100% des bruits parasites !
-                } else {
-                    val rawNormalized = ((magnitude - effectiveMin) / (effectiveMax - effectiveMin)).coerceIn(0.0, 1.0).toFloat()
-                    val normalized = if (displayMode == DisplayMode.TTNR && rawNormalized > 0f) {
-                        Math.pow(rawNormalized.toDouble(), 0.65).toFloat()
-                    } else {
-                        rawNormalized
+                    for (y in 0 until bitmapHeight) {
+                        val binIndex = (maxBin - 1) - (y * (displayedBinCount - 1)) / maxOf(1, bitmapHeight - 1)
+                        val magnitude = if (binIndex in frame.indices) frame[binIndex] else effectiveMin
+                        
+                        val colorInt = if (displayMode == DisplayMode.TTNR && magnitude < 0.8) {
+                            AndroidColor.BLACK
+                        } else {
+                            val rawNormalized = ((magnitude - effectiveMin) / (effectiveMax - effectiveMin)).coerceIn(0.0, 1.0).toFloat()
+                            val normalized = if (displayMode == DisplayMode.TTNR && rawNormalized > 0f) {
+                                Math.pow(rawNormalized.toDouble(), 0.65).toFloat()
+                            } else {
+                                rawNormalized
+                            }
+                            getJetColorInt(normalized)
+                        }
+                        
+                        pixels[y * bitmapWidth + x] = colorInt
                     }
-                    getJetColorInt(normalized)
                 }
-                
-                pixels[y * bitmapWidth + (bitmapWidth - 1)] = colorInt
+            } else {
+                val latestFrame = history.first()
+
+                for (y in 0 until bitmapHeight) {
+                    System.arraycopy(pixels, y * bitmapWidth + 1, pixels, y * bitmapWidth, bitmapWidth - 1)
+
+                    val binIndex = (maxBin - 1) - (y * (displayedBinCount - 1)) / (bitmapHeight - 1)
+                    val magnitude = if (binIndex in latestFrame.indices) latestFrame[binIndex] else effectiveMin
+                    
+                    val colorInt = if (displayMode == DisplayMode.TTNR && magnitude < 0.8) {
+                        AndroidColor.BLACK
+                    } else {
+                        val rawNormalized = ((magnitude - effectiveMin) / (effectiveMax - effectiveMin)).coerceIn(0.0, 1.0).toFloat()
+                        val normalized = if (displayMode == DisplayMode.TTNR && rawNormalized > 0f) {
+                            Math.pow(rawNormalized.toDouble(), 0.65).toFloat()
+                        } else {
+                            rawNormalized
+                        }
+                        getJetColorInt(normalized)
+                    }
+                    
+                    pixels[y * bitmapWidth + (bitmapWidth - 1)] = colorInt
+                }
             }
             
-            // 2. Mise à jour du Bitmap
             bitmap.setPixels(pixels, 0, bitmapWidth, 0, 0, bitmapWidth, bitmapHeight)
         }
     }
@@ -327,6 +355,22 @@ fun SpectrogramCanvas(
             filterQuality = FilterQuality.None
         )
 
+        // 1b. Curseur temporel de lecture en mode Analyseur WAV
+        if (isWavAnalyzerMode) {
+            val xCursor = marginLeft + (wavPlaybackProgress.coerceIn(0f, 1f) * plotWidth)
+            drawLine(
+                color = Color(0xFFF59E0B), // Amber Néon Vif
+                start = Offset(xCursor, marginTop),
+                end = Offset(xCursor, marginTop + plotHeight),
+                strokeWidth = 4f
+            )
+            drawCircle(
+                color = Color(0xFFF59E0B),
+                radius = 7f,
+                center = Offset(xCursor, marginTop)
+            )
+        }
+
         drawIntoCanvas { canvas ->
             val native = canvas.nativeCanvas
 
@@ -465,13 +509,13 @@ fun SpectrogramCanvas(
 
             val hopSize = fftSize / 2.0
             val dt = hopSize / sampleRate
-            val totalTimeSec = historySize * dt
+            val totalTimeSec = if (isWavAnalyzerMode && history.isNotEmpty()) (history.size * dt) else (historySize * dt)
 
             val xSteps = 5
             for (i in 0..xSteps) {
                 val fraction = i.toFloat() / xSteps
                 val x = marginLeft + fraction * plotWidth
-                val tSec = -totalTimeSec * (1f - fraction)
+                val tSec = if (isWavAnalyzerMode) fraction * totalTimeSec else -totalTimeSec * (1f - fraction)
 
                 native.drawLine(x, plotBottom, x, plotBottom + 15f, tickPaint)
 
@@ -486,14 +530,7 @@ fun SpectrogramCanvas(
             val xTitleWidth = textPaint.measureText(xTitle)
             native.drawText(xTitle, marginLeft + (plotWidth - xTitleWidth) / 2f, h - 20f, textPaint)
 
-            // --- LÉGENDE (Haut Droite) ---
-            if (displayMode == DisplayMode.TTNR) {
-                native.drawText("MAX: +20 dB TTNR", plotRight - 300f, marginTop + 35f, textPaint)
-                native.drawText("MIN: 0 dB TTNR", plotRight - 300f, marginTop + 75f, textPaint)
-            } else {
-                native.drawText(String.format("MAX: %.0f dBFS", maxDb), plotRight - 260f, marginTop + 35f, textPaint)
-                native.drawText(String.format("MIN: %.0f dBFS", minDb), plotRight - 260f, marginTop + 75f, textPaint)
-            }
+            // --- LÉGENDE (Affichée désormais de manière fluide en UI Compose sous les boutons) ---
         }
     }
 }
