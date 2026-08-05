@@ -50,7 +50,7 @@ fun SettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Paramètres NVH & DSP (v8.0.0 - Version Avancée)", fontWeight = FontWeight.Bold) },
+        title = { Text("Paramètres NVH & DSP", fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier

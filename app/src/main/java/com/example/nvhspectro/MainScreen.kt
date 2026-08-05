@@ -22,12 +22,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 import com.example.nvhspectro.ui.InfoDialog
 import com.example.nvhspectro.ui.OrderSelectionDialog
+import com.example.nvhspectro.ui.SplashScreen
 import com.example.nvhspectro.ui.TelemetryGraph
 import com.example.nvhspectro.ui.TelemetryMetric
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavigation() {
+    var showSplash by remember { mutableStateOf(true) }
     var permissionsGranted by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -46,7 +48,9 @@ fun AppNavigation() {
         )
     }
 
-    if (permissionsGranted) {
+    if (showSplash) {
+        SplashScreen(onSplashFinished = { showSplash = false })
+    } else if (permissionsGranted) {
         val viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
         AppScreen(viewModel)
     } else {
