@@ -18,10 +18,12 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.min
 
@@ -32,7 +34,8 @@ enum class DisplayMode(val label: String) {
 
 enum class AudioSourceMode {
     LIVE,
-    WAV_ANALYZER
+    WAV_ANALYZER,
+    VIDEO
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -58,6 +61,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateKinematicsConfig(config: KinematicsConfig) {
         _kinematicsConfig.value = config
         if (_audioSourceMode.value == AudioSourceMode.WAV_ANALYZER && _loadedWavData.value != null) {
+            recalculateOrderTrackingForWav()
             processWavFrameAt(_wavPlaybackPositionMs.value)
         }
     }
@@ -66,6 +70,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val currentConfig = _kinematicsConfig.value
         _kinematicsConfig.value = currentConfig.copy(selectedTrackedOrder = order)
         if (_audioSourceMode.value == AudioSourceMode.WAV_ANALYZER && _loadedWavData.value != null) {
+            recalculateOrderTrackingForWav()
             processWavFrameAt(_wavPlaybackPositionMs.value)
         }
     }
@@ -149,17 +154,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (_audioSourceMode.value == mode) return
         _audioSourceMode.value = mode
 
-        if (mode == AudioSourceMode.LIVE) {
-            stopWavPlayback()
-            _loadedWavData.value = null
-            _loadedWavFileName.value = null
-            _fftHistoryAbsolute.value = emptyList()
-            _fftHistoryTTNR.value = emptyList()
-        } else {
-            stopWavPlayback()
-            _fftHistoryAbsolute.value = emptyList()
-            _fftHistoryTTNR.value = emptyList()
-        }
+        stopWavPlayback()
+        _loadedWavData.value = null
+        _loadedWavFileName.value = null
+        _loadedVideoUri.value = null
+        _loadedYouTubeUrl.value = null
+        _fftHistoryAbsolute.value = emptyList()
+        _fftHistoryTTNR.value = emptyList()
+        _telemetryHistory.value = emptyList()
+        _telemetryState.value = TelemetryData()
     }
 
     fun openWavSelectionDialog() {
@@ -201,6 +204,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun loadWavFile(wavFile: File, jsonFile: File?) {
         _showWavSelectionDialog.value = false
         stopWavPlayback()
+        _loadedVideoUri.value = null
+        _loadedYouTubeUrl.value = null
+        _fftHistoryAbsolute.value = emptyList()
+        _fftHistoryTTNR.value = emptyList()
+        _telemetryHistory.value = emptyList()
+        _telemetryState.value = TelemetryData()
+        
         val data = WavDataReader.readWavFile(wavFile, jsonFile)
         if (data != null) {
             initMediaPlayer(wavFile = wavFile)
@@ -218,6 +228,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun loadWavFromUri(context: android.content.Context, uri: android.net.Uri) {
         _showWavSelectionDialog.value = false
         stopWavPlayback()
+        _loadedVideoUri.value = null
+        _loadedYouTubeUrl.value = null
+        _fftHistoryAbsolute.value = emptyList()
+        _fftHistoryTTNR.value = emptyList()
+        _telemetryHistory.value = emptyList()
+        _telemetryState.value = TelemetryData()
+        
         val data = WavDataReader.readWavFromUri(context, uri)
         if (data != null) {
             initMediaPlayer(uri = uri, context = context)
@@ -232,47 +249,220 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun processFullWavSpectrogram(data: LoadedWavData) {
-        val sampleRate = data.sampleRate
-        val fftN = _fftSize.value
-        val stepSize = fftN / 2
-        val totalSamples = data.pcmSamples.size
-        
-        if (totalSamples < fftN) {
-            _fftHistoryAbsolute.value = emptyList()
-            _fftHistoryTTNR.value = emptyList()
-            _telemetryHistory.value = emptyList()
-            return
-        }
+    // Mode Vidéo
+    private val _loadedVideoUri = MutableStateFlow<android.net.Uri?>(null)
+    val loadedVideoUri: StateFlow<android.net.Uri?> = _loadedVideoUri.asStateFlow()
 
-        val frameCount = ((totalSamples - fftN) / stepSize).coerceAtLeast(1)
-        val absList = ArrayList<DoubleArray>(frameCount)
-        val ttnrList = ArrayList<DoubleArray>(frameCount)
+    private val _loadedYouTubeUrl = MutableStateFlow<String?>(null)
+    val loadedYouTubeUrl: StateFlow<String?> = _loadedYouTubeUrl.asStateFlow()
 
-        val frameBuffer = ShortArray(fftN)
-        for (i in 0 until frameCount) {
-            val startSample = i * stepSize
-            val avail = totalSamples - startSample
-            val copyLen = avail.coerceAtMost(fftN)
-            if (copyLen > 0) {
-                System.arraycopy(data.pcmSamples, startSample, frameBuffer, 0, copyLen)
-            } else {
-                java.util.Arrays.fill(frameBuffer, 0.toShort())
+    private val _loadedVideoTitle = MutableStateFlow<String>("")
+    val loadedVideoTitle: StateFlow<String> = _loadedVideoTitle.asStateFlow()
+
+    private val _showVideoSelectionDialog = MutableStateFlow(false)
+    val showVideoSelectionDialog: StateFlow<Boolean> = _showVideoSelectionDialog.asStateFlow()
+
+    fun openVideoSelectionDialog() {
+        _showVideoSelectionDialog.value = true
+    }
+
+    fun dismissVideoSelectionDialog() {
+        _showVideoSelectionDialog.value = false
+    }
+
+    fun loadVideoFromUri(context: android.content.Context, uri: android.net.Uri) {
+        _showVideoSelectionDialog.value = false
+        stopWavPlayback()
+        _loadedYouTubeUrl.value = null
+        _loadedVideoUri.value = uri
+        _loadedVideoTitle.value = uri.lastPathSegment?.substringAfterLast("/") ?: "Vidéo locale"
+        _audioSourceMode.value = AudioSourceMode.VIDEO
+        _fftHistoryAbsolute.value = emptyList()
+        _fftHistoryTTNR.value = emptyList()
+        _telemetryHistory.value = emptyList()
+        _telemetryState.value = TelemetryData()
+
+        viewModelScope.launch(Dispatchers.Default) {
+            val data = com.example.nvhspectro.data.VideoAudioExtractor.extractAudioFromVideoUri(context, uri)
+            if (data != null) {
+                withContext(Dispatchers.Main) {
+                    initMediaPlayer(uri = uri, context = context)
+                    val exactDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 } ?: data.durationMs
+                    val updatedData = data.copy(durationMs = exactDuration)
+                    _loadedWavData.value = updatedData
+                    _loadedWavFileName.value = _loadedVideoTitle.value
+                    _wavPlaybackPositionMs.value = 0L
+                    processFullWavSpectrogram(updatedData)
+                    processWavFrameAt(0L)
+                }
             }
-            val magnitudes = fftProcessor.processFFT(frameBuffer)
-            val rawTtnr = fftProcessor.computeTTNR(magnitudes, sampleRate)
-            absList.add(magnitudes)
-            ttnrList.add(rawTtnr)
+        }
+    }
+
+    fun loadVideoFromYouTube(url: String) {
+        _showVideoSelectionDialog.value = false
+        stopWavPlayback()
+        _loadedVideoUri.value = null
+        _loadedYouTubeUrl.value = url
+        _loadedVideoTitle.value = "Vidéo YouTube"
+        _audioSourceMode.value = AudioSourceMode.VIDEO
+        _fftHistoryAbsolute.value = emptyList()
+        _fftHistoryTTNR.value = emptyList()
+        _telemetryHistory.value = emptyList()
+        _telemetryState.value = TelemetryData()
+    }
+
+    // Mode Vidéo & Traitement
+    private val _isProcessingVideo = MutableStateFlow(false)
+    val isProcessingVideo: StateFlow<Boolean> = _isProcessingVideo.asStateFlow()
+
+    private val _processingEstimateMessage = MutableStateFlow<String?>(null)
+    val processingEstimateMessage: StateFlow<String?> = _processingEstimateMessage.asStateFlow()
+
+    private fun recalculateOrderTrackingForWav() {
+        val config = _kinematicsConfig.value
+        val absHistory = _fftHistoryAbsolute.value
+        val ttnrHistory = _fftHistoryTTNR.value
+        val telemHistory = _telemetryHistory.value
+        val sampleRate = _loadedWavData.value?.sampleRate ?: 44100
+        
+        if (absHistory.isEmpty() || telemHistory.isEmpty() || !config.isEnabled) return
+        
+        val targetOrder = config.selectedTrackedOrder
+        
+        val updatedHistory = telemHistory.mapIndexed { i, telem ->
+            val theoSpeed = telem.theoreticalSpeedKmh
+            val absIdx = (i.toFloat() / telemHistory.size * absHistory.size).toInt().coerceIn(0, absHistory.size - 1)
+            val absArr = absHistory[absIdx]
+            val ttnrArr = ttnrHistory[absIdx]
+            
+            var bestAbs = -120.0
+            var bestTtnr = 0.0
+            
+            if (theoSpeed > 1.0f) {
+                val targetFreq = config.calculateH1FreqHz(theoSpeed) * targetOrder.toFloat()
+                if (targetFreq > 0f && targetFreq < sampleRate / 2) {
+                    val nyquist = sampleRate / 2.0
+                    val targetBin = ((targetFreq / nyquist) * absArr.size).toInt()
+                    
+                    val searchRadius = 3
+                    val startBin = (targetBin - searchRadius).coerceAtLeast(0)
+                    val endBin = (targetBin + searchRadius).coerceAtMost(absArr.size - 1)
+                    
+                    for (b in startBin..endBin) {
+                        if (absArr[b] > bestAbs) {
+                            bestAbs = absArr[b]
+                            bestTtnr = ttnrArr[b]
+                        }
+                    }
+                }
+            }
+            telem.copy(trackedOrderDbFS = bestAbs, trackedOrderEmergenceDb = bestTtnr)
+        }
+        
+        _telemetryHistory.value = updatedHistory
+        _loadedWavData.value = _loadedWavData.value?.copy(telemetryList = updatedHistory)
+    }
+
+    private fun processFullWavSpectrogram(data: LoadedWavData) {
+        val durationSec = data.durationMs / 1000.0
+        val isLongVideo = (durationSec >= 60.0)
+
+        _isProcessingVideo.value = true
+        if (isLongVideo) {
+            val min = (durationSec / 60).toInt()
+            val sec = (durationSec % 60).toInt()
+            val estimatedSec = String.format("%.1f", durationSec * 0.002).replace(",", ".")
+            _processingEstimateMessage.value = "⏳ Traitement du spectrogramme en cours...\nVidéo (${min}m ${sec}s) | Temps estimé: ~${estimatedSec} s"
+        } else {
+            _processingEstimateMessage.value = null
         }
 
-        _fftHistoryAbsolute.value = absList
-        _fftHistoryTTNR.value = ttnrList
+        viewModelScope.launch(Dispatchers.Default) {
+            val sampleRate = data.sampleRate
+            val fftN = if (_audioSourceMode.value == AudioSourceMode.VIDEO) 2048 else _fftSize.value
+            val stepSize = fftN / 2
+            val totalSamples = data.pcmSamples.size
 
-        if (data.telemetryList.isNotEmpty()) {
-            _telemetryHistory.value = data.telemetryList
-        } else {
-            val synthetic = List(frameCount) { TelemetryData(gpsStatus = GpsStatus.NONE) }
-            _telemetryHistory.value = synthetic
+            if (totalSamples < fftN) {
+                withContext(Dispatchers.Main) {
+                    _fftHistoryAbsolute.value = emptyList()
+                    _fftHistoryTTNR.value = emptyList()
+                    _telemetryHistory.value = emptyList()
+                    _isProcessingVideo.value = false
+                    _processingEstimateMessage.value = null
+                }
+                return@launch
+            }
+
+            val localFftProcessor = FFTProcessor(fftN)
+            val frameCount = ((totalSamples - fftN) / stepSize).coerceAtLeast(1)
+            val absList = ArrayList<DoubleArray>(frameCount)
+            val ttnrList = ArrayList<DoubleArray>(frameCount)
+
+            val frameBuffer = ShortArray(fftN)
+            for (i in 0 until frameCount) {
+                val startSample = i * stepSize
+                val avail = totalSamples - startSample
+                val copyLen = avail.coerceAtMost(fftN)
+                if (copyLen > 0) {
+                    System.arraycopy(data.pcmSamples, startSample, frameBuffer, 0, copyLen)
+                } else {
+                    java.util.Arrays.fill(frameBuffer, 0.toShort())
+                }
+                val magnitudes = localFftProcessor.processFFT(frameBuffer)
+                val rawTtnr = localFftProcessor.computeTTNR(magnitudes, sampleRate)
+                absList.add(magnitudes)
+                ttnrList.add(rawTtnr)
+            }
+
+            withContext(Dispatchers.Main) {
+                _fftHistoryAbsolute.value = absList
+                _fftHistoryTTNR.value = ttnrList
+                if (data.telemetryList.isNotEmpty()) {
+                    val hasTheo = data.telemetryList.any { it.theoreticalSpeedKmh > 0.1f }
+                    val finalTelemList = if (!hasTheo && data.telemetryList.size > 1) {
+                        val smoothList = data.telemetryList.toMutableList()
+                        val corners = mutableListOf<Int>()
+                        corners.add(0)
+                        for (i in 1 until smoothList.size) {
+                            if (smoothList[i].speedKmh != smoothList[i - 1].speedKmh) {
+                                corners.add(i)
+                            }
+                        }
+                        if (corners.last() != smoothList.size - 1) {
+                            corners.add(smoothList.size - 1)
+                        }
+                        
+                        for (c in 0 until corners.size - 1) {
+                            val startIdx = corners[c]
+                            val endIdx = corners[c + 1]
+                            val startSpeed = smoothList[startIdx].speedKmh
+                            val endSpeed = smoothList[endIdx].speedKmh
+                            val range = (endIdx - startIdx).toFloat().coerceAtLeast(1f)
+                            for (i in startIdx..endIdx) {
+                                val fraction = (i - startIdx).toFloat() / range
+                                val interp = startSpeed + fraction * (endSpeed - startSpeed)
+                                smoothList[i] = smoothList[i].copy(theoreticalSpeedKmh = interp)
+                            }
+                        }
+                        smoothList
+                    } else {
+                        data.telemetryList
+                    }
+                    
+                    _loadedWavData.value = data.copy(telemetryList = finalTelemList)
+                    _telemetryHistory.value = finalTelemList
+                } else {
+                    _telemetryHistory.value = List(frameCount) { TelemetryData(gpsStatus = GpsStatus.NONE) }
+                }
+                
+                recalculateOrderTrackingForWav()
+
+                _isProcessingVideo.value = false
+                _processingEstimateMessage.value = null
+                processWavFrameAt(0L)
+            }
         }
     }
 
@@ -389,17 +579,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val teleHist = _telemetryHistory.value
         var telem = TelemetryData(gpsStatus = GpsStatus.NONE)
-        if (teleHist.isNotEmpty()) {
-            val teleIdx = (ratio * (teleHist.size - 1)).toInt().coerceIn(0, teleHist.size - 1)
-            telem = teleHist[teleIdx]
-        } else if (data.telemetryList.isNotEmpty()) {
-            val teleIdx = (ratio * (data.telemetryList.size - 1)).toInt().coerceIn(0, data.telemetryList.size - 1)
-            telem = data.telemetryList[teleIdx]
+        val sourceList = if (teleHist.isNotEmpty()) teleHist else data.telemetryList
+
+        if (sourceList.isNotEmpty()) {
+            val exactIdx = ratio * (sourceList.size - 1)
+            val idxBefore = exactIdx.toInt().coerceIn(0, sourceList.size - 1)
+            val idxAfter = (idxBefore + 1).coerceIn(0, sourceList.size - 1)
+            
+            if (idxBefore != idxAfter) {
+                val fraction = (exactIdx - idxBefore).toFloat()
+                val telemBefore = sourceList[idxBefore]
+                val telemAfter = sourceList[idxAfter]
+                val interpSpeed = telemBefore.speedKmh + fraction * (telemAfter.speedKmh - telemBefore.speedKmh)
+                val interpTheo = telemBefore.theoreticalSpeedKmh + fraction * (telemAfter.theoreticalSpeedKmh - telemBefore.theoreticalSpeedKmh)
+                val finalTheo = if (interpTheo > 0.1f) interpTheo else interpSpeed
+                telem = telemBefore.copy(theoreticalSpeedKmh = finalTheo)
+            } else {
+                val rawTelem = sourceList[idxBefore]
+                val finalTheo = if (rawTelem.theoreticalSpeedKmh > 0.1f) rawTelem.theoreticalSpeedKmh else rawTelem.speedKmh
+                telem = rawTelem.copy(theoreticalSpeedKmh = finalTheo)
+            }
         }
 
         val kConfig = _kinematicsConfig.value
-        if (kConfig.isEnabled && telem.speedKmh > 1.0f && currentAbs.isNotEmpty() && currentTtnr.isNotEmpty()) {
-            val speedKmh = telem.speedKmh
+        val speedKmh = if (kConfig.isEnabled) telem.theoreticalSpeedKmh else telem.speedKmh
+        if (kConfig.isEnabled && speedKmh > 1.0f && currentAbs.isNotEmpty() && currentTtnr.isNotEmpty()) {
             val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
             if (h1FreqHz >= 0.5) {
                 val nyquistFreq = 44100 / 2.0
@@ -611,10 +815,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private val _isRecording = MutableStateFlow(true)
     val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
+    
+    private val _showH1Overlay = MutableStateFlow(false)
+    val showH1Overlay: StateFlow<Boolean> = _showH1Overlay.asStateFlow()
 
-    init {
-        startRecording()
+    fun toggleH1Overlay() {
+        _showH1Overlay.value = !_showH1Overlay.value
     }
+
 
     fun toggleRecording() {
         if (_isRecording.value) {
@@ -625,6 +833,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private var previousTTNRSpectrum = DoubleArray(0)
+    
+    private data class AudioFrame(
+        val timestampMs: Long,
+        val buffer: ShortArray,
+        val telemetryAtCapture: TelemetryData
+    )
+    
+    private val audioBufferChannel = kotlinx.coroutines.channels.Channel<AudioFrame>(kotlinx.coroutines.channels.Channel.UNLIMITED)
+    private val gpsHistory = mutableListOf<TelemetryData>()
+
+    init {
+        startRecording()
+    }
 
     private fun startRecording() {
         _isRecording.value = true
@@ -633,29 +854,77 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             telemetryRepository.startTelemetry().collect { data ->
                 val current = _telemetryState.value
-                _telemetryState.value = data.copy(
+                val updatedData = data.copy(
                     ttnrDb = current.ttnrDb,
                     trackedOrderDbFS = current.trackedOrderDbFS,
                     trackedOrderEmergenceDb = current.trackedOrderEmergenceDb
                 )
+                _telemetryState.value = updatedData
+                
+                synchronized(gpsHistory) {
+                    gpsHistory.add(updatedData)
+                    val cutoff = System.currentTimeMillis() - 5000
+                    gpsHistory.removeAll { it.timestampMs < cutoff }
+                }
             }
         }
         
-        // 2. Lancer la capture Audio et Synchronisation 1-to-1 du Spectrogramme ET de la Télémétrie
+        // 2. Producteur Audio
         viewModelScope.launch {
             audioRepository.startAudioCapture(_fftSize.value).collect { audioBuffer ->
+                audioBufferChannel.trySend(AudioFrame(System.currentTimeMillis(), audioBuffer, _telemetryState.value.copy()))
+            }
+        }
+
+        // 3. Consommateur Audio (avec délai conditionnel d'1 seconde en GMPe Live)
+        viewModelScope.launch {
+            for (frame in audioBufferChannel) {
+                val timestamp = frame.timestampMs
+                val audioBuffer = frame.buffer
+                val telemetryAtCapture = frame.telemetryAtCapture
+
+                val isGMPeLive = _kinematicsConfig.value.isEnabled && _audioSourceMode.value == AudioSourceMode.LIVE
+                if (isGMPeLive) {
+                    val waitTime = 1000L - (System.currentTimeMillis() - timestamp)
+                    if (waitTime > 0) {
+                        kotlinx.coroutines.delay(waitTime)
+                    }
+                }
+
+                // Calcul Vitesse Théorique par interpolation
+                var theoSpeed = telemetryAtCapture.speedKmh
+                if (isGMPeLive) {
+                    synchronized(gpsHistory) {
+                        val before = gpsHistory.lastOrNull { it.timestampMs <= timestamp }
+                        val after = gpsHistory.firstOrNull { it.timestampMs >= timestamp }
+                        
+                        if (before != null && after != null && before.timestampMs != after.timestampMs) {
+                            val fraction = (timestamp - before.timestampMs).toFloat() / (after.timestampMs - before.timestampMs)
+                            theoSpeed = before.speedKmh + fraction * (after.speedKmh - before.speedKmh)
+                        } else if (before != null) {
+                            theoSpeed = before.speedKmh
+                        } else if (after != null) {
+                            theoSpeed = after.speedKmh
+                        }
+                    }
+                    _telemetryState.value = _telemetryState.value.copy(theoreticalSpeedKmh = theoSpeed)
+                }
+
                 if (_audioSourceMode.value == AudioSourceMode.LIVE) {
+                    val telemetryForCalc = telemetryAtCapture.copy(theoreticalSpeedKmh = if (isGMPeLive) theoSpeed else telemetryAtCapture.speedKmh)
+
                     if (_isAudioRecording.value) {
                         val stepSize = audioBuffer.size / 2
                         val rawChunk = audioBuffer.copyOfRange(audioBuffer.size - stepSize, audioBuffer.size)
                         recordedPcmList.add(rawChunk)
-                        recordedTelemetryList.add(_telemetryState.value.copy())
+                        recordedTelemetryList.add(telemetryForCalc)
                     }
                     if (!_isFrozen.value) {
                     val maxHist = historySize
 
                     // Traitement FFT Absolu
                     val magnitudes = fftProcessor.processFFT(audioBuffer)
+                    val validMags = magnitudes.copyOfRange(0, magnitudes.size / 2)
                     
                     // Traitement TTNR (Émergence tonale ECMA-74)
                     val rawTtnr = fftProcessor.computeTTNR(magnitudes, 44100)
@@ -735,7 +1004,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                     // Traitement des Harmoniques & Détection de Cinématique NVH (Actif UNIQUEMENT si Vitesse > 1.0 km/h)
                     val kConfig = _kinematicsConfig.value
-                    val speedKmh = _telemetryState.value.speedKmh
+                    val speedKmh = if (isGMPeLive) _telemetryState.value.theoreticalSpeedKmh else _telemetryState.value.speedKmh
 
                     var trackedDbFS = -120.0
                     var trackedEmergence = 0.0

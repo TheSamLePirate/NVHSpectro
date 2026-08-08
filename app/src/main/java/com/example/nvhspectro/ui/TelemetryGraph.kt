@@ -253,7 +253,7 @@ fun TelemetryGraph(
                     }
                 }
             }
-        } else if (metric == TelemetryMetric.ORDER && (!isKinematicsEnabled || (history.isNotEmpty() && history.first().speedKmh <= 1.0f))) {
+        } else if (metric == TelemetryMetric.ORDER && (!isKinematicsEnabled || (history.isNotEmpty() && history.none { it.theoreticalSpeedKmh > 1.0f || it.speedKmh > 1.0f }))) {
             drawIntoCanvas { canvas ->
                 val native = canvas.nativeCanvas
                 native.drawLine(marginLeft, marginTop, marginLeft, marginTop + plotHeight, axisPaint)
@@ -272,15 +272,31 @@ fun TelemetryGraph(
         } else {
             val values = history.map { data ->
                 when (metric) {
-                    TelemetryMetric.SPEED -> data.speedKmh.toDouble()
+                    TelemetryMetric.SPEED -> {
+                        if (isKinematicsEnabled && data.theoreticalSpeedKmh > 0f) {
+                            data.theoreticalSpeedKmh.toDouble()
+                        } else {
+                            data.speedKmh.toDouble()
+                        }
+                    }
                     TelemetryMetric.ACCELERATION -> data.accelerationG.toDouble()
                     TelemetryMetric.ORDER -> data.trackedOrderDbFS.coerceIn(-120.0, 0.0)
                     else -> 0.0
                 }
             }
 
-            val minVal = if (metric == TelemetryMetric.ORDER) -110.0 else (if (values.isNotEmpty()) values.minOrNull() ?: 0.0 else 0.0)
-            val maxVal = if (metric == TelemetryMetric.ORDER) 0.0 else (if (values.isNotEmpty()) values.maxOrNull() ?: 1.0 else 1.0)
+            val minVal = if (metric == TelemetryMetric.ORDER) {
+                val currentMin = if (values.isNotEmpty()) values.minOrNull() ?: -110.0 else -110.0
+                max(-110.0, currentMin - 20.0)
+            } else {
+                if (values.isNotEmpty()) values.minOrNull() ?: 0.0 else 0.0
+            }
+            val maxVal = if (metric == TelemetryMetric.ORDER) {
+                val currentMax = if (values.isNotEmpty()) values.maxOrNull() ?: 0.0 else 0.0
+                min(0.0, currentMax + 20.0)
+            } else {
+                if (values.isNotEmpty()) values.maxOrNull() ?: 1.0 else 1.0
+            }
             val valRange = if (maxVal > minVal) maxVal - minVal else 1.0
 
             drawIntoCanvas { canvas ->

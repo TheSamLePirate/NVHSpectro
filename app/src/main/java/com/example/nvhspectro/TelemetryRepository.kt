@@ -24,7 +24,8 @@ data class TelemetryData(
     val trackedOrderDbFS: Double = -120.0,
     val trackedOrderEmergenceDb: Double = 0.0,
     val gpsStatus: GpsStatus = GpsStatus.NONE,
-    val timestampMs: Long = System.currentTimeMillis()
+    val timestampMs: Long = System.currentTimeMillis(),
+    val theoreticalSpeedKmh: Float = 0f
 )
 
 class TelemetryRepository(private val context: Context) {

@@ -167,36 +167,53 @@ fun SettingsDialog(
                 }
 
                 // Taille FFT N (Affichage aéré sur 2 lignes)
-                Column {
-                    Text("Résolution FFT (Taille N)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceAround
-                    ) {
-                        listOf(512, 1024).forEach { size ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(
-                                    selected = (fftSize == size),
-                                    onClick = { onFftSizeChange(size) }
-                                )
-                                Text("$size pts", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                if (isWavAnalyzerMode) {
+                    Column {
+                        Text(
+                            text = "Résolution FFT (Auto Mode Vidéo/WAV) : 2048 pts",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF64B5F6)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "💡 En mode Vidéo/Analyseur, la taille FFT est automatiquement fixée à 2048 points pour offrir la meilleure précision acoustique NVH (~10,7 Hz) tout en garantissant une réactivité instantanée.",
+                            fontSize = 11.sp,
+                            color = Color.LightGray
+                        )
+                    }
+                } else {
+                    Column {
+                        Text("Résolution FFT (Taille N)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceAround
+                        ) {
+                            listOf(512, 1024).forEach { size ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(
+                                        selected = (fftSize == size),
+                                        onClick = { onFftSizeChange(size) }
+                                    )
+                                    Text("$size pts", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
-                    }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceAround
-                    ) {
-                        listOf(2048, 4096).forEach { size ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                RadioButton(
-                                    selected = (fftSize == size),
-                                    onClick = { onFftSizeChange(size) }
-                                )
-                                Text("$size pts", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceAround
+                        ) {
+                            listOf(2048, 4096).forEach { size ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(
+                                        selected = (fftSize == size),
+                                        onClick = { onFftSizeChange(size) }
+                                    )
+                                    Text("$size pts", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }

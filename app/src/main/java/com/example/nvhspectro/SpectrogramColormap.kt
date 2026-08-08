@@ -79,7 +79,9 @@ fun SpectrogramCanvas(
     trackedHarmonicTags: List<TrackedHarmonicTag> = emptyList(),
     kinematicsConfig: KinematicsConfig = KinematicsConfig(),
     isWavAnalyzerMode: Boolean = false,
-    wavPlaybackProgress: Float = 0f
+    wavPlaybackProgress: Float = 0f,
+    showH1Overlay: Boolean = false,
+    telemetryHistory: List<TelemetryData> = emptyList()
 ) {
     if (history.isEmpty()) {
         Canvas(modifier = modifier.fillMaxSize()) {}
@@ -196,12 +198,26 @@ fun SpectrogramCanvas(
         }
     }
 
-    // Peinture discrète pour le curseur (ligne cyan pointillée)
+    // Peinture très visible pour le curseur (ligne blanche avec ombre noire)
     val cursorLinePaint = remember {
         Paint().apply {
-            color = AndroidColor.parseColor("#00E5FF") // Cyan vif discret
-            strokeWidth = 2.5f
+            color = AndroidColor.WHITE // Blanc pur
+            style = Paint.Style.STROKE
+            strokeWidth = 3.0f
             pathEffect = DashPathEffect(floatArrayOf(12f, 8f), 0f)
+            setShadowLayer(4.0f, 0f, 0f, AndroidColor.BLACK)
+            isAntiAlias = true
+        }
+    }
+
+    // Peinture pour la courbe H1 (Violet vif, trait épais, légèrement transparent)
+    val h1LinePaint = remember {
+        Paint().apply {
+            color = AndroidColor.parseColor("#D500F9")
+            alpha = 178 // ~70% opaque (30% transparent)
+            style = Paint.Style.STROKE
+            strokeWidth = 5.0f
+            pathEffect = DashPathEffect(floatArrayOf(15f, 10f), 0f)
             isAntiAlias = true
         }
     }
@@ -421,6 +437,55 @@ fun SpectrogramCanvas(
                     // 2. Centre lumineux solide
                     native.drawCircle(beaconX, peakY, 6f, beaconCenterPaint)
                 }
+            }
+
+            // --- DESSIN DU CALQUE H1 (Pointillé Cyan Fluo) ---
+            if (showH1Overlay && kinematicsConfig.isEnabled && telemetryHistory.isNotEmpty()) {
+                val path = android.graphics.Path()
+                var isFirst = true
+                val numFrames = telemetryHistory.size
+                
+                for (x in 0 until plotWidth.toInt()) {
+                    val exactIdx = if (isWavAnalyzerMode) {
+                        (x.toFloat() * (numFrames - 1)) / maxOf(1f, plotWidth - 1f)
+                    } else {
+                        val reversedX = maxOf(0f, plotWidth - 1f - x.toFloat())
+                        (reversedX * (numFrames - 1)) / maxOf(1f, plotWidth - 1f)
+                    }
+                    val idxBefore = exactIdx.toInt().coerceIn(0, numFrames - 1)
+                    val idxAfter = (idxBefore + 1).coerceIn(0, numFrames - 1)
+                    val fraction = exactIdx - idxBefore
+
+                    val telemBefore = telemetryHistory[idxBefore]
+                    val telemAfter = telemetryHistory[idxAfter]
+                    
+                    val speedBefore = if (kinematicsConfig.isEnabled && telemBefore.theoreticalSpeedKmh > 0.1f) telemBefore.theoreticalSpeedKmh else telemBefore.speedKmh
+                    val speedAfter = if (kinematicsConfig.isEnabled && telemAfter.theoreticalSpeedKmh > 0.1f) telemAfter.theoreticalSpeedKmh else telemAfter.speedKmh
+                    
+                    val speed = speedBefore + fraction * (speedAfter - speedBefore)
+                    
+                    if (speed > 1.0f) {
+                        val h1Freq = kinematicsConfig.calculateH1FreqHz(speed)
+                        if (h1Freq >= actualMinFreq && h1Freq <= actualMaxFreq) {
+                            val freqFraction = (h1Freq - actualMinFreq) / (actualMaxFreq - actualMinFreq)
+                            val y = plotBottom - (freqFraction * plotHeight)
+                            val xPos = marginLeft + x
+                            
+                            if (isFirst) {
+                                path.moveTo(xPos, y.toFloat())
+                                isFirst = false
+                            } else {
+                                path.lineTo(xPos, y.toFloat())
+                            }
+                        } else {
+                            isFirst = true
+                        }
+                    } else {
+                        isFirst = true
+                    }
+                }
+                
+                native.drawPath(path, h1LinePaint)
             }
 
             // --- DESSIN DES ÉTIQUETTES D'HARMONIQUES (H_k) AVEC RÉMANENCE VISUELLE ---
