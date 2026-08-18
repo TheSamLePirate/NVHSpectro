@@ -370,7 +370,7 @@ fun AppScreen(viewModel: MainViewModel) {
                                 text = when (audioSourceMode) {
                                     com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER -> "📁 Audio (WAV)"
                                     com.example.nvhspectro.AudioSourceMode.VIDEO -> "🎬 Audio (Vidéo)"
-                                    else -> "🎙️ Audio"
+                                    else -> "🎙️ En direct"
                                 },
                                 fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Bold,
@@ -657,7 +657,7 @@ fun AppScreen(viewModel: MainViewModel) {
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "Pas de données WAV chargées\nCliquez sur '📂 Charger WAV' pour ouvrir un fichier",
+                            text = "Pas de données WAV chargées\nCliquez sur '📂 Charger WAV' pour ouvrir un fichier (limité à 5 min max).",
                             color = Color.White,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,

@@ -5,7 +5,7 @@ plugins {
 }
 
 base {
-    archivesName.set("APP_NVH_Spectro_v15")
+    archivesName.set("APP_NVH_Spectro_v12")
 }
 
 android {
@@ -15,8 +15,8 @@ android {
         applicationId = "com.example.nvhspectro"
         minSdk = 24
         targetSdk = 36
-        versionCode = 15
-        versionName = "15.0.0"
+        versionCode = 12
+        versionName = "12.0.0"
     }
 
     buildTypes {

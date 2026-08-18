@@ -61,11 +61,23 @@ object WavDataReader {
         val channels = ByteBuffer.wrap(header, 22, 2).order(ByteOrder.LITTLE_ENDIAN).short.toInt().coerceAtLeast(1)
         val bitsPerSample = ByteBuffer.wrap(header, 34, 2).order(ByteOrder.LITTLE_ENDIAN).short.toInt().coerceAtLeast(8)
 
-        val rawBytes = stream.readBytes()
-        val totalShorts = rawBytes.size / 2
+        val maxDurationSec = 5 * 60
+        val bytesPerSec = sampleRate * channels * (bitsPerSample / 8)
+        val maxBytesToRead = maxDurationSec * bytesPerSec
+        
+        // Lire uniquement ce qu'il faut (soit tout le fichier si court, soit le max si long)
+        val rawBytes = ByteArray(maxBytesToRead)
+        var totalBytesRead = 0
+        var bytesRead = stream.read(rawBytes, totalBytesRead, maxBytesToRead - totalBytesRead)
+        while (bytesRead != -1 && totalBytesRead < maxBytesToRead) {
+            totalBytesRead += bytesRead
+            bytesRead = stream.read(rawBytes, totalBytesRead, maxBytesToRead - totalBytesRead)
+        }
+        
+        val totalShorts = totalBytesRead / 2
         val pcm = ShortArray(totalShorts)
 
-        val bb = ByteBuffer.wrap(rawBytes).order(ByteOrder.LITTLE_ENDIAN)
+        val bb = ByteBuffer.wrap(rawBytes, 0, totalBytesRead).order(ByteOrder.LITTLE_ENDIAN)
         for (i in 0 until totalShorts) {
             pcm[i] = bb.short
         }

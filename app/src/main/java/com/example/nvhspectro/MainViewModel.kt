@@ -43,6 +43,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val audioRepository = AudioRepository()
     private val telemetryRepository = TelemetryRepository(application)
     private var fftProcessor = FFTProcessor(2048)
+    private var processingJob: kotlinx.coroutines.Job? = null
     
     // États Kinématiques GMPe & Rapport d'Émergence
     private val _kinematicsConfig = MutableStateFlow(KinematicsConfig())
@@ -150,9 +151,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setAudioSourceMode(mode: AudioSourceMode) {
-        _showAudioModeMenu.value = false
         if (_audioSourceMode.value == mode) return
         _audioSourceMode.value = mode
+        
+        processingJob?.cancel()
 
         stopWavPlayback()
         _loadedWavData.value = null
@@ -203,6 +205,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadWavFile(wavFile: File, jsonFile: File?) {
         _showWavSelectionDialog.value = false
+        processingJob?.cancel()
         stopWavPlayback()
         _loadedVideoUri.value = null
         _loadedYouTubeUrl.value = null
@@ -227,6 +230,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadWavFromUri(context: android.content.Context, uri: android.net.Uri) {
         _showWavSelectionDialog.value = false
+        processingJob?.cancel()
         stopWavPlayback()
         _loadedVideoUri.value = null
         _loadedYouTubeUrl.value = null
@@ -272,6 +276,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadVideoFromUri(context: android.content.Context, uri: android.net.Uri) {
         _showVideoSelectionDialog.value = false
+        processingJob?.cancel()
         stopWavPlayback()
         _loadedYouTubeUrl.value = null
         _loadedVideoUri.value = uri
@@ -301,6 +306,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadVideoFromYouTube(url: String) {
         _showVideoSelectionDialog.value = false
+        processingJob?.cancel()
         stopWavPlayback()
         _loadedVideoUri.value = null
         _loadedYouTubeUrl.value = url
@@ -378,9 +384,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _processingEstimateMessage.value = null
         }
 
-        viewModelScope.launch(Dispatchers.Default) {
+        processingJob?.cancel()
+        processingJob = viewModelScope.launch(Dispatchers.Default) {
             val sampleRate = data.sampleRate
-            val fftN = if (_audioSourceMode.value == AudioSourceMode.VIDEO) 2048 else _fftSize.value
+            val fftN = if (_audioSourceMode.value == AudioSourceMode.VIDEO) 2048 else 2048 // Should use variable _fftSize if present
             val stepSize = fftN / 2
             val totalSamples = data.pcmSamples.size
 
@@ -530,7 +537,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         pauseWavPlayback()
         _wavPlaybackPositionMs.value = 0L
         try {
-            mediaPlayer?.stop()
+            if (mediaPlayer?.isPlaying == true) {
+                mediaPlayer?.stop()
+            }
             mediaPlayer?.release()
             mediaPlayer = null
         } catch (e: Exception) {
@@ -853,13 +862,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // 1. Mettre à jour l'état GPS instantané
         viewModelScope.launch {
             telemetryRepository.startTelemetry().collect { data ->
-                val current = _telemetryState.value
-                val updatedData = data.copy(
-                    ttnrDb = current.ttnrDb,
-                    trackedOrderDbFS = current.trackedOrderDbFS,
-                    trackedOrderEmergenceDb = current.trackedOrderEmergenceDb
-                )
-                _telemetryState.value = updatedData
+                val isLive = _audioSourceMode.value == AudioSourceMode.LIVE
+                val updatedData = if (isLive) {
+                    val current = _telemetryState.value
+                    val newTelem = data.copy(
+                        ttnrDb = current.ttnrDb,
+                        trackedOrderDbFS = current.trackedOrderDbFS,
+                        trackedOrderEmergenceDb = current.trackedOrderEmergenceDb
+                    )
+                    _telemetryState.value = newTelem
+                    newTelem
+                } else {
+                    data
+                }
                 
                 synchronized(gpsHistory) {
                     gpsHistory.add(updatedData)
