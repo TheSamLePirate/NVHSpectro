@@ -141,7 +141,8 @@ data class CandidateHarmonicTracker(
     var maxRpm: Int,
     var minFreqHz: Int,
     var maxFreqHz: Int,
-    var binIndex: Int
+    var binIndex: Int,
+    var isFixedNoise: Boolean = false
 ) {
     val currentMeanOrder: Double
         get() = orderSum / count.coerceAtLeast(1)

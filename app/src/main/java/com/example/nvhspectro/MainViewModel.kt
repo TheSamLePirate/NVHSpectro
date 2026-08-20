@@ -55,9 +55,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _emergenceReportEntries = MutableStateFlow<List<EmergenceReportEntry>>(emptyList())
     val emergenceReportEntries: StateFlow<List<EmergenceReportEntry>> = _emergenceReportEntries.asStateFlow()
 
-    private val candidateTrackerList = mutableListOf<CandidateHarmonicTracker>()
+    private val emaOrderSpectrum = FloatArray(1000) { 0f }
     private var ttnrPersistenceCount = IntArray(0)
     private val recentRawTTNRBuffer = mutableListOf<DoubleArray>()
+    private var wavTagsByFrame = emptyMap<Int, List<TrackedHarmonicTag>>()
 
     fun updateKinematicsConfig(config: KinematicsConfig) {
         _kinematicsConfig.value = config
@@ -77,7 +78,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clearEmergenceReport() {
-        candidateTrackerList.clear()
         ttnrPersistenceCount = IntArray(0)
         recentRawTTNRBuffer.clear()
         _emergenceReportEntries.value = emptyList()
@@ -358,6 +358,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     for (b in startBin..endBin) {
                         if (absArr[b] > bestAbs) {
                             bestAbs = absArr[b]
+                        }
+                        if (ttnrArr[b] > bestTtnr) {
                             bestTtnr = ttnrArr[b]
                         }
                     }
@@ -368,6 +370,147 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         
         _telemetryHistory.value = updatedHistory
         _loadedWavData.value = _loadedWavData.value?.copy(telemetryList = updatedHistory)
+
+        // --- FULL SWEEP FOR TAGS & REPORT (EMA ORDER SPECTRUM) ---
+        clearEmergenceReport()
+        val threshDb = 2.0 // Fixed low threshold for EMA
+        val targetOrders = config.parsedTargetOrders()
+        val isWhitelistActive = targetOrders.isNotEmpty()
+        val maxHoldMs = (config.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L)
+
+        val stepDurationMs = 1024.0 / sampleRate * 1000.0
+        
+        var currentTags = listOf<TrackedHarmonicTag>()
+        val currentReportList = mutableListOf<EmergenceReportEntry>()
+        val newWavTagsByFrame = mutableMapOf<Int, List<TrackedHarmonicTag>>()
+        
+        val localEmaSpectrum = FloatArray(1000) { 0f }
+        val alpha = 0.10f
+        val binCount = if (absHistory.isNotEmpty()) absHistory[0].size else 1
+        val nyquist = 44100 / 2.0
+        val df = nyquist / binCount
+
+        for (frameIdx in absHistory.indices) {
+            val nowMs = (frameIdx * stepDurationMs).toLong()
+            val sweepRatio = if (absHistory.size > 1) frameIdx.toDouble() / (absHistory.size - 1) else 0.0
+            val telemIdx = (sweepRatio * (updatedHistory.size - 1)).toInt().coerceIn(0, updatedHistory.size - 1)
+            val speedKmh = updatedHistory[telemIdx].theoreticalSpeedKmh
+            val currentRpm = config.calculateRpm(speedKmh)
+            
+            val newDetectedTags = mutableListOf<TrackedHarmonicTag>()
+
+            if (speedKmh > 1.0f && currentRpm > 100.0) {
+                val h1FreqHz = currentRpm / 60.0
+                val currentFrameSpectrum = FloatArray(1000) { 0f }
+                val ttnrRow = ttnrHistory[frameIdx]
+                val absRow = absHistory[frameIdx]
+                
+                for (i in 0 until binCount) {
+                    val ttnrVal = ttnrRow[i]
+                    if (ttnrVal > 0) {
+                        val freqHz = i * df
+                        val order = freqHz / h1FreqHz
+                        val orderIndex = (order * 10.0).toInt()
+                        if (orderIndex in 0..999) {
+                            currentFrameSpectrum[orderIndex] = maxOf(currentFrameSpectrum[orderIndex], ttnrVal.toFloat())
+                        }
+                    }
+                }
+                
+                for (j in 0..999) {
+                    localEmaSpectrum[j] = localEmaSpectrum[j] * (1 - alpha) + currentFrameSpectrum[j] * alpha
+                }
+                
+                for (j in 0..999) {
+                    if (localEmaSpectrum[j] > threshDb) {
+                        var isLocalMax = true
+                        for (k in maxOf(0, j - 4)..minOf(999, j + 4)) {
+                            if (localEmaSpectrum[k] > localEmaSpectrum[j]) {
+                                isLocalMax = false
+                                break
+                            } else if (k < j && localEmaSpectrum[k] == localEmaSpectrum[j]) {
+                                isLocalMax = false
+                                break
+                            }
+                        }
+                        
+                        if (isLocalMax) {
+                            val orderValue = j / 10.0
+                            var isAllowed = true
+                            if (isWhitelistActive) {
+                                isAllowed = targetOrders.any { Math.abs(it - orderValue) <= 0.25 }
+                            } else {
+                                if (localEmaSpectrum[j] < 3.0f) isAllowed = false
+                            }
+                            
+                            if (isAllowed) {
+                                val orderName = "Ordre H$orderValue"
+                                val freqHz = (orderValue * h1FreqHz).toInt()
+                                val binIndex = (freqHz / df).toInt().coerceIn(0, binCount - 1)
+                                
+                                val tag = TrackedHarmonicTag(
+                                    orderName = orderName,
+                                    orderValue = orderValue,
+                                    freqHz = freqHz,
+                                    ttnrDb = localEmaSpectrum[j].toDouble(),
+                                    absDbFS = absRow[binIndex],
+                                    speedKmh = speedKmh,
+                                    rpm = currentRpm,
+                                    binIndex = binIndex,
+                                    lastSeenTimestampMs = nowMs
+                                )
+                                newDetectedTags.add(tag)
+                                
+                                val existingReport = currentReportList.find {
+                                    Math.abs(it.orderValue - orderValue) <= 0.2 &&
+                                    (speedKmh <= it.maxSpeedKmh + 15f && speedKmh >= it.minSpeedKmh - 15f)
+                                }
+                                if (existingReport != null) {
+                                    existingReport.minSpeedKmh = minOf(existingReport.minSpeedKmh, speedKmh)
+                                    existingReport.maxSpeedKmh = maxOf(existingReport.maxSpeedKmh, speedKmh)
+                                    existingReport.minRpm = minOf(existingReport.minRpm, currentRpm.toInt())
+                                    existingReport.maxRpm = maxOf(existingReport.maxRpm, currentRpm.toInt())
+                                    existingReport.minFreqHz = minOf(existingReport.minFreqHz, freqHz)
+                                    existingReport.maxFreqHz = maxOf(existingReport.maxFreqHz, freqHz)
+                                    existingReport.maxEmergenceDb = maxOf(existingReport.maxEmergenceDb, localEmaSpectrum[j].toDouble())
+                                    existingReport.countDetections++
+                                    existingReport.lastTimestampMs = nowMs
+                                } else {
+                                    currentReportList.add(EmergenceReportEntry(
+                                        orderName = orderName,
+                                        orderValue = orderValue,
+                                        minSpeedKmh = speedKmh,
+                                        maxSpeedKmh = speedKmh,
+                                        minRpm = currentRpm.toInt(),
+                                        maxRpm = currentRpm.toInt(),
+                                        minFreqHz = freqHz,
+                                        maxFreqHz = freqHz,
+                                        maxEmergenceDb = localEmaSpectrum[j].toDouble(),
+                                        countDetections = 1,
+                                        lastTimestampMs = nowMs
+                                    ))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            val updatedTagMap = currentTags
+                .filter { nowMs - it.lastSeenTimestampMs < maxHoldMs }
+                .associateBy { it.orderName }
+                .toMutableMap()
+            
+            for (tag in newDetectedTags) {
+                updatedTagMap[tag.orderName] = tag
+            }
+            
+            currentTags = updatedTagMap.values.sortedBy { it.orderValue }
+            newWavTagsByFrame[frameIdx] = currentTags
+        }
+        
+        wavTagsByFrame = newWavTagsByFrame
+        _emergenceReportEntries.value = currentReportList
     }
 
     private fun processFullWavSpectrogram(data: LoadedWavData) {
@@ -575,8 +718,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         var currentAbs = DoubleArray(0)
         var currentTtnr = DoubleArray(0)
 
+        var frameIdx = 0
         if (absList.isNotEmpty()) {
-            val frameIdx = (ratio * (absList.size - 1)).toInt().coerceIn(0, absList.size - 1)
+            frameIdx = (ratio * (absList.size - 1)).toInt().coerceIn(0, absList.size - 1)
             if (frameIdx in absList.indices) {
                 currentAbs = absList[frameIdx]
             }
@@ -615,7 +759,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (kConfig.isEnabled && speedKmh > 1.0f && currentAbs.isNotEmpty() && currentTtnr.isNotEmpty()) {
             val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
             if (h1FreqHz >= 0.5) {
-                val nyquistFreq = 44100 / 2.0
+                val sampleRate = _loadedWavData.value?.sampleRate ?: 44100
+                val nyquistFreq = sampleRate / 2.0
                 val totalBins = currentAbs.size
                 val df = nyquistFreq / totalBins
                 val targetFreqHz = kConfig.selectedTrackedOrder * h1FreqHz
@@ -644,6 +789,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         _telemetryState.value = telem
+        if (_audioSourceMode.value != AudioSourceMode.LIVE) {
+            _trackedHarmonicTags.value = wavTagsByFrame[frameIdx] ?: emptyList()
+        }
     }
 
     // Module Enregistrement Audio (Max 30s) & Télémétrie
@@ -828,8 +976,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _showH1Overlay = MutableStateFlow(false)
     val showH1Overlay: StateFlow<Boolean> = _showH1Overlay.asStateFlow()
 
+    private val _projectedOrder = MutableStateFlow(1.0)
+    val projectedOrder: StateFlow<Double> = _projectedOrder.asStateFlow()
+
     fun toggleH1Overlay() {
         _showH1Overlay.value = !_showH1Overlay.value
+    }
+
+    fun setProjectedOrder(order: Double) {
+        _projectedOrder.value = order
     }
 
 
@@ -1065,89 +1220,111 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     curTelem.add(0, telemWithTtnr)
                     if (curTelem.size > maxHist) curTelem.removeLast()
                     _telemetryHistory.value = curTelem
-
                     if (kConfig.isEnabled && speedKmh > 1.0f) {
                         val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
                         val nowMs = System.currentTimeMillis()
                         
                         if (h1FreqHz >= 0.5) {
+                            val currentRpm = kConfig.calculateRpm(speedKmh)
+                            val targetOrders = kConfig.parsedTargetOrders()
+                            val isWhitelistActive = targetOrders.isNotEmpty()
+                            
+                            val reportList = _emergenceReportEntries.value.toMutableList()
+                            val newDetectedTags = mutableListOf<TrackedHarmonicTag>()
                             val nyquistFreq = 44100 / 2.0
                             val totalBins = ttnrSpectrum.size
                             val df = nyquistFreq / totalBins
                             
-                            val threshDb = _emergenceThresholdDb.value
-                            val gateDbFS = _magnitudeGateDbFS.value
-                            val currentRpmInt = kConfig.calculateRpm(speedKmh).toInt()
-
-                            val targetOrders = kConfig.parsedTargetOrders()
-                            val isWhitelistActive = targetOrders.isNotEmpty()
-
-                            val updatedTrackersThisFrame = mutableSetOf<CandidateHarmonicTracker>()
-                            
-                            for (i in 1 until totalBins - 1) {
-                                val ttnrVal = ttnrSpectrum[i]
-                                val absVal = if (i < magnitudes.size) magnitudes[i] else -120.0
+                            if (currentRpm > 100.0) {
+                                val currentFrameSpectrum = FloatArray(1000) { 0f }
+                                val numBins = ttnrSpectrum.size
                                 
-                                if (ttnrVal >= threshDb && absVal >= gateDbFS) {
-                                    val prevTtnr = ttnrSpectrum[i - 1]
-                                    val nextTtnr = ttnrSpectrum[i + 1]
-                                    if (ttnrVal >= prevTtnr && ttnrVal >= nextTtnr) {
+                                for (i in 0 until numBins) {
+                                    val ttnrVal = ttnrSpectrum[i]
+                                    if (ttnrVal > 0) {
                                         val freqHz = i * df
-                                        val exactOrderRatio = freqHz / h1FreqHz
-                                        
-                                        if (exactOrderRatio >= 0.5) {
-                                            var candidateOrder = exactOrderRatio
-                                            var isAllowed = true
-
-                                            if (isWhitelistActive) {
-                                                val matchedTarget = targetOrders.find { target -> Math.abs(exactOrderRatio - target) <= 0.25 }
-                                                if (matchedTarget != null) {
-                                                    candidateOrder = matchedTarget
-                                                } else {
-                                                    isAllowed = false
-                                                }
+                                        val order = freqHz / h1FreqHz
+                                        val orderIndex = (order * 10.0).toInt()
+                                        if (orderIndex in 0..999) {
+                                            currentFrameSpectrum[orderIndex] = maxOf(currentFrameSpectrum[orderIndex], ttnrVal.toFloat())
+                                        }
+                                    }
+                                }
+                                
+                                val alpha = 0.10f
+                                for (j in 0..999) {
+                                    emaOrderSpectrum[j] = emaOrderSpectrum[j] * (1 - alpha) + currentFrameSpectrum[j] * alpha
+                                }
+                                
+                                for (j in 0..999) {
+                                    if (emaOrderSpectrum[j] > 2.0f) {
+                                        var isLocalMax = true
+                                        for (k in maxOf(0, j - 4)..minOf(999, j + 4)) {
+                                            if (emaOrderSpectrum[k] > emaOrderSpectrum[j]) {
+                                                isLocalMax = false
+                                                break
+                                            } else if (k < j && emaOrderSpectrum[k] == emaOrderSpectrum[j]) {
+                                                isLocalMax = false
+                                                break
                                             }
-
+                                        }
+                                        
+                                        if (isLocalMax) {
+                                            val orderValue = j / 10.0
+                                            var isAllowed = true
+                                            if (isWhitelistActive) {
+                                                isAllowed = targetOrders.any { Math.abs(it - orderValue) <= 0.25 }
+                                            } else {
+                                                if (emaOrderSpectrum[j] < 3.0f) isAllowed = false
+                                            }
+                                            
                                             if (isAllowed) {
-                                                // Recherche d'un candidat existant à +-0.10 d'ordre (ex: 22.1 à 22.3 pour 22.2)
-                                                val existingTracker = candidateTrackerList.find { 
-                                                    Math.abs(it.currentMeanOrder - candidateOrder) <= 0.10 
+                                                val orderName = "Ordre H$orderValue"
+                                                val freqHz = (orderValue * h1FreqHz).toInt()
+                                                val binIndex = (freqHz / df).toInt().coerceIn(0, numBins - 1)
+                                                val absVal = if (binIndex < magnitudes.size) magnitudes[binIndex] else -120.0
+                                                
+                                                val tag = TrackedHarmonicTag(
+                                                    orderName = orderName,
+                                                    orderValue = orderValue,
+                                                    freqHz = freqHz,
+                                                    ttnrDb = emaOrderSpectrum[j].toDouble(),
+                                                    absDbFS = absVal,
+                                                    speedKmh = speedKmh,
+                                                    rpm = currentRpm,
+                                                    binIndex = binIndex,
+                                                    lastSeenTimestampMs = nowMs
+                                                )
+                                                newDetectedTags.add(tag)
+                                                
+                                                val existingReport = reportList.find {
+                                                    Math.abs(it.orderValue - orderValue) <= 0.2 &&
+                                                    (speedKmh <= it.maxSpeedKmh + 15f && speedKmh >= it.minSpeedKmh - 15f)
                                                 }
-
-                                                if (existingTracker != null) {
-                                                    existingTracker.orderSum += candidateOrder
-                                                    existingTracker.count++
-                                                    existingTracker.lastSeenTimestampMs = nowMs
-                                                    existingTracker.lastFreqHz = freqHz.toInt()
-                                                    existingTracker.maxTtnrDb = maxOf(existingTracker.maxTtnrDb, ttnrVal)
-                                                    existingTracker.maxAbsDbFS = maxOf(existingTracker.maxAbsDbFS, absVal)
-                                                    existingTracker.minSpeedKmh = minOf(existingTracker.minSpeedKmh, speedKmh)
-                                                    existingTracker.maxSpeedKmh = maxOf(existingTracker.maxSpeedKmh, speedKmh)
-                                                    existingTracker.minRpm = minOf(existingTracker.minRpm, currentRpmInt)
-                                                    existingTracker.maxRpm = maxOf(existingTracker.maxRpm, currentRpmInt)
-                                                    existingTracker.minFreqHz = minOf(existingTracker.minFreqHz, freqHz.toInt())
-                                                    existingTracker.maxFreqHz = maxOf(existingTracker.maxFreqHz, freqHz.toInt())
-                                                    existingTracker.binIndex = i
-                                                    updatedTrackersThisFrame.add(existingTracker)
+                                                if (existingReport != null) {
+                                                    existingReport.minSpeedKmh = minOf(existingReport.minSpeedKmh, speedKmh)
+                                                    existingReport.maxSpeedKmh = maxOf(existingReport.maxSpeedKmh, speedKmh)
+                                                    existingReport.minRpm = minOf(existingReport.minRpm, currentRpm.toInt())
+                                                    existingReport.maxRpm = maxOf(existingReport.maxRpm, currentRpm.toInt())
+                                                    existingReport.minFreqHz = minOf(existingReport.minFreqHz, freqHz)
+                                                    existingReport.maxFreqHz = maxOf(existingReport.maxFreqHz, freqHz)
+                                                    existingReport.maxEmergenceDb = maxOf(existingReport.maxEmergenceDb, emaOrderSpectrum[j].toDouble())
+                                                    existingReport.countDetections++
+                                                    existingReport.lastTimestampMs = nowMs
                                                 } else {
-                                                    val newTracker = CandidateHarmonicTracker(
-                                                        orderSum = candidateOrder,
-                                                        count = 1,
-                                                        firstSeenTimestampMs = nowMs,
-                                                        lastSeenTimestampMs = nowMs,
-                                                        lastFreqHz = freqHz.toInt(),
-                                                        maxTtnrDb = ttnrVal,
-                                                        maxAbsDbFS = absVal,
+                                                    reportList.add(EmergenceReportEntry(
+                                                        orderName = orderName,
+                                                        orderValue = orderValue,
                                                         minSpeedKmh = speedKmh,
                                                         maxSpeedKmh = speedKmh,
-                                                        minRpm = currentRpmInt,
-                                                        maxRpm = currentRpmInt,
-                                                        minFreqHz = freqHz.toInt(),
-                                                        maxFreqHz = freqHz.toInt(),
-                                                        binIndex = i
-                                                    )
-                                                    candidateTrackerList.add(newTracker)
-                                                    updatedTrackersThisFrame.add(newTracker)
+                                                        minRpm = currentRpm.toInt(),
+                                                        maxRpm = currentRpm.toInt(),
+                                                        minFreqHz = freqHz,
+                                                        maxFreqHz = freqHz,
+                                                        maxEmergenceDb = emaOrderSpectrum[j].toDouble(),
+                                                        countDetections = 1,
+                                                        lastTimestampMs = nowMs
+                                                    ))
                                                 }
                                             }
                                         }
@@ -1155,61 +1332,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 }
                             }
                             
-                            // Éliminer les candidats non mis à jour depuis plus de 250 ms (perte de pic)
-                            candidateTrackerList.retainAll { nowMs - it.lastSeenTimestampMs <= 250L }
-
-                            // Valider et enregistrer les candidats ayant au moins 0.4s (400 ms) d'émergence continue
-                            val newDetectedTags = mutableListOf<TrackedHarmonicTag>()
-                            val reportMap = _emergenceReportEntries.value.associateBy { it.orderName }.toMutableMap()
-
-                            for (tracker in candidateTrackerList) {
-                                if (nowMs - tracker.firstSeenTimestampMs >= 400L) {
-                                    val orderName = tracker.formattedOrderName
-                                    val orderValue = Math.round(tracker.currentMeanOrder * 10.0) / 10.0
-
-                                    val tag = TrackedHarmonicTag(
-                                        orderName = orderName,
-                                        orderValue = orderValue,
-                                        freqHz = tracker.lastFreqHz,
-                                        ttnrDb = tracker.maxTtnrDb,
-                                        absDbFS = tracker.maxAbsDbFS,
-                                        speedKmh = speedKmh,
-                                        rpm = kConfig.calculateRpm(speedKmh),
-                                        binIndex = tracker.binIndex,
-                                        lastSeenTimestampMs = nowMs
-                                    )
-                                    newDetectedTags.add(tag)
-
-                                    val existingReport = reportMap[orderName]
-                                    if (existingReport != null) {
-                                        existingReport.minSpeedKmh = minOf(existingReport.minSpeedKmh, tracker.minSpeedKmh)
-                                        existingReport.maxSpeedKmh = maxOf(existingReport.maxSpeedKmh, tracker.maxSpeedKmh)
-                                        existingReport.minRpm = minOf(existingReport.minRpm, tracker.minRpm)
-                                        existingReport.maxRpm = maxOf(existingReport.maxRpm, tracker.maxRpm)
-                                        existingReport.minFreqHz = minOf(existingReport.minFreqHz, tracker.minFreqHz)
-                                        existingReport.maxFreqHz = maxOf(existingReport.maxFreqHz, tracker.maxFreqHz)
-                                        existingReport.maxEmergenceDb = maxOf(existingReport.maxEmergenceDb, tracker.maxTtnrDb)
-                                        existingReport.countDetections++
-                                        existingReport.lastTimestampMs = nowMs
-                                    } else {
-                                        reportMap[orderName] = EmergenceReportEntry(
-                                            orderName = orderName,
-                                            orderValue = orderValue,
-                                            minSpeedKmh = tracker.minSpeedKmh,
-                                            maxSpeedKmh = tracker.maxSpeedKmh,
-                                            minRpm = tracker.minRpm,
-                                            maxRpm = tracker.maxRpm,
-                                            minFreqHz = tracker.minFreqHz,
-                                            maxFreqHz = tracker.maxFreqHz,
-                                            maxEmergenceDb = tracker.maxTtnrDb,
-                                            countDetections = 1,
-                                            lastTimestampMs = nowMs
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Mise à jour de la rémanence (fusionner les nouveaux tags avec les tags récents encore valides)
                             val maxHoldMs = (kConfig.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L)
                             val updatedTagMap = _trackedHarmonicTags.value
                                 .filter { nowMs - it.lastSeenTimestampMs < maxHoldMs }
@@ -1221,7 +1343,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             }
                             
                             _trackedHarmonicTags.value = updatedTagMap.values.sortedBy { it.orderValue }
-                            _emergenceReportEntries.value = reportMap.values.toList()
+                            _emergenceReportEntries.value = reportList
                         }
                     }
                 }

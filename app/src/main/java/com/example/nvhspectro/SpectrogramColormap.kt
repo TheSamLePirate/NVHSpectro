@@ -81,6 +81,7 @@ fun SpectrogramCanvas(
     isWavAnalyzerMode: Boolean = false,
     wavPlaybackProgress: Float = 0f,
     showH1Overlay: Boolean = false,
+    projectedOrder: Double = 1.0,
     telemetryHistory: List<TelemetryData> = emptyList()
 ) {
     if (history.isEmpty()) {
@@ -466,8 +467,9 @@ fun SpectrogramCanvas(
                     
                     if (speed > 1.0f) {
                         val h1Freq = kinematicsConfig.calculateH1FreqHz(speed)
-                        if (h1Freq >= actualMinFreq && h1Freq <= actualMaxFreq) {
-                            val freqFraction = (h1Freq - actualMinFreq) / (actualMaxFreq - actualMinFreq)
+                        val projectedFreq = h1Freq * projectedOrder
+                        if (projectedFreq >= actualMinFreq && projectedFreq <= actualMaxFreq) {
+                            val freqFraction = (projectedFreq - actualMinFreq) / (actualMaxFreq - actualMinFreq)
                             val y = plotBottom - (freqFraction * plotHeight)
                             val xPos = marginLeft + x
                             

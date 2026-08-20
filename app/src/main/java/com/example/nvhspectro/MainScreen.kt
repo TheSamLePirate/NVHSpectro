@@ -135,6 +135,7 @@ fun AppScreen(viewModel: MainViewModel) {
     var showKinematicsDialog by remember { mutableStateOf(false) }
     var showEmergenceReportDialog by remember { mutableStateOf(false) }
     var showOrderSelectionDialog by remember { mutableStateOf(false) }
+    var showProjectedOrderDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -416,6 +417,7 @@ fun AppScreen(viewModel: MainViewModel) {
                     isWavAnalyzerMode = isWavMode,
                     wavPlaybackProgress = wavProgress,
                     showH1Overlay = viewModel.showH1Overlay.collectAsState().value,
+                    projectedOrder = viewModel.projectedOrder.collectAsState().value,
                     telemetryHistory = viewModel.telemetryHistory.collectAsState().value
                 )
 
@@ -731,13 +733,25 @@ fun AppScreen(viewModel: MainViewModel) {
                                 letterSpacing = 1.sp
                             )
 
-                            // Bouton 👁️ H1 intégré à l'en-tête (Si GMPe activé)
+                            // Bouton 👁️ Hx intégré à l'en-tête (Si GMPe activé)
                             if (kinematicsConfig.isEnabled) {
                                 val showH1Overlay by viewModel.showH1Overlay.collectAsState()
+                                val projectedOrder by viewModel.projectedOrder.collectAsState()
+                                val ordLabel = if (projectedOrder % 1.0 == 0.0) "H${projectedOrder.toInt()}" else "H%.1f".format(projectedOrder)
+                                
                                 FilterChip(
                                     selected = showH1Overlay,
                                     onClick = { viewModel.toggleH1Overlay() },
-                                    label = { Text("👁️ H1", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                                    label = { Text("👁️ $ordLabel", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                                    trailingIcon = {
+                                        Text(
+                                            text = "⚙️",
+                                            fontSize = 12.sp,
+                                            modifier = Modifier
+                                                .padding(start = 4.dp)
+                                                .clickable { showProjectedOrderDialog = true }
+                                        )
+                                    },
                                     shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = Color(0x3300E5FF),
@@ -883,6 +897,17 @@ fun AppScreen(viewModel: MainViewModel) {
                     viewModel.updateSelectedTrackedOrder(newOrd)
                 },
                 onDismiss = { showOrderSelectionDialog = false }
+            )
+        }
+
+        if (showProjectedOrderDialog) {
+            val projectedOrder by viewModel.projectedOrder.collectAsState()
+            OrderSelectionDialog(
+                currentOrder = projectedOrder,
+                onOrderSelected = { newOrd ->
+                    viewModel.setProjectedOrder(newOrd)
+                },
+                onDismiss = { showProjectedOrderDialog = false }
             )
         }
 
