@@ -1584,8 +1584,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             
             val actualMaxFreq = (displayedBinCount * nyquistFreq) / binCount
             canvas.drawLine(marginLeft, curY, marginLeft, curY + spectroHeight, paintLine)
-            canvas.drawText("${actualMaxFreq} Hz", 40f, curY + 30f, paintAxis)
-            canvas.drawText("0 Hz", 40f, curY + spectroHeight, paintAxis)
+            
+            val yTicks = 7
+            for (i in 0 until yTicks) {
+                val fraction = i.toFloat() / (yTicks - 1)
+                val yPos = curY + spectroHeight - (fraction * spectroHeight)
+                val freqValue = (fraction * actualMaxFreq).toInt()
+                
+                canvas.drawLine(marginLeft - 10f, yPos, marginLeft, yPos, paintLine)
+                
+                val textYPos = when (i) {
+                    0 -> yPos
+                    yTicks - 1 -> yPos + 30f
+                    else -> yPos + 10f
+                }
+                canvas.drawText("${freqValue} Hz", 20f, textYPos, paintAxis)
+            }
             
             curY += spectroHeight + 60f
             
@@ -1888,6 +1902,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (path.isEmpty()) return
         
         val reportHistory = _reportFftHistory.value
+        val reportHistoryTTNR = _reportFftHistoryTTNR.value
         val telemHistory = _telemetryHistory.value
         val sampleRate = _loadedWavData.value?.sampleRate ?: 44100
         val nyquist = sampleRate / 2.0
@@ -1910,7 +1925,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (freqHz < minFreqHz) minFreqHz = freqHz
                 if (freqHz > maxFreqHz) maxFreqHz = freqHz
                 
-                val emergence = reportHistory[f][b]
+                val emergence = reportHistoryTTNR[f][b]
                 if (emergence > maxEmergence) maxEmergence = emergence
             }
             
@@ -1976,7 +1991,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         minDb = _minDb.value,
                         maxDb = _maxDb.value,
                         trackedOrders = _manualTrackedOrders.value,
-                        kinematicsConfig = _kinematicsConfig.value
+                        kinematicsConfig = _kinematicsConfig.value,
+                        globalMaxFreq = _maxFreq.value.toFloat()
                     )
                 }
             } catch (e: Exception) {

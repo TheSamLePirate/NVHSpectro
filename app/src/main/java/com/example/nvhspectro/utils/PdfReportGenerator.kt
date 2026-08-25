@@ -3,10 +3,12 @@ package com.example.nvhspectro.utils
 import android.content.Context
 import android.graphics.*
 import android.graphics.pdf.PdfDocument
+import com.example.nvhspectro.R
 import com.example.nvhspectro.data.KinematicsConfig
 import com.example.nvhspectro.data.KinematicsInputMode
 import com.example.nvhspectro.data.SmartTrackedOrder
 import java.io.OutputStream
+import kotlin.math.ceil
 
 object PdfReportGenerator {
     
@@ -34,11 +36,12 @@ object PdfReportGenerator {
         return Color.argb(255, (r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt())
     }
 
-    private fun createBitmapFromHistory(history: List<DoubleArray>, minVal: Double, maxVal: Double, isTtnr: Boolean): Bitmap? {
+    private fun createBitmapFromHistory(history: List<DoubleArray>, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap? {
         if (history.isEmpty()) return null
         
         val width = history.size
-        val height = history[0].size
+        val height = maxBin.coerceAtMost(history[0].size)
+        if (height <= 0) return null
         val pixels = IntArray(width * height)
         
         for (x in 0 until width) {
@@ -73,10 +76,27 @@ object PdfReportGenerator {
         minDb: Double,
         maxDb: Double,
         trackedOrders: List<SmartTrackedOrder>,
-        kinematicsConfig: KinematicsConfig
+        kinematicsConfig: KinematicsConfig,
+        globalMaxFreq: Float
     ) {
-        val absoluteBitmap = createBitmapFromHistory(historyAbs, minDb, maxDb, false)
-        val ttnrBitmap = createBitmapFromHistory(historyTtnr, 1.0, 20.0, true) // TTNR usually 1-20
+        val sampleRate = 44100
+        val nyquist = sampleRate / 2
+        val totalBinCount = historyAbs.firstOrNull()?.size ?: 1024
+
+        // Calcul de la freq max dynamique
+        val maxTrackedFreq = trackedOrders.maxOfOrNull { it.maxFreqHz.toFloat() } ?: 0f
+        var pdfMaxFreq = if (maxTrackedFreq > 0) {
+            val target = maxTrackedFreq + 500f
+            ceil(target / 250f).toFloat() * 250f
+        } else {
+            globalMaxFreq
+        }
+        if (pdfMaxFreq > nyquist) pdfMaxFreq = nyquist.toFloat()
+
+        val maxBin = ((pdfMaxFreq * totalBinCount) / nyquist).toInt().coerceIn(1, totalBinCount)
+
+        val absoluteBitmap = createBitmapFromHistory(historyAbs, minDb, maxDb, false, maxBin)
+        val ttnrBitmap = createBitmapFromHistory(historyTtnr, 1.0, 20.0, true, maxBin)
 
         val pdfDocument = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4
@@ -87,7 +107,7 @@ object PdfReportGenerator {
         val primaryBlue = Color.parseColor("#0055A4") // Professional deep blue
         val titlePaint = Paint().apply {
             color = primaryBlue
-            textSize = 20f
+            textSize = 18f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             isAntiAlias = true
             textAlign = Paint.Align.CENTER
@@ -98,13 +118,10 @@ object PdfReportGenerator {
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             isAntiAlias = true
         }
-        val textPaint = Paint().apply {
-            color = Color.BLACK
-            textSize = 10f
+        val axisPaint = Paint().apply {
+            color = Color.DKGRAY
+            textSize = 7f
             isAntiAlias = true
-        }
-        val textBoldPaint = Paint(textPaint).apply {
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
         val boxPaint = Paint().apply {
             style = Paint.Style.STROKE
@@ -125,23 +142,41 @@ object PdfReportGenerator {
         // --- 1. Header ---
         canvas.drawText("NVHSpectro", margin, currentY + 10f, appNamePaint)
         
-        val title = "Rapport des émergences habitacle"
-        canvas.drawText(title, pageWidth / 2f, currentY + 12f, titlePaint)
+        // Logo
+        val logoBitmap = try {
+            BitmapFactory.decodeResource(context.resources, R.drawable.vibratec_logo)
+        } catch (e: Exception) {
+            null
+        }
+        if (logoBitmap != null) {
+            val aspectRatio = logoBitmap.width.toFloat() / logoBitmap.height.toFloat()
+            val logoHeight = 30f
+            val logoWidth = logoHeight * aspectRatio
+            val logoRect = RectF(pageWidth - margin - logoWidth, currentY - 15f, pageWidth - margin, currentY - 15f + logoHeight)
+            canvas.drawBitmap(logoBitmap, null, logoRect, Paint(Paint.FILTER_BITMAP_FLAG))
+        }
+
+        // Title multi-line
+        canvas.drawText("Rapport des émergences", pageWidth / 2f, currentY, titlePaint)
+        canvas.drawText("habitacle", pageWidth / 2f, currentY + 22f, titlePaint)
         
-        // Placeholder for Logo (Right)
-        val logoWidth = 60f
-        val logoHeight = 25f
-        val logoRect = RectF(pageWidth - margin - logoWidth, currentY - 5f, pageWidth - margin, currentY - 5f + logoHeight)
-        canvas.drawRect(logoRect, boxPaint)
-        
-        val logoTextPaint = Paint(textPaint).apply { textAlign = Paint.Align.CENTER; color = Color.GRAY }
-        canvas.drawText("[Logo]", logoRect.centerX(), logoRect.centerY() + 4f, logoTextPaint)
-        
-        currentY += 35f
+        currentY += 45f
         canvas.drawLine(margin, currentY, pageWidth - margin, currentY, linePaint)
         currentY += 15f
         
         // --- 2. Study Info Box ---
+        val textBoldPaint = Paint().apply {
+            color = Color.BLACK
+            textSize = 10f
+            isAntiAlias = true
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+        val textPaint = Paint().apply {
+            color = Color.BLACK
+            textSize = 10f
+            isAntiAlias = true
+        }
+        
         val infoBoxTop = currentY
         val infoBoxBottom = infoBoxTop + 65f
         canvas.drawRect(margin, infoBoxTop, pageWidth - margin, infoBoxBottom, boxPaint)
@@ -154,19 +189,27 @@ object PdfReportGenerator {
         
         val v1000Str = String.format(java.util.Locale.US, "%.2f km/h", kinematicsConfig.getEffectiveV1000())
         val methodStr = when (kinematicsConfig.inputMode) {
-            KinematicsInputMode.DIRECT_V1000 -> "(Saisie directe)"
-            KinematicsInputMode.GLOBAL_RATIO -> "(Rapport global)"
-            KinematicsInputMode.DETAILED_GEAR -> "(Chaîne cinématique détaillée)"
+            KinematicsInputMode.V1000 -> "(Saisie directe)"
+            KinematicsInputMode.GEAR_RATIO -> "(Rapport global)"
+            KinematicsInputMode.DETAILED_CHAIN -> "(Chaîne cinématique détaillée)"
         }
         val v1000Text = if (kinematicsConfig.isEnabled) "V1000 : $v1000Str $methodStr" else "V1000 : Non activée"
         canvas.drawText(v1000Text, col1X, infoBoxTop + 45f, textBoldPaint)
         
-        currentY = infoBoxBottom + 20f
+        currentY = infoBoxBottom + 25f
+        
+        val totalDurationSeconds = (historyAbs.size * 1024f) / 44100f
         
         // Helper to draw a colormap
         fun drawColormapBox(canvas: Canvas, bitmap: Bitmap?, x: Float, y: Float, width: Float, height: Float, boxTitle: String, drawBrilliance: Boolean = false) {
             canvas.drawText(boxTitle, x, y - 5f, textBoldPaint)
-            val rect = RectF(x, y, x + width, y + height)
+            
+            val contentX = x + 35f // + de place pour les axes Y
+            val contentY = y
+            val contentWidth = width - 35f - 10f // marge a droite
+            val contentHeight = height - 15f
+            val rect = RectF(contentX, contentY, contentX + contentWidth, contentY + contentHeight)
+            
             canvas.drawRect(rect, boxPaint)
             
             if (bitmap != null) {
@@ -184,7 +227,6 @@ object PdfReportGenerator {
                         strokeJoin = Paint.Join.ROUND
                     }
                     val numFrames = bitmap.width.coerceAtLeast(1)
-                    val numBins = bitmap.height.coerceAtLeast(1)
                     
                     trackedOrders.forEachIndexed { index, order ->
                         val hue = (index * 137.5f) % 360f
@@ -194,14 +236,17 @@ object PdfReportGenerator {
                         val androidPath = Path()
                         var isFirst = true
                         order.path.forEach { anchor ->
-                            val ptX = x + (anchor.frameIndex.toFloat() / (numFrames - 1)) * width
-                            val ptY = y + ((numBins - 1 - anchor.exactBinF) / (numBins - 1)) * height
+                            val ptX = contentX + (anchor.frameIndex.toFloat() / (numFrames - 1)) * contentWidth
+                            val binFInNewScale = anchor.exactBinF
+                            val ptY = contentY + ((maxBin - 1 - binFInNewScale) / (maxBin - 1)) * contentHeight
                             
-                            if (isFirst) {
-                                androidPath.moveTo(ptX, ptY)
-                                isFirst = false
-                            } else {
-                                androidPath.lineTo(ptX, ptY)
+                            if (binFInNewScale < maxBin) {
+                                if (isFirst) {
+                                    androidPath.moveTo(ptX, ptY)
+                                    isFirst = false
+                                } else {
+                                    androidPath.lineTo(ptX, ptY)
+                                }
                             }
                         }
                         canvas.drawPath(androidPath, pathPaint)
@@ -211,108 +256,172 @@ object PdfReportGenerator {
                 val p = Paint(textPaint).apply { color = Color.LTGRAY; textAlign = Paint.Align.CENTER; textSize = 12f }
                 canvas.drawText("Aucune donnée", rect.centerX(), rect.centerY(), p)
             }
+            
+            // Draw Axes
+            val pY = Paint(axisPaint).apply { textAlign = Paint.Align.RIGHT }
+            val ySteps = 5 // 6 points
+            for (i in 0..ySteps) {
+                val fraction = i.toFloat() / ySteps
+                val freq = (fraction * pdfMaxFreq).toInt()
+                val yy = contentY + contentHeight - (fraction * contentHeight)
+                canvas.drawText("${freq}Hz", contentX - 4f, yy + 3f, pY)
+                // draw tick mark
+                canvas.drawLine(contentX - 2f, yy, contentX, yy, pY)
+            }
+            canvas.save()
+            canvas.translate(x + 5f, contentY + contentHeight / 2f)
+            canvas.rotate(-90f)
+            canvas.drawText("Fréq (Hz)", 0f, 0f, Paint(axisPaint).apply { textAlign = Paint.Align.CENTER })
+            canvas.restore()
+            
+            val pX = Paint(axisPaint).apply { textAlign = Paint.Align.CENTER }
+            val xSteps = 6 // 7 points
+            for (i in 0..xSteps) {
+                val fraction = i.toFloat() / xSteps
+                val timeS = fraction * totalDurationSeconds
+                val xx = contentX + (fraction * contentWidth)
+                val timeStr = String.format(java.util.Locale.US, "%.1fs", timeS)
+                canvas.drawText(timeStr, xx, contentY + contentHeight + 10f, pX)
+                // draw tick mark
+                canvas.drawLine(xx, contentY + contentHeight, xx, contentY + contentHeight + 2f, pX)
+            }
         }
         
         // --- 3. Row 1: Absolute and TTNR Maps ---
-        val mapWidth = 260f
-        val mapHeight = 160f
+        val mapWidth = 267f // slightly larger to fill space
+        val mapHeight = 150f
         val leftX = margin
         val rightX = pageWidth - margin - mapWidth
         
-        drawColormapBox(canvas, absoluteBitmap, leftX, currentY, mapWidth, mapHeight, "Colormap Absolue (Niveau Global)", false)
-        drawColormapBox(canvas, ttnrBitmap, rightX, currentY, mapWidth, mapHeight, "Colormap TTNR (Émergence)", false)
+        drawColormapBox(canvas, absoluteBitmap, leftX, currentY, mapWidth, mapHeight, "Colormap Absolue", false)
+        drawColormapBox(canvas, ttnrBitmap, rightX, currentY, mapWidth, mapHeight, "Colormap TTNR", false)
         
-        currentY += mapHeight + 30f
+        currentY += mapHeight + 25f
         
         // --- 4. Row 2: Tracked Orders List and Brilliance Maps ---
-        // Orders List
         canvas.drawText("Ordres Identifiés :", leftX, currentY - 5f, textBoldPaint)
-        val listRect = RectF(leftX, currentY, leftX + mapWidth, currentY + mapHeight)
+        
+        val itemsCount = trackedOrders.size
+        
+        // We must ensure that the list + comments don't overflow 842.
+        // Let's reserve 80f for Comments minimum height.
+        val maxAvailableHeightForListAndMaps = 842f - currentY - margin - 80f - 20f
+        // the Brilliance maps will take 150f + space = 150f.
+        
+        // Calculate required list height with normal font
+        val listWidth = 230f // reduced width for the list
+        val normalItemHeight = if (kinematicsConfig.isEnabled) 42f else 28f
+        val requiredListHeight = 15f + (itemsCount * normalItemHeight)
+        
+        // Shrink list scale if it exceeds max available height
+        val scale = if (requiredListHeight > maxAvailableHeightForListAndMaps) {
+            maxAvailableHeightForListAndMaps / requiredListHeight
+        } else {
+            1f
+        }
+        
+        val listActualHeight = requiredListHeight * scale
+        val listRect = RectF(leftX, currentY, leftX + listWidth, currentY + listActualHeight.coerceAtLeast(mapHeight))
         canvas.drawRect(listRect, boxPaint)
         
-        var listY = currentY + 15f
+        val listTextPaint = Paint(textPaint).apply { textSize = 10f * scale }
+        val listBoldPaint = Paint(textBoldPaint).apply { textSize = 10f * scale }
+        
+        var listY = currentY + 15f * scale
         if (trackedOrders.isEmpty()) {
-            canvas.drawText("Aucun ordre tracé.", leftX + 10f, listY, textPaint)
+            canvas.drawText("Aucun ordre tracé.", leftX + 10f, listY, listTextPaint)
         } else {
             trackedOrders.forEachIndexed { index, order ->
                 val hue = (index * 137.5f) % 360f
                 val hsv = floatArrayOf(hue, 1f, 1f)
                 val dotPaint = Paint().apply { color = Color.HSVToColor(hsv); style = Paint.Style.FILL; isAntiAlias = true }
                 
-                // Draw color dot
-                canvas.drawCircle(leftX + 15f, listY - 4f, 4f, dotPaint)
+                val r = 4f * scale
+                canvas.drawCircle(leftX + 10f + r, listY - 4f * scale, r, dotPaint)
                 
                 val eMax = String.format(java.util.Locale.US, "%.1f", order.maxEmergenceDb)
                 val fRange = "${order.minFreqHz} - ${order.maxFreqHz} Hz"
                 
-                canvas.drawText("${order.name} (Emergence Max: $eMax dB)", leftX + 25f, listY, textBoldPaint)
-                listY += 12f
+                val txtX = leftX + 15f + r*2f
+                
+                canvas.drawText("${order.name} (Max TTNR: $eMax dB)", txtX, listY, listBoldPaint)
+                listY += 12f * scale
                 
                 if (kinematicsConfig.isEnabled) {
                     val sMin = String.format(java.util.Locale.US, "%.1f", order.minSpeedKmh ?: 0f)
                     val sMax = String.format(java.util.Locale.US, "%.1f", order.maxSpeedKmh ?: 0f)
                     val rMin = order.minRpm ?: 0
                     val rMax = order.maxRpm ?: 0
-                    canvas.drawText("Plage: $rMin - $rMax RPM  |  $sMin - $sMax km/h", leftX + 25f, listY, textPaint)
-                    listY += 12f
+                    canvas.drawText("Vitesse : $sMin - $sMax km/h", txtX, listY, listTextPaint)
+                    listY += 10f * scale
+                    canvas.drawText("Régime  : $rMin - $rMax RPM", txtX, listY, listTextPaint)
+                    listY += 10f * scale
                 }
                 
-                canvas.drawText("Fréquences: $fRange", leftX + 25f, listY, textPaint)
-                listY += 18f
+                canvas.drawText("Fréquences: $fRange", txtX, listY, listTextPaint)
+                listY += 10f * scale
             }
         }
         
-        // Brilliance Colormaps on the right, stacked vertically, half height
+        // Brilliance Colormaps on the right, stacked vertically
+        val brillianceMapWidth = pageWidth - margin - (leftX + listWidth + 15f)
+        val brillianceLeftX = leftX + listWidth + 15f
         val smallMapHeight = (mapHeight - 20f) / 2f
-        drawColormapBox(canvas, absoluteBitmap, rightX, currentY, mapWidth, smallMapHeight, "Absolue (Brillance)", true)
-        drawColormapBox(canvas, ttnrBitmap, rightX, currentY + smallMapHeight + 20f, mapWidth, smallMapHeight, "TTNR (Brillance)", true)
+        drawColormapBox(canvas, absoluteBitmap, brillianceLeftX, currentY, brillianceMapWidth, smallMapHeight, "Absolue (Brillance)", true)
+        drawColormapBox(canvas, ttnrBitmap, brillianceLeftX, currentY + smallMapHeight + 20f, brillianceMapWidth, smallMapHeight, "TTNR (Brillance)", true)
         
-        currentY += mapHeight + 30f
+        // Update currentY based on whichever is taller (the list or the maps)
+        currentY += maxOf(listRect.height(), mapHeight) + 20f
         
         // --- 5. Comments Box ---
         canvas.drawText("Commentaires :", leftX, currentY - 5f, textBoldPaint)
-        val commentRect = RectF(leftX, currentY, pageWidth - margin, currentY + 120f)
+        val maxCommentsHeight = 842f - margin - currentY
+        val commentsBoxHeight = maxCommentsHeight.coerceAtMost(100f).coerceAtLeast(30f)
+        val commentRect = RectF(leftX, currentY, pageWidth - margin, currentY + commentsBoxHeight)
         canvas.drawRect(commentRect, boxPaint)
         
         val comments = kinematicsConfig.comments.ifEmpty { "..." }
-        // Simple word wrap logic
-        var cy = currentY + 15f
-        val maxTextWidth = pageWidth - (margin * 2) - 20f
+        var cy = currentY + 12f
+        val maxTextWidth = pageWidth - (margin * 2) - 10f
         val words = comments.split(" ", "\n")
         var line = ""
         
         for (word in words) {
+            // Stop drawing if we reach bottom of comment box
+            if (cy > currentY + commentsBoxHeight - 10f) break
+            
             if ("\n" in word) {
                 val split = word.split("\n")
                 for (i in split.indices) {
+                    if (cy > currentY + commentsBoxHeight - 10f) break
                     val w = split[i]
                     val testLine = if (line.isEmpty()) w else "$line $w"
                     if (textPaint.measureText(testLine) > maxTextWidth) {
-                        canvas.drawText(line, leftX + 10f, cy, textPaint)
+                        canvas.drawText(line, leftX + 5f, cy, textPaint)
                         line = w
-                        cy += 14f
+                        cy += 12f
                     } else {
                         line = testLine
                     }
                     if (i < split.size - 1) {
-                        canvas.drawText(line, leftX + 10f, cy, textPaint)
+                        canvas.drawText(line, leftX + 5f, cy, textPaint)
                         line = ""
-                        cy += 14f
+                        cy += 12f
                     }
                 }
             } else {
                 val testLine = if (line.isEmpty()) word else "$line $word"
                 if (textPaint.measureText(testLine) > maxTextWidth) {
-                    canvas.drawText(line, leftX + 10f, cy, textPaint)
+                    canvas.drawText(line, leftX + 5f, cy, textPaint)
                     line = word
-                    cy += 14f
+                    cy += 12f
                 } else {
                     line = testLine
                 }
             }
         }
-        if (line.isNotEmpty()) {
-            canvas.drawText(line, leftX + 10f, cy, textPaint)
+        if (line.isNotEmpty() && cy <= currentY + commentsBoxHeight - 5f) {
+            canvas.drawText(line, leftX + 5f, cy, textPaint)
         }
         
         // Finish Page and write
