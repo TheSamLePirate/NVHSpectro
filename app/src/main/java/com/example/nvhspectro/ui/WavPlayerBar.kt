@@ -54,7 +54,10 @@ fun WavPlayerBar(
                     text = "📂 LECTURE : $fileName",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFF59E0B)
+                    color = Color(0xFFF59E0B),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp)
                 )
                 Text(
                     text = "$currentStr / $totalStr",

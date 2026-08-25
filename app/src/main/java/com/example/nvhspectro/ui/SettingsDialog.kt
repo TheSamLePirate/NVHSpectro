@@ -14,6 +14,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.nvhspectro.data.AudioFilter
+import com.example.nvhspectro.data.FilterType
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.material3.OutlinedTextField
 
 @Composable
 fun SettingsDialog(
@@ -37,7 +42,10 @@ fun SettingsDialog(
     magnitudeGateDbFS: Double = -90.0,
     onMagnitudeGateChange: (Double) -> Unit = {},
     isWavAnalyzerMode: Boolean = false,
-    wavDurationSec: Double = 0.0
+    wavDurationSec: Double = 0.0,
+    activeFilters: List<AudioFilter> = emptyList(),
+    onAddFilter: (AudioFilter) -> Unit = {},
+    onRemoveFilter: (String) -> Unit = {}
 ) {
     val sampleRate = 44100.0
     val stepSize = fftSize / 2.0
@@ -47,6 +55,7 @@ fun SettingsDialog(
     val dfHz = sampleRate / fftSize
 
     val scrollState = rememberScrollState()
+    var showFilterDialog by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -247,6 +256,81 @@ fun SettingsDialog(
                     }
                 }
                 
+
+                // SECTION FILTRES AUDIO (QUALITÉ AAA)
+                if (isWavAnalyzerMode) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0xFFE91E63).copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF101827)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "🎛️ FILTRES AUDIO DSP",
+                                color = Color(0xFFE91E63),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                            IconButton(
+                                onClick = { showFilterDialog = true },
+                                enabled = activeFilters.size < 3,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .background(if (activeFilters.size < 3) Color(0xFFE91E63) else Color.Gray.copy(alpha=0.5f), RoundedCornerShape(14.dp))
+                            ) {
+                                Text("+", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            }
+                        }
+                        
+                        if (activeFilters.isEmpty()) {
+                            Text("Aucun filtre actif. Le signal brut est analysé.", color = Color.Gray, fontSize = 11.sp, style = MaterialTheme.typography.bodySmall)
+                        } else {
+                            // Liste des filtres sous forme de chips
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                activeFilters.forEach { filter ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(filter.color.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                            .border(1.dp, filter.color.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(filter.type.getDisplayName(), color = filter.color, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                            val freqText = when(filter.type) {
+                                                FilterType.LOW_PASS -> "Coupe au-dessus de ${filter.maxFreq} Hz"
+                                                FilterType.HIGH_PASS -> "Coupe en-dessous de ${filter.minFreq} Hz"
+                                                FilterType.BAND_PASS -> "Garde [${filter.minFreq} - ${filter.maxFreq} Hz]"
+                                                FilterType.BAND_STOP -> "Coupe [${filter.minFreq} - ${filter.maxFreq} Hz]"
+                                            }
+                                            Text(freqText, color = Color.LightGray, fontSize = 10.sp)
+                                        }
+                                        IconButton(
+                                            onClick = { onRemoveFilter(filter.id) },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Text("X", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                } // Fin if (isWavAnalyzerMode)
+
                 // Plage de Fréquences d'analyse (Min & Max)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -277,6 +361,17 @@ fun SettingsDialog(
             }
         }
     )
+
+    if (showFilterDialog) {
+        AddFilterDialog(
+            existingCount = activeFilters.size,
+            onDismiss = { showFilterDialog = false },
+            onAddFilter = { filter ->
+                onAddFilter(filter)
+                showFilterDialog = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -288,4 +383,107 @@ fun DspInfoRow(label: String, value: String) {
         Text(text = label, color = Color.LightGray, fontSize = 12.sp)
         Text(text = value, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
     }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddFilterDialog(
+    existingCount: Int,
+    onDismiss: () -> Unit,
+    onAddFilter: (AudioFilter) -> Unit
+) {
+    var selectedType by remember { mutableStateOf(FilterType.LOW_PASS) }
+    var minFreqText by remember { mutableStateOf("") }
+    var maxFreqText by remember { mutableStateOf("") }
+    
+    val assignedColor = remember(existingCount) {
+        when (existingCount) {
+            0 -> Color(0xFFFFEB3B) // Jaune
+            1 -> Color(0xFF00E676) // Vert
+            else -> Color(0xFFFF5252) // Rouge
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Ajouter un Filtre DSP", fontWeight = FontWeight.Bold, color = Color.White) },
+        containerColor = Color(0xFF1E293B),
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Type de filtre :", color = Color.LightGray, fontSize = 12.sp)
+                
+                // Dropdown or Radio buttons for type
+                Column {
+                    FilterType.values().forEach { type ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = (type == selectedType),
+                                onClick = { selectedType = type },
+                                colors = RadioButtonDefaults.colors(selectedColor = Color(0xFFE91E63))
+                            )
+                            Text(type.getDisplayName(), color = Color.White, fontSize = 14.sp)
+                        }
+                    }
+                }
+                
+                if (selectedType == FilterType.HIGH_PASS || selectedType == FilterType.BAND_PASS || selectedType == FilterType.BAND_STOP) {
+                    OutlinedTextField(
+                        value = minFreqText,
+                        onValueChange = { minFreqText = it },
+                        label = { Text("Fréquence Min (Hz)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color(0xFFE91E63)
+                        )
+                    )
+                }
+                
+                if (selectedType == FilterType.LOW_PASS || selectedType == FilterType.BAND_PASS || selectedType == FilterType.BAND_STOP) {
+                    OutlinedTextField(
+                        value = maxFreqText,
+                        onValueChange = { maxFreqText = it },
+                        label = { Text("Fréquence Max (Hz)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color(0xFFE91E63)
+                        )
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val min = minFreqText.toIntOrNull() ?: 0
+                    val max = maxFreqText.toIntOrNull() ?: 20000
+                    
+                    // Validation
+                    val valid = when(selectedType) {
+                        FilterType.LOW_PASS -> max > 0
+                        FilterType.HIGH_PASS -> min > 0
+                        FilterType.BAND_PASS, FilterType.BAND_STOP -> min > 0 && max > min
+                    }
+                    
+                    if (valid) {
+                        onAddFilter(AudioFilter(type = selectedType, minFreq = min, maxFreq = max, color = assignedColor))
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63))
+            ) {
+                Text("Ajouter", fontWeight = FontWeight.Bold, color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler", color = Color.LightGray)
+            }
+        }
+    )
 }

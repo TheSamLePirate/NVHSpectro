@@ -162,27 +162,23 @@ class FFTProcessor(val fftSize: Int = 2048) {
                 val localEmergenceDb = (magnitudesDbFS[i] - localNoiseFloorDbFS).coerceAtLeast(0.0)
 
                 // Seuil d'émergence adaptatif en fréquence (anti-turbulences & double verrou HF)
-                val minEmergenceRequired = when {
-                    f < 1500.0 -> 4.5
-                    f < 4000.0 -> 3.8
-                    else -> 4.0
-                }
+                val minEmergenceRequired = -3.0
 
                 // Hybridation NVH Psychoacoustique : Seuls les tons avec puissance nette positive ET émergence nette sont retenus
                 val finalPeakTtnr = if (pToneNet > 0.0 && localEmergenceDb >= minEmergenceRequired) {
-                    maxOf(ttnrCbDb, localEmergenceDb - 1.5).coerceIn(0.0, 30.0)
+                    maxOf(ttnrCbDb, localEmergenceDb - 1.5).coerceIn(-3.0, 30.0)
                 } else {
-                    0.0
+                    -100.0
                 }
 
-                if (finalPeakTtnr >= 1.0) {
+                if (finalPeakTtnr >= -3.0) {
                     rawTtnr[i] = finalPeakTtnr
                     // Reconstitution de la largeur physique du dôme (Leakage Hanning sur bins adjacents)
-                    if (i > 0 && rawTtnr[i - 1] < finalPeakTtnr * 0.45) {
-                        rawTtnr[i - 1] = finalPeakTtnr * 0.45
+                    if (i > 0 && rawTtnr[i - 1] < finalPeakTtnr - 4.0) {
+                        rawTtnr[i - 1] = finalPeakTtnr - 4.0
                     }
-                    if (i < binCount - 1 && rawTtnr[i + 1] < finalPeakTtnr * 0.45) {
-                        rawTtnr[i + 1] = finalPeakTtnr * 0.45
+                    if (i < binCount - 1 && rawTtnr[i + 1] < finalPeakTtnr - 4.0) {
+                        rawTtnr[i + 1] = finalPeakTtnr - 4.0
                     }
                 }
             }
@@ -192,16 +188,16 @@ class FFTProcessor(val fftSize: Int = 2048) {
         val filteredTtnr = DoubleArray(binCount)
         for (i in 0 until binCount) {
             val valCurr = rawTtnr[i]
-            if (valCurr <= 0.0) continue
+            if (valCurr <= -3.0) continue
 
-            val prevVal = if (i > 0) rawTtnr[i - 1] else 0.0
-            val nextVal = if (i < binCount - 1) rawTtnr[i + 1] else 0.0
+            val prevVal = if (i > 0) rawTtnr[i - 1] else -100.0
+            val nextVal = if (i < binCount - 1) rawTtnr[i + 1] else -100.0
 
-            val hasStructure = (prevVal >= 0.20 * valCurr || nextVal >= 0.20 * valCurr)
+            val hasStructure = (prevVal >= valCurr - 8.0 || nextVal >= valCurr - 8.0)
             if (hasStructure) {
                 filteredTtnr[i] = valCurr
             } else {
-                filteredTtnr[i] = 0.0
+                filteredTtnr[i] = -100.0
             }
         }
 
@@ -216,11 +212,11 @@ class FFTProcessor(val fftSize: Int = 2048) {
             for (i in 0 until binCount) {
                 val rawVal = filteredTtnr[i]
                 val integVal = (1.0 - alpha) * prevIntegrated[i] + alpha * rawVal
-                finalTtnr[i] = if (integVal < 2.0 || i * df < 30.0) 0.0 else integVal
+                finalTtnr[i] = if (integVal < -3.0 || i * df < 30.0) -100.0 else integVal
             }
         } else {
             for (i in 0 until binCount) {
-                finalTtnr[i] = if (filteredTtnr[i] < 2.0 || i * df < 30.0) 0.0 else filteredTtnr[i]
+                finalTtnr[i] = if (filteredTtnr[i] < -3.0 || i * df < 30.0) -100.0 else filteredTtnr[i]
             }
         }
 

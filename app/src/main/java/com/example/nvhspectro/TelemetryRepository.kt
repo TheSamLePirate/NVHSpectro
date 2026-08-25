@@ -3,6 +3,10 @@ package com.example.nvhspectro
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Looper
+import android.location.GnssMeasurementRequest
+import android.location.GnssMeasurementsEvent
+import android.location.LocationManager
+import android.os.Build
 import com.google.android.gms.location.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +35,7 @@ data class TelemetryData(
 class TelemetryRepository(private val context: Context) {
     private val fusedLocationClient: FusedLocationProviderClient = 
         LocationServices.getFusedLocationProviderClient(context)
+    private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
     @SuppressLint("MissingPermission")
     fun startTelemetry(): Flow<TelemetryData> = callbackFlow {
@@ -85,11 +90,30 @@ class TelemetryRepository(private val context: Context) {
             }
         }
 
+        // --- NOUVEAU : Force Full GNSS Tracking ---
+        var gnssCallback: GnssMeasurementsEvent.Callback? = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            gnssCallback = object : GnssMeasurementsEvent.Callback() {}
+            val request = GnssMeasurementRequest.Builder()
+                .setFullTracking(true)
+                .build()
+            try {
+                locationManager.registerGnssMeasurementsCallback(request, { it.run() }, gnssCallback)
+            } catch (e: Exception) {
+                // Ignore errors (e.g. permission denied or not supported)
+            }
+        }
+
         // Démarrage GPS 100% pur
         fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
 
         awaitClose {
             fusedLocationClient.removeLocationUpdates(locationCallback)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && gnssCallback != null) {
+                try {
+                    locationManager.unregisterGnssMeasurementsCallback(gnssCallback)
+                } catch(e: Exception) {}
+            }
         }
     }
 }

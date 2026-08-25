@@ -87,6 +87,7 @@ fun AppScreen(viewModel: MainViewModel) {
     val isFrozen by viewModel.isFrozen.collectAsState()
 
     val kinematicsConfig by viewModel.kinematicsConfig.collectAsState()
+    val activeFilters by viewModel.activeFilters.collectAsState()
     val trackedHarmonicTags by viewModel.trackedHarmonicTags.collectAsState()
     val emergenceReportEntries by viewModel.emergenceReportEntries.collectAsState()
     
@@ -101,6 +102,10 @@ fun AppScreen(viewModel: MainViewModel) {
     val loadedWavFileName by viewModel.loadedWavFileName.collectAsState()
     val wavPlaybackPositionMs by viewModel.wavPlaybackPositionMs.collectAsState()
     val isWavPlaying by viewModel.isWavPlaying.collectAsState()
+    val isReportModeActive by viewModel.isReportModeActive.collectAsState()
+    val currentSmartPath by viewModel.currentSmartPath.collectAsState()
+    val currentUserPoints by viewModel.currentUserPoints.collectAsState()
+    val manualTrackedOrders by viewModel.manualTrackedOrders.collectAsState()
 
     val showVideoSelectionDialog by viewModel.showVideoSelectionDialog.collectAsState()
     val loadedVideoUri by viewModel.loadedVideoUri.collectAsState()
@@ -137,7 +142,10 @@ fun AppScreen(viewModel: MainViewModel) {
     var showOrderSelectionDialog by remember { mutableStateOf(false) }
     var showProjectedOrderDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
+    if (isReportModeActive) {
+        com.example.nvhspectro.ui.ReportModeScreen(viewModel = viewModel, onBack = { viewModel.toggleReportMode() })
+    } else {
+        Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("NVH Spectro", fontWeight = FontWeight.Bold) },
@@ -192,19 +200,20 @@ fun AppScreen(viewModel: MainViewModel) {
                         )
                     }
 
-                    // 2. Bouton Rapport d'émergence
+                    // 2. Bouton Rapport d'Emergence
                     Button(
-                        onClick = { showEmergenceReportDialog = true },
+                        onClick = { viewModel.toggleReportMode() },
                         enabled = !isVideoMode,
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
                         colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isReportModeActive) Color(0xFFE91E63) else MaterialTheme.colorScheme.primary,
                             disabledContainerColor = Color(0xFF424242),
                             disabledContentColor = Color.Gray
                         )
                     ) {
                         Text(
-                            text = "📊 Rapport (${emergenceReportEntries.size})",
+                            text = if (isReportModeActive) "Quitter Rapport" else "Rapport Manuel",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1
@@ -413,6 +422,7 @@ fun AppScreen(viewModel: MainViewModel) {
                     emergenceThresholdDb = emergenceThresholdDb,
                     magnitudeGateDbFS = magnitudeGateDbFS,
                     trackedHarmonicTags = trackedHarmonicTags,
+                    activeFilters = activeFilters,
                     kinematicsConfig = kinematicsConfig,
                     isWavAnalyzerMode = isWavMode,
                     wavPlaybackProgress = wavProgress,
@@ -676,8 +686,9 @@ fun AppScreen(viewModel: MainViewModel) {
 
 
 
-            // Lecteur WAV (si un fichier est chargé en mode Analyseur WAV)
-            if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER && loadedWavData != null) {
+            if (!isReportModeActive) {
+                // Lecteur WAV (si un fichier est chargé en mode Analyseur WAV)
+                if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER && loadedWavData != null) {
                 com.example.nvhspectro.ui.WavPlayerBar(
                     fileName = loadedWavFileName ?: "fichier.wav",
                     currentPosMs = wavPlaybackPositionMs,
@@ -873,6 +884,7 @@ fun AppScreen(viewModel: MainViewModel) {
                         }
                     }
                 }
+                }
             }
         }
 
@@ -914,6 +926,9 @@ fun AppScreen(viewModel: MainViewModel) {
         if (showSettingsDialog) {
             com.example.nvhspectro.ui.SettingsDialog(
                 onDismiss = { showSettingsDialog = false },
+                activeFilters = activeFilters,
+                onAddFilter = { filter -> viewModel.addAudioFilter(filter) },
+                onRemoveFilter = { filterId -> viewModel.removeAudioFilter(filterId) },
                 minDb = minDb,
                 maxDb = maxDb,
                 onMinDbChange = { viewModel.updateSettings(it, maxDb, fftSize, minFreq, maxFreq, timeWindowSec) },
@@ -999,6 +1014,7 @@ fun AppScreen(viewModel: MainViewModel) {
             )
         }
     }
+    }
 }
 
 @Composable
@@ -1030,3 +1046,4 @@ fun KpiItem(label: String, value: String) {
         Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
     }
 }
+

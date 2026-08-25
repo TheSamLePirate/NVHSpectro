@@ -1,6 +1,7 @@
 package com.example.nvhspectro
 
 import android.app.Application
+import android.content.Context
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -9,12 +10,15 @@ import android.graphics.Path
 import android.graphics.Typeface
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import java.io.File
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.lifecycle.AndroidViewModel
+import com.example.nvhspectro.data.AudioFilter
+import com.example.nvhspectro.data.BiQuadFilter
+import com.example.nvhspectro.data.WavAudioWriter
 import androidx.lifecycle.viewModelScope
 import com.example.nvhspectro.data.*
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -48,6 +52,73 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // États Kinématiques GMPe & Rapport d'Émergence
     private val _kinematicsConfig = MutableStateFlow(KinematicsConfig())
     val kinematicsConfig: StateFlow<KinematicsConfig> = _kinematicsConfig.asStateFlow()
+
+    private val _activeFilters = MutableStateFlow<List<AudioFilter>>(emptyList())
+    val activeFilters: StateFlow<List<AudioFilter>> = _activeFilters.asStateFlow()
+    fun addAudioFilter(filter: AudioFilter) {
+        _activeFilters.value = _activeFilters.value + filter
+        applyDigitalFiltersToPlayback()
+        _loadedWavData.value?.let { processFullWavSpectrogram(it) }
+    }
+    fun removeAudioFilter(filterId: String) {
+        _activeFilters.value = _activeFilters.value.filter { it.id != filterId }
+        applyDigitalFiltersToPlayback()
+        _loadedWavData.value?.let { processFullWavSpectrogram(it) }
+    }
+    
+    private fun applyDigitalFiltersToPlayback() {
+        val originalData = _loadedWavData.value ?: return
+        val filters = _activeFilters.value
+        val context = getApplication<android.app.Application>()
+        
+        if (filters.isEmpty()) {
+            val currentPos = mediaPlayer?.currentPosition ?: 0
+            val wasPlaying = _isWavPlaying.value || mediaPlayer?.isPlaying == true
+            initMediaPlayer(wavFile = currentOriginalAudioFile, uri = currentOriginalAudioUri, context = context)
+            mediaPlayer?.seekTo(currentPos)
+            if (wasPlaying) {
+                mediaPlayer?.start()
+            }
+            return
+        }
+
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val pcm = originalData.pcmSamples
+            val filteredPcm = ShortArray(pcm.size)
+            
+            // Instanciation des biquads
+            // Cascading 4 times with specific Q factors for a true 8th-order Butterworth filter (-48 dB/octave)
+            // Cela Ǹvite que le filtre "bave" avant la frǸquence de coupure.
+            val qFactors = listOf(0.509795579, 0.601344887, 0.899976223, 2.562915448)
+            val biquads = filters.flatMap { filter ->
+                qFactors.map { q -> 
+                    BiQuadFilter(filter.type, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), 44100.0, q) 
+                }
+            }
+            
+            for (i in pcm.indices) {
+                var sample = pcm[i].toDouble()
+                for (bq in biquads) {
+                    sample = bq.processSample(sample)
+                }
+                filteredPcm[i] = sample.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+            }
+            
+            val tempFile = File(context.cacheDir, "filtered_playback.wav")
+            WavAudioWriter.writePcmToWav(filteredPcm, tempFile, 44100)
+            
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                val currentPos = mediaPlayer?.currentPosition ?: 0
+                val wasPlaying = _isWavPlaying.value || mediaPlayer?.isPlaying == true
+                
+                initMediaPlayer(wavFile = tempFile)
+                mediaPlayer?.seekTo(currentPos)
+                if (wasPlaying) {
+                    mediaPlayer?.start()
+                }
+            }
+        }
+    }
 
     private val _trackedHarmonicTags = MutableStateFlow<List<TrackedHarmonicTag>>(emptyList())
     val trackedHarmonicTags: StateFlow<List<TrackedHarmonicTag>> = _trackedHarmonicTags.asStateFlow()
@@ -85,6 +156,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     // Etats de l'UI
+    private val _isReportModeActive = MutableStateFlow(false)
+    val isReportModeActive: StateFlow<Boolean> = _isReportModeActive.asStateFlow()
+
+    private val _manualTrackedOrders = MutableStateFlow<List<SmartTrackedOrder>>(emptyList())
+    val manualTrackedOrders: StateFlow<List<SmartTrackedOrder>> = _manualTrackedOrders.asStateFlow()
+    
+    private val _selectedValidatedOrder = MutableStateFlow<SmartTrackedOrder?>(null)
+    val selectedValidatedOrder: StateFlow<SmartTrackedOrder?> = _selectedValidatedOrder.asStateFlow()
+
+    private val _isBrillanceModeEnabled = MutableStateFlow(false)
+    val isBrillanceModeEnabled: StateFlow<Boolean> = _isBrillanceModeEnabled.asStateFlow()
+
+    fun toggleBrillanceMode() {
+        _isBrillanceModeEnabled.value = !_isBrillanceModeEnabled.value
+    }
+
+
+    private val _currentUserPoints = MutableStateFlow<List<ManualOrderAnchor>>(emptyList())
+    
+    private val _reportFftHistory = MutableStateFlow<List<DoubleArray>>(emptyList())
+    val reportFftHistory: StateFlow<List<DoubleArray>> = _reportFftHistory.asStateFlow()
+
+    private val _reportFftHistoryAbsolute = MutableStateFlow<List<DoubleArray>>(emptyList())
+    val reportFftHistoryAbsolute: StateFlow<List<DoubleArray>> = _reportFftHistoryAbsolute.asStateFlow()
+
+    private val _reportFftHistoryTTNR = MutableStateFlow<List<DoubleArray>>(emptyList())
+    val reportFftHistoryTTNR: StateFlow<List<DoubleArray>> = _reportFftHistoryTTNR.asStateFlow()
+
+    private val _isDrawingMode = MutableStateFlow(false)
+    val isDrawingMode: StateFlow<Boolean> = _isDrawingMode.asStateFlow()
+
+    fun toggleDrawingMode() {
+        _isDrawingMode.value = !_isDrawingMode.value
+    }
+
+    val currentUserPoints: StateFlow<List<ManualOrderAnchor>> = _currentUserPoints.asStateFlow()
+
+    private val _currentSmartPath = MutableStateFlow<List<ManualOrderAnchor>>(emptyList())
+    val currentSmartPath: StateFlow<List<ManualOrderAnchor>> = _currentSmartPath.asStateFlow()
+
     private val _telemetryState = MutableStateFlow(TelemetryData())
     val telemetryState: StateFlow<TelemetryData> = _telemetryState.asStateFlow()
     
@@ -176,8 +287,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private var mediaPlayer: MediaPlayer? = null
+    private var currentOriginalAudioFile: File? = null
+    private var currentOriginalAudioUri: android.net.Uri? = null
 
     private fun initMediaPlayer(wavFile: File? = null, uri: android.net.Uri? = null, context: android.content.Context? = null) {
+        if (wavFile?.name != "filtered_playback.wav") {
+            currentOriginalAudioFile = wavFile
+            currentOriginalAudioUri = uri
+        }
         try {
             mediaPlayer?.release()
             mediaPlayer = MediaPlayer().apply {
@@ -561,7 +678,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     java.util.Arrays.fill(frameBuffer, 0.toShort())
                 }
                 val magnitudes = localFftProcessor.processFFT(frameBuffer)
+                
+
                 val rawTtnr = localFftProcessor.computeTTNR(magnitudes, sampleRate)
+
                 absList.add(magnitudes)
                 ttnrList.add(rawTtnr)
             }
@@ -1055,7 +1175,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                 val isGMPeLive = _kinematicsConfig.value.isEnabled && _audioSourceMode.value == AudioSourceMode.LIVE
                 if (isGMPeLive) {
-                    val waitTime = 1000L - (System.currentTimeMillis() - timestamp)
+                    val waitTime = 1200L - (System.currentTimeMillis() - timestamp)
                     if (waitTime > 0) {
                         kotlinx.coroutines.delay(waitTime)
                     }
@@ -1097,7 +1217,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val validMags = magnitudes.copyOfRange(0, magnitudes.size / 2)
                     
                     // Traitement TTNR (Émergence tonale ECMA-74)
+                    
+
                     val rawTtnr = fftProcessor.computeTTNR(magnitudes, 44100)
+
                     
                     // Initialisation / Ajustement de la taille du tampon de persistance 150 ms
                     if (ttnrPersistenceCount.size != rawTtnr.size) {
@@ -1117,7 +1240,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val retroUnmaskBins = mutableListOf<Int>()
 
                     for (i in rawTtnr.indices) {
-                        if (rawTtnr[i] >= 2.0) {
+                        if (rawTtnr[i] >= -3.0) {
                             ttnrPersistenceCount[i]++
                         } else {
                             ttnrPersistenceCount[i] = 0
@@ -1129,7 +1252,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 retroUnmaskBins.add(i)
                             }
                         } else {
-                            validatedTtnr[i] = 0.0
+                            validatedTtnr[i] = -100.0
                         }
                     }
 
@@ -1374,7 +1497,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val spectroBitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888)
             val pixels = IntArray(bitmapWidth * bitmapHeight) { android.graphics.Color.BLACK }
             val mode = _displayMode.value
-            val minVal = if (mode == DisplayMode.TTNR) 0.0 else _minDb.value
+            val minVal = if (mode == DisplayMode.TTNR) 1.0 else _minDb.value
             val maxVal = if (mode == DisplayMode.TTNR) 20.0 else _maxDb.value
             
             for (x in 0 until bitmapWidth) {
@@ -1555,4 +1678,311 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    fun toggleReportMode() {
+        if (!_isReportModeActive.value) {
+            _reportFftHistory.value = fftHistory.value.toList()
+            _reportFftHistoryAbsolute.value = _fftHistoryAbsolute.value.toList()
+            _reportFftHistoryTTNR.value = _fftHistoryTTNR.value.toList()
+            _isReportModeActive.value = true
+        } else {
+            _isReportModeActive.value = false
+            _currentUserPoints.value = emptyList()
+            _currentSmartPath.value = emptyList()
+            _isDrawingMode.value = false
+        }
+    }
+
+    fun clearCurrentSmartTrack() {
+        _currentUserPoints.value = emptyList()
+        _currentSmartPath.value = emptyList()
+    }
+    
+    fun clearCurrentPoints() {
+        _currentUserPoints.value = emptyList()
+        _currentSmartPath.value = emptyList()
+    }
+    
+    fun selectValidatedOrder(order: SmartTrackedOrder?) {
+        _selectedValidatedOrder.value = order
+    }
+    
+    fun removeValidatedOrder(order: SmartTrackedOrder) {
+        _manualTrackedOrders.value = _manualTrackedOrders.value.filter { it != order }
+        if (_selectedValidatedOrder.value == order) {
+            _selectedValidatedOrder.value = null
+        }
+    }
+
+    fun clearAllValidatedOrders() {
+        _manualTrackedOrders.value = emptyList()
+    }
+
+    fun addManualTrackPoint(frameIndex: Int, binIndex: Int) {
+        val currentPoints = _currentUserPoints.value.toMutableList()
+        currentPoints.add(ManualOrderAnchor(frameIndex, binIndex, isUserPlaced = true))
+        currentPoints.sortBy { it.frameIndex }
+        _currentUserPoints.value = currentPoints
+        recalculateSmartPath()
+    }
+
+    private fun recalculateSmartPath() {
+        val points = _currentUserPoints.value
+        if (points.size < 2) {
+            _currentSmartPath.value = emptyList()
+            return
+        }
+        
+        val isTTNR = _displayMode.value == DisplayMode.TTNR
+        val historyToUse = if (_isReportModeActive.value) {
+            if (isTTNR) _reportFftHistoryTTNR.value else _reportFftHistoryAbsolute.value
+        } else {
+            if (isTTNR) _fftHistoryTTNR.value else _fftHistoryAbsolute.value
+        }
+        if (historyToUse.isEmpty()) return
+
+        val startFrame = points.first().frameIndex.coerceIn(0, historyToUse.size - 1)
+        val endFrame = points.last().frameIndex.coerceIn(0, historyToUse.size - 1)
+        
+        if (startFrame >= endFrame) {
+            _currentSmartPath.value = points
+            return
+        }
+        
+        val numFrames = endFrame - startFrame + 1
+        val binCount = historyToUse[startFrame].size
+        
+        // Ligne de guide : stricte ligne droite (lineaire) entre les points pour donner la PENTE generale
+        fun getExpectedBinF(globalFrame: Int): Float {
+            if (globalFrame <= points.first().frameIndex) return points.first().binIndex.toFloat()
+            if (globalFrame >= points.last().frameIndex) return points.last().binIndex.toFloat()
+            for (i in 0 until points.size - 1) {
+                if (globalFrame >= points[i].frameIndex && globalFrame <= points[i+1].frameIndex) {
+                    val f1 = points[i].frameIndex
+                    val b1 = points[i].binIndex.toFloat()
+                    val f2 = points[i+1].frameIndex
+                    val b2 = points[i+1].binIndex.toFloat()
+                    if (f1 == f2) return b1
+                    val fraction = (globalFrame - f1).toFloat() / (f2 - f1).toFloat()
+                    return b1 + fraction * (b2 - b1)
+                }
+            }
+            return points.last().binIndex.toFloat()
+        }
+
+        // Energie en dB
+        val dbEnergies = Array(numFrames) { FloatArray(binCount) }
+        for (f in 0 until numFrames) {
+            val globalFrame = startFrame + f
+            val spectrum = historyToUse[globalFrame]
+            for (b in 0 until binCount) {
+                dbEnergies[f][b] = spectrum[b].toFloat()
+            }
+        }
+
+        val rawPath = mutableListOf<ManualOrderAnchor>()
+        val searchRadius = 20 // Approx +/- 20 bins
+        var prevTrackedBinF = getExpectedBinF(startFrame)
+
+        for (f in 0 until numFrames) {
+            val globalFrame = startFrame + f
+            val isUserPoint = points.any { it.frameIndex == globalFrame }
+            
+            // Si c'est un point utilisateur, on s'y fixe de force
+            if (isUserPoint) {
+                val pt = points.first { it.frameIndex == globalFrame }
+                rawPath.add(ManualOrderAnchor(globalFrame, pt.binIndex, isUserPlaced = true, exactBinF = pt.binIndex.toFloat()))
+                prevTrackedBinF = pt.binIndex.toFloat()
+                continue
+            }
+            
+            val expectedBinF = getExpectedBinF(globalFrame)
+            val centerSearchInt = Math.round(expectedBinF)
+            
+            val minBin = (centerSearchInt - searchRadius).coerceAtLeast(0)
+            val maxBin = (centerSearchInt + searchRadius).coerceAtMost(binCount - 1)
+            
+            var bestBin = centerSearchInt
+            var maxScore = -Float.MAX_VALUE
+            
+            for (b in minBin..maxBin) {
+                val e = dbEnergies[f][b]
+                
+                // Peak detection: on cherche un maximum local pour ne pas glisser sur le flanc d'une autre harmonique
+                val isLocalMax = if (b > 0 && b < binCount - 1) {
+                    e > dbEnergies[f][b-1] && e > dbEnergies[f][b+1]
+                } else {
+                    true
+                }
+                
+                if (isLocalMax) {
+                    // Penalite pour assurer la continuite du tracé
+                    val jumpDist = Math.abs(b - prevTrackedBinF)
+                    // Penalite legere pour rester pres du guide utilisateur
+                    val guideDist = Math.abs(b - expectedBinF)
+                    
+                    val score = e - (1.5f * jumpDist) - (0.5f * guideDist)
+                    if (score > maxScore) {
+                        maxScore = score
+                        bestBin = b
+                    }
+                }
+            }
+            
+            // Si aucun max local n'est trouve (spectre tres plat), on utilise la ligne guide
+            if (maxScore == -Float.MAX_VALUE) {
+                bestBin = Math.round(expectedBinF)
+            }
+            
+            // Sub-bin parabolic interpolation
+            var exactBinF = bestBin.toFloat()
+            if (bestBin > 0 && bestBin < binCount - 1 && maxScore != -Float.MAX_VALUE) {
+                val y1 = dbEnergies[f][bestBin - 1]
+                val y2 = dbEnergies[f][bestBin]
+                val y3 = dbEnergies[f][bestBin + 1]
+                
+                val denom = 2f * (y1 - 2f * y2 + y3)
+                if (denom != 0f) {
+                    val p = (y1 - y3) / denom
+                    exactBinF = bestBin + p.coerceIn(-0.5f, 0.5f)
+                }
+            }
+            
+            // Derivative threshold: si le saut est vraiment aberrant, on le limite
+            if (Math.abs(exactBinF - prevTrackedBinF) > 15f) {
+                exactBinF = prevTrackedBinF + Math.signum(exactBinF - prevTrackedBinF) * 15f
+                bestBin = Math.round(exactBinF)
+            }
+            
+            rawPath.add(ManualOrderAnchor(globalFrame, bestBin, isUserPlaced = false, exactBinF = exactBinF))
+            prevTrackedBinF = exactBinF
+        }
+        
+        // Smoothing (Moyenne glissante)
+        val smoothedPath = mutableListOf<ManualOrderAnchor>()
+        val smoothingWindow = 2 // Fenetre de 5 points (-2 a +2)
+        for (i in rawPath.indices) {
+            val anchor = rawPath[i]
+            if (anchor.isUserPlaced) {
+                smoothedPath.add(anchor)
+                continue
+            }
+            var sumBinF = 0f
+            var count = 0
+            for (j in -smoothingWindow..smoothingWindow) {
+                val idx = i + j
+                if (idx in rawPath.indices) {
+                    sumBinF += rawPath[idx].exactBinF
+                    count++
+                }
+            }
+            val avgBinF = sumBinF / count
+            smoothedPath.add(ManualOrderAnchor(anchor.frameIndex, Math.round(avgBinF), false, avgBinF))
+        }
+        
+        _currentSmartPath.value = smoothedPath
+    }
+
+    fun validateCurrentOrder(customName: String? = null) {
+        val path = _currentSmartPath.value
+        if (path.isEmpty()) return
+        
+        val reportHistory = _reportFftHistory.value
+        val telemHistory = _telemetryHistory.value
+        val sampleRate = _loadedWavData.value?.sampleRate ?: 44100
+        val nyquist = sampleRate / 2.0
+        val totalBins = if (reportHistory.isNotEmpty()) reportHistory[0].size else 2048
+        val df = nyquist / totalBins
+
+        var minRpm: Int? = null
+        var maxRpm: Int? = null
+        var minSpeed: Float? = null
+        var maxSpeed: Float? = null
+        var minFreqHz = Int.MAX_VALUE
+        var maxFreqHz = Int.MIN_VALUE
+        var maxEmergence = -100.0
+
+        for (anchor in path) {
+            val f = anchor.frameIndex
+            if (f in reportHistory.indices) {
+                val b = anchor.binIndex.coerceIn(0, totalBins - 1)
+                val freqHz = (b * df).toInt()
+                if (freqHz < minFreqHz) minFreqHz = freqHz
+                if (freqHz > maxFreqHz) maxFreqHz = freqHz
+                
+                val emergence = reportHistory[f][b]
+                if (emergence > maxEmergence) maxEmergence = emergence
+            }
+            
+            if (f in telemHistory.indices) {
+                val telem = telemHistory[f]
+                val speed = if (_kinematicsConfig.value.isEnabled) telem.theoreticalSpeedKmh else telem.speedKmh
+                if (speed > 1.0f) {
+                    if (minSpeed == null || speed < minSpeed) minSpeed = speed
+                    if (maxSpeed == null || speed > maxSpeed) maxSpeed = speed
+                    
+                    val rpm = _kinematicsConfig.value.calculateRpm(speed).toInt()
+                    if (rpm > 100) {
+                        if (minRpm == null || rpm < minRpm) minRpm = rpm
+                        if (maxRpm == null || rpm > maxRpm) maxRpm = rpm
+                    }
+                }
+            }
+        }
+
+        if (minFreqHz == Int.MAX_VALUE) minFreqHz = 0
+        if (maxFreqHz == Int.MIN_VALUE) maxFreqHz = 0
+
+        val count = _manualTrackedOrders.value.size
+        val name = customName?.takeIf { it.isNotBlank() } ?: "Ordre ${count + 1}"
+        
+        val colors = listOf(
+            androidx.compose.ui.graphics.Color(0xFFB026FF),
+            androidx.compose.ui.graphics.Color(0xFFFF1493),
+            androidx.compose.ui.graphics.Color(0xFF32CD32),
+            androidx.compose.ui.graphics.Color(0xFFFFA500),
+            androidx.compose.ui.graphics.Color(0xFF8A2BE2),
+            androidx.compose.ui.graphics.Color(0xFF00FFFF),
+            androidx.compose.ui.graphics.Color(0xFFFFD700)
+        )
+        val color = colors[count % colors.size]
+
+        val order = SmartTrackedOrder(
+            name = name,
+            color = color,
+            path = path,
+            minRpm = minRpm,
+            maxRpm = maxRpm,
+            minSpeedKmh = minSpeed,
+            maxSpeedKmh = maxSpeed,
+            minFreqHz = minFreqHz,
+            maxFreqHz = maxFreqHz,
+            maxEmergenceDb = maxEmergence
+        )
+
+        _manualTrackedOrders.value = _manualTrackedOrders.value + order
+        clearCurrentSmartTrack()
+    }
+
+    fun savePdfToUri(context: android.content.Context, uri: android.net.Uri) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { outStream ->
+                    com.example.nvhspectro.utils.PdfReportGenerator.generateReport(
+                        context = context,
+                        outStream = outStream,
+                        historyAbs = _reportFftHistoryAbsolute.value,
+                        historyTtnr = _reportFftHistoryTTNR.value,
+                        minDb = _minDb.value,
+                        maxDb = _maxDb.value,
+                        trackedOrders = _manualTrackedOrders.value,
+                        kinematicsConfig = _kinematicsConfig.value
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
 }
