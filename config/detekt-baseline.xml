@@ -248,6 +248,7 @@
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0xFF32CD32</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0xFF8A2BE2</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0xFFB026FF</ID>
+    <ID>MagicNumber:MainViewModel.kt$MainViewModel$0xFFFF</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0xFFFF1493</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0xFFFFA500</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0xFFFFD700</ID>
@@ -639,13 +640,12 @@
     <ID>MaxLineLength:MainScreen.kt$}</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$" {\"index\": $idx, \"speedKmh\": ${item.speedKmh}, \"accelerationG\": ${item.accelerationG}, \"lat\": ${item.latitude}, \"lng\": ${item.longitude}, \"gpsStatus\": \"${item.gpsStatus}\"}"</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$"⏱️ Analyse limitée aux ${WavDataReader.MAX_DURATION_SEC / 60} premières minutes de la vidéo"</ID>
-    <ID>MaxLineLength:MainViewModel.kt$MainViewModel$BiQuadFilter(filter.type, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), originalData.sampleRate.toDouble(), q)</ID>
+    <ID>MaxLineLength:MainViewModel.kt$MainViewModel$BiQuadFilter(filter.type, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), data.sampleRate.toDouble(), q)</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$_processingEstimateMessage.value = "⏳ Traitement du spectrogramme en cours...\nVidéo (${min}m ${sec}s) | Temps estimé: ~${estimatedSec} s"</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$currentFrameSpectrum[orderIndex] = maxOf(currentFrameSpectrum[orderIndex], ttnrVal.toFloat())</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$existingReport.maxEmergenceDb = maxOf(existingReport.maxEmergenceDb, ema[j].toDouble())</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$existingReport.maxEmergenceDb = maxOf(existingReport.maxEmergenceDb, localEmaSpectrum[j].toDouble())</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$fun</ID>
-    <ID>MaxLineLength:MainViewModel.kt$MainViewModel$private</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$rawPath.add(ManualOrderAnchor(globalFrame, pt.binIndex, isUserPlaced = true, exactBinF = pt.binIndex.toFloat()))</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$val</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$val finalTheo = if (rawTelem.theoreticalSpeedKmh &gt; 0.1f) rawTelem.theoreticalSpeedKmh else rawTelem.speedKmh</ID>
@@ -741,12 +741,12 @@
     <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$fun generateReport( context: Context, outStream: OutputStream, historyAbs: List&lt;DoubleArray&gt;, historyTtnr: List&lt;DoubleArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
     <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;DoubleArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap?</ID>
     <ID>NestedBlockDepth:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
-    <ID>PrintStackTrace:MainViewModel.kt$MainViewModel$e</ID>
     <ID>PrintStackTrace:VideoAudioExtractor.kt$VideoAudioExtractor$e</ID>
     <ID>ReturnCount:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$fun update(elapsedRealtimeNanos: Long, measuredMps: Float)</ID>
     <ID>ReturnCount:MainViewModel.kt$MainViewModel$fun getExpectedBinF(globalFrame: Int): Float</ID>
     <ID>ReturnCount:MainViewModel.kt$MainViewModel$private fun recalculateSmartPath()</ID>
     <ID>ReturnCount:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;DoubleArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap?</ID>
+    <ID>ReturnCount:PlaybackController.kt$PlaybackController$private suspend fun prepare(file: File?, uri: Uri?): Long?</ID>
     <ID>ReturnCount:SpectrogramColormap.kt$fun getFreqY(freqHz: Float): Float</ID>
     <ID>ReturnCount:SpeedProvider.kt$SpeedProvider$private fun qualityOf(fix: Location?, nowNanos: Long): GpsStatus</ID>
     <ID>ReturnCount:TimelineMapper.kt$TimelineMapper$fun mapIndex(index: Int, fromSize: Int, toSize: Int): Int</ID>
@@ -757,6 +757,7 @@
     <ID>SwallowedException:AudioRepository.kt$AudioRepository$e: Exception</ID>
     <ID>SwallowedException:MainViewModel.kt$MainViewModel$e: Exception</ID>
     <ID>SwallowedException:PdfReportGenerator.kt$PdfReportGenerator$e: Exception</ID>
+    <ID>SwallowedException:PlaybackController.kt$PlaybackController$e: Exception</ID>
     <ID>SwallowedException:RecordingStore.kt$RecordingStore$e: Exception</ID>
     <ID>SwallowedException:WavDataReader.kt$WavDataReader$e: Exception</ID>
     <ID>ThrowsCount:RecordingStore.kt$RecordingStore$fun insertAndWrite(displayName: String, mime: String, write: (java.io.OutputStream) -&gt; Unit): Uri</ID>
@@ -764,6 +765,7 @@
     <ID>TooGenericExceptionCaught:FieldLocationLogger.kt$FieldLocationLogger$e: Exception</ID>
     <ID>TooGenericExceptionCaught:MainViewModel.kt$MainViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:PdfReportGenerator.kt$PdfReportGenerator$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:PlaybackController.kt$PlaybackController$e: Exception</ID>
     <ID>TooGenericExceptionCaught:RecordingStore.kt$RecordingStore$e: Exception</ID>
     <ID>TooGenericExceptionCaught:SpeedProvider.kt$SpeedProvider$e: Exception</ID>
     <ID>TooGenericExceptionCaught:VideoAudioExtractor.kt$VideoAudioExtractor$e: Exception</ID>

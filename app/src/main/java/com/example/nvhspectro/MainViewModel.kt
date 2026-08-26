@@ -8,8 +8,6 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Typeface
-import android.media.AudioAttributes
-import android.media.MediaPlayer
 import java.io.File
 import android.os.Environment
 import android.provider.MediaStore
@@ -27,6 +25,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -76,54 +75,63 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val originalData = _loadedWavData.value ?: return
         val filters = _activeFilters.value
         val context = getApplication<android.app.Application>()
-        
+
+        // [L2] Rapid filter toggles no longer race on the temp file/player.
+        filterJob?.cancel()
+
         if (filters.isEmpty()) {
-            val currentPos = mediaPlayer?.currentPosition ?: 0
-            val wasPlaying = _isWavPlaying.value || mediaPlayer?.isPlaying == true
-            initMediaPlayer(wavFile = currentOriginalAudioFile, uri = currentOriginalAudioUri, context = context)
-            mediaPlayer?.seekTo(currentPos)
-            if (wasPlaying) {
-                mediaPlayer?.start()
+            filterJob = viewModelScope.launch {
+                val currentPos = playback.currentPositionMs
+                val wasPlaying = _isWavPlaying.value || playback.isPlaying
+                playback.restoreOriginalSource()
+                playback.seekTo(currentPos)
+                if (wasPlaying) playback.play()
             }
             return
         }
 
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            val pcm = originalData.pcmSamples
-            val filteredPcm = ShortArray(pcm.size)
-            
-            // Instanciation des biquads
-            // Cascading 4 times with specific Q factors for a true 8th-order Butterworth filter (-48 dB/octave)
-            // Cela Ǹvite que le filtre "bave" avant la frǸquence de coupure.
-            val qFactors = listOf(0.509795579, 0.601344887, 0.899976223, 2.562915448)
-            val biquads = filters.flatMap { filter ->
-                qFactors.map { q ->
-                    BiQuadFilter(filter.type, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), originalData.sampleRate.toDouble(), q)
-                }
-            }
-            
-            for (i in pcm.indices) {
-                var sample = pcm[i].toDouble()
-                for (bq in biquads) {
-                    sample = bq.processSample(sample)
-                }
-                filteredPcm[i] = sample.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
-            }
-            
+        filterJob = viewModelScope.launch(Dispatchers.Default) {
+            // [L2] Capture position BEFORE the seconds-long filtering, not after.
+            val currentPos = playback.currentPositionMs
+            val wasPlaying = _isWavPlaying.value || playback.isPlaying
+
+            val filteredPcm = renderFilteredPcm(originalData, filters, coroutineContext)
+
             val tempFile = File(context.cacheDir, "filtered_playback.wav")
             WavAudioWriter.writePcmToWav(filteredPcm, tempFile, originalData.sampleRate)
-            
-            withContext(kotlinx.coroutines.Dispatchers.Main) {
-                val currentPos = mediaPlayer?.currentPosition ?: 0
-                val wasPlaying = _isWavPlaying.value || mediaPlayer?.isPlaying == true
-                
-                initMediaPlayer(wavFile = tempFile)
-                mediaPlayer?.seekTo(currentPos)
-                if (wasPlaying) {
-                    mediaPlayer?.start()
-                }
+
+            withContext(Dispatchers.Main) {
+                playback.setFilteredSource(tempFile)
+                playback.seekTo(currentPos)
+                if (wasPlaying) playback.play()
             }
         }
+    }
+
+    /** Runs the biquad chain over the whole PCM. Cancellation-cooperative. */
+    private fun renderFilteredPcm(
+        data: LoadedWavData,
+        filters: List<AudioFilter>,
+        context: kotlin.coroutines.CoroutineContext
+    ): ShortArray {
+        val pcm = data.pcmSamples
+        val filteredPcm = ShortArray(pcm.size)
+        // Cascade de 4 sections aux Q de Butterworth 8e ordre (-48 dB/octave)
+        val qFactors = listOf(0.509795579, 0.601344887, 0.899976223, 2.562915448)
+        val biquads = filters.flatMap { filter ->
+            qFactors.map { q ->
+                BiQuadFilter(filter.type, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), data.sampleRate.toDouble(), q)
+            }
+        }
+        for (i in pcm.indices) {
+            if (i and 0xFFFF == 0) context.ensureActive() // [L2] cancellable mid-render
+            var sample = pcm[i].toDouble()
+            for (bq in biquads) {
+                sample = bq.processSample(sample)
+            }
+            filteredPcm[i] = sample.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+        }
+        return filteredPcm
     }
 
     private val _trackedHarmonicTags = MutableStateFlow<List<TrackedHarmonicTag>>(emptyList())
@@ -136,6 +144,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateKinematicsConfig(config: KinematicsConfig) {
         _kinematicsConfig.value = config
+        resetAnalysisState() // [L7] a new V1000 remaps every order index
         if (_audioSourceMode.value == AudioSourceMode.WAV_ANALYZER && _loadedWavData.value != null) {
             recalculateOrderTrackingForWav()
             processWavFrameAt(_wavPlaybackPositionMs.value)
@@ -145,6 +154,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateSelectedTrackedOrder(order: Double) {
         val currentConfig = _kinematicsConfig.value
         _kinematicsConfig.value = currentConfig.copy(selectedTrackedOrder = order)
+        resetAnalysisState() // [L7]
         if (_audioSourceMode.value == AudioSourceMode.WAV_ANALYZER && _loadedWavData.value != null) {
             recalculateOrderTrackingForWav()
             processWavFrameAt(_wavPlaybackPositionMs.value)
@@ -154,6 +164,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun clearEmergenceReport() {
         liveEngine.reset()
         _emergenceReportEntries.value = emptyList()
+        _trackedHarmonicTags.value = emptyList()
+    }
+
+    /**
+     * [L7] Full analysis-state wipe on every source/config transition — the
+     * audit's mode-transition table is the contract: no EMA built under a
+     * previous config may survive into the next one (ghost tags).
+     */
+    private fun resetAnalysisState() {
+        liveEngine.reset()
+        wavTagsByFrame = emptyMap()
+        _latestTTNRSpectrum.value = DoubleArray(0)
         _trackedHarmonicTags.value = emptyList()
     }
     
@@ -283,6 +305,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         processingJob?.cancel()
 
         stopWavPlayback()
+        playback.release()
+        resetAnalysisState() // [L7] no ghost EMA/tags across mode transitions
         _analysisNotice.value = null
         _loadedWavData.value = null
         _loadedWavFileName.value = null
@@ -302,39 +326,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _showWavSelectionDialog.value = false
     }
 
-    private var mediaPlayer: MediaPlayer? = null
-    private var currentOriginalAudioFile: File? = null
-    private var currentOriginalAudioUri: android.net.Uri? = null
-
-    private fun initMediaPlayer(wavFile: File? = null, uri: android.net.Uri? = null, context: android.content.Context? = null) {
-        if (wavFile?.name != "filtered_playback.wav") {
-            currentOriginalAudioFile = wavFile
-            currentOriginalAudioUri = uri
-        }
-        try {
-            mediaPlayer?.release()
-            mediaPlayer = MediaPlayer().apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .build()
-                )
-                if (wavFile != null) {
-                    setDataSource(wavFile.absolutePath)
-                } else if (uri != null && context != null) {
-                    setDataSource(context, uri)
-                }
-                prepare()
-                setOnCompletionListener {
-                    _isWavPlaying.value = false
-                    _loadedWavData.value?.let { d -> _wavPlaybackPositionMs.value = d.durationMs }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+    // [L1/L2/L4] Un seul proprietaire du MediaPlayer : prepare async, sources
+    // originale/filtree explicites, release garanti dans onCleared.
+    private val playback = PlaybackController().also { pc ->
+        pc.onCompletion = {
+            _isWavPlaying.value = false
+            _loadedWavData.value?.let { d -> _wavPlaybackPositionMs.value = d.durationMs }
         }
     }
+    private var filterJob: Job? = null
 
     // [C16] Guards against a stale load completing after a newer one started.
     private var wavLoadGeneration = 0
@@ -349,7 +349,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val result = WavDataReader.readWavFromUri(context, uri, jsonText)
             withContext(Dispatchers.Main) {
                 if (gen != wavLoadGeneration) return@withContext
-                handleWavResult(result, name) { initMediaPlayer(uri = uri, context = context) }
+                handleWavResult(result, name) { playback.setOriginalSource(context, null, uri) }
             }
         }
     }
@@ -371,12 +371,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** [C2] Typed import result: success feeds the pipeline, rejection feeds the notice banner. */
-    private fun handleWavResult(result: WavReadResult, fileName: String, initPlayer: () -> Unit) {
+    private suspend fun handleWavResult(result: WavReadResult, fileName: String, prepareSource: suspend () -> Long?) {
         when (result) {
             is WavReadResult.Success -> {
                 val data = result.data
-                initPlayer()
-                val mediaDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 }
+                val mediaDuration = prepareSource()
                 // [C3] The playback timeline must never exceed the analyzed PCM range —
                 // the old max-of-both desynchronized playhead and spectrum for >5-min files.
                 val exactDuration = minOf(mediaDuration ?: data.durationMs, data.durationMs)
@@ -453,8 +452,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             if (data != null) {
                 withContext(Dispatchers.Main) {
-                    initMediaPlayer(uri = uri, context = context)
-                    val mediaDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 }
+                    val mediaDuration = playback.setOriginalSource(context, null, uri)
                     // [C3] Analyzed PCM bounds the timeline; a longer container means the cap was hit.
                     val exactDuration = minOf(mediaDuration ?: data.durationMs, data.durationMs)
                     if (mediaDuration != null && mediaDuration > data.durationMs + 1500L) {
@@ -801,19 +799,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (_isWavPlaying.value) return
         _isWavPlaying.value = true
 
-        try {
-            mediaPlayer?.let { player ->
-                if (_wavPlaybackPositionMs.value >= data.durationMs) {
-                    _wavPlaybackPositionMs.value = 0L
-                    player.seekTo(0)
-                } else {
-                    player.seekTo(_wavPlaybackPositionMs.value.toInt())
-                }
-                player.start()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        if (_wavPlaybackPositionMs.value >= data.durationMs) {
+            _wavPlaybackPositionMs.value = 0L
+            playback.seekTo(0)
+        } else {
+            playback.seekTo(_wavPlaybackPositionMs.value.toInt())
         }
+        playback.play()
 
         wavPlaybackJob?.cancel()
         wavPlaybackJob = viewModelScope.launch {
@@ -822,7 +814,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val stepMs = ((stepSize.toDouble() / sampleRate.toDouble()) * 1000.0).toLong().coerceAtLeast(15L)
 
             while (_isWavPlaying.value && _wavPlaybackPositionMs.value < data.durationMs) {
-                val currentMpPos = mediaPlayer?.currentPosition?.toLong() ?: _wavPlaybackPositionMs.value
+                val currentMpPos = playback.currentPositionMs.toLong()
                 _wavPlaybackPositionMs.value = currentMpPos.coerceIn(0L, data.durationMs)
                 processWavFrameAt(_wavPlaybackPositionMs.value)
                 delay(stepMs)
@@ -833,13 +825,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _wavPlaybackPositionMs.value = data.durationMs
                 // [C3] For cap-truncated files the media outlives the analyzed range —
                 // stop the player at the analyzed end instead of playing on unanalyzed audio.
-                try {
-                    if (mediaPlayer?.isPlaying == true) {
-                        mediaPlayer?.pause()
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                playback.pause()
             }
         }
     }
@@ -848,38 +834,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _isWavPlaying.value = false
         wavPlaybackJob?.cancel()
         wavPlaybackJob = null
-        try {
-            if (mediaPlayer?.isPlaying == true) {
-                mediaPlayer?.pause()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        playback.pause()
     }
 
     fun stopWavPlayback() {
         pauseWavPlayback()
         _wavPlaybackPositionMs.value = 0L
-        try {
-            if (mediaPlayer?.isPlaying == true) {
-                mediaPlayer?.stop()
-            }
-            mediaPlayer?.release()
-            mediaPlayer = null
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        // [L6] Player stays prepared (restart works without a reload);
+        // release happens on source change, mode exit, and onCleared.
+        playback.seekTo(0)
     }
 
     fun seekWavTo(posMs: Long) {
         val data = _loadedWavData.value ?: return
         val clamped = posMs.coerceIn(0L, data.durationMs)
         _wavPlaybackPositionMs.value = clamped
-        try {
-            mediaPlayer?.seekTo(clamped.toInt())
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        playback.seekTo(clamped.toInt())
         processWavFrameAt(clamped)
     }
 
@@ -1974,6 +1944,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         _manualTrackedOrders.value = _manualTrackedOrders.value + order
         clearCurrentSmartTrack()
+    }
+
+    /** [L1] Every owned resource has a release path on ViewModel death. */
+    override fun onCleared() {
+        captureEngine.setEnabled(false)
+        speedProvider.stop()
+        playback.release()
+        audioRepository.stopAudioCapture()
+        analysisDispatcher.close()
+        super.onCleared()
     }
 
     fun savePdfToUri(context: android.content.Context, uri: android.net.Uri) {
