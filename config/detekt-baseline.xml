@@ -6,6 +6,7 @@
     <ID>ComplexCondition:SpectrogramColormap.kt$ttnr &gt;= reqThreshold &amp;&amp; absVal &gt;= reqGate &amp;&amp; (prevTtnr &gt; 0.5 || nextTtnr &gt; 0.5)</ID>
     <ID>ComplexCondition:SpectrogramColormap.kt$w &lt;= 0 || h &lt;= 0 || plotWidth &lt;= 50f || plotHeight &lt;= 50f</ID>
     <ID>ComplexCondition:TelemetryGraph.kt$metric == TelemetryMetric.ORDER &amp;&amp; (!isKinematicsEnabled || (history.isNotEmpty() &amp;&amp; history.none { it.theoreticalSpeedKmh &gt; 1.0f || it.speedKmh &gt; 1.0f }))</ID>
+    <ID>CyclomaticComplexMethod:AudioRepository.kt$AudioRepository$@SuppressLint("MissingPermission") fun startAudioCapture(fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE): Flow&lt;ShortArray&gt;</ID>
     <ID>CyclomaticComplexMethod:FFTProcessor.kt$FFTProcessor$fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</ID>
     <ID>CyclomaticComplexMethod:KinematicsDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun KinematicsDialog( currentConfig: KinematicsConfig, onDismiss: () -&gt; Unit, onSave: (KinematicsConfig) -&gt; Unit )</ID>
     <ID>CyclomaticComplexMethod:MainScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppScreen(viewModel: MainViewModel)</ID>
@@ -122,10 +123,10 @@
     <ID>LongParameterList:VideoPlayerView.kt$( videoUri: Uri?, youtubeUrl: String?, videoTitle: String, isPlaying: Boolean, positionMs: Long, durationMs: Long, onSeekTo: (Long) -&gt; Unit, onTogglePlayPause: () -&gt; Unit, onOpenVideoSelection: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
     <ID>LongParameterList:WavPlayerBar.kt$( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit )</ID>
     <ID>LongParameterList:WavRoundTripTest.kt$WavRoundTripTest$( sampleRate: Int, channels: Int, bits: Int, pcmBytes: ByteArray, extraChunkBeforeData: Boolean = false, audioFormat: Int = 1 )</ID>
+    <ID>LoopWithTooManyJumpStatements:AudioRepository.kt$AudioRepository$while</ID>
     <ID>LoopWithTooManyJumpStatements:FFTProcessor.kt$FFTProcessor$for</ID>
     <ID>LoopWithTooManyJumpStatements:MainViewModel.kt$MainViewModel$for</ID>
     <ID>LoopWithTooManyJumpStatements:SpectrogramColormap.kt$for</ID>
-    <ID>MagicNumber:AudioRepository.kt$AudioRepository$2048</ID>
     <ID>MagicNumber:BiQuadFilter.kt$BiQuadFilter$2.0</ID>
     <ID>MagicNumber:Color.kt$0xFF625b71</ID>
     <ID>MagicNumber:Color.kt$0xFF6650a4</ID>
@@ -763,10 +764,12 @@
     <ID>ReturnCount:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
     <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun ByteArray.startsWith(ascii: String): Boolean</ID>
     <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun parseWavStream(stream: InputStream, jsonText: String?): WavReadResult</ID>
+    <ID>SwallowedException:AudioRepository.kt$AudioRepository$e: Exception</ID>
     <ID>SwallowedException:MainViewModel.kt$MainViewModel$e: Exception</ID>
     <ID>SwallowedException:PdfReportGenerator.kt$PdfReportGenerator$e: Exception</ID>
     <ID>SwallowedException:TelemetryRepository.kt$TelemetryRepository$e: Exception</ID>
     <ID>SwallowedException:WavDataReader.kt$WavDataReader$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AudioRepository.kt$AudioRepository$e: Exception</ID>
     <ID>TooGenericExceptionCaught:FieldLocationLogger.kt$FieldLocationLogger$e: Exception</ID>
     <ID>TooGenericExceptionCaught:MainViewModel.kt$MainViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:PdfReportGenerator.kt$PdfReportGenerator$e: Exception</ID>

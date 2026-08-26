@@ -44,7 +44,7 @@ enum class AudioSourceMode {
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     
-    private val audioRepository = AudioRepository()
+    private val audioRepository = AudioRepository(application)
     private val telemetryRepository = TelemetryRepository(application)
     private var fftProcessor = FFTProcessor(AudioConfig.DEFAULT_FFT_SIZE, AudioConfig.LIVE_SAMPLE_RATE_HZ)
     private var processingJob: kotlinx.coroutines.Job? = null
@@ -1070,6 +1070,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         jsonContent.append("  \"folderName\": \"$folderName\",\n")
         jsonContent.append("  \"durationSec\": ${_recordingElapsedSec.value},\n")
         jsonContent.append("  \"sampleRate\": ${AudioConfig.LIVE_SAMPLE_RATE_HZ},\n")
+        jsonContent.append("  \"captureSource\": \"${audioRepository.captureSourceLabel}\",\n")
         jsonContent.append("  \"telemetryCount\": ${recordedTelemetryList.size},\n")
         jsonContent.append("  \"telemetryData\": [\n")
         
@@ -1224,11 +1225,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         
-        // 2. Producteur Audio
+        // 2. Producteur Audio — [C9] un échec micro devient un bandeau, pas un crash.
         viewModelScope.launch {
-            audioRepository.startAudioCapture(_fftSize.value).collect { audioBuffer ->
-                audioBufferChannel.trySend(AudioFrame(System.currentTimeMillis(), audioBuffer, _telemetryState.value.copy()))
-            }
+            audioRepository.startAudioCapture(_fftSize.value)
+                .catch { e ->
+                    _analysisNotice.value = "🎙️ ${e.message ?: "Capture micro impossible"}"
+                }
+                .collect { audioBuffer ->
+                    audioBufferChannel.trySend(AudioFrame(System.currentTimeMillis(), audioBuffer, _telemetryState.value.copy()))
+                }
         }
 
         // 3. Consommateur Audio (avec délai conditionnel d'1 seconde en GMPe Live)
