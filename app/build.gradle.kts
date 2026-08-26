@@ -4,8 +4,13 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
 }
 
+// Single source of truth for the app version [audit B1].
+// The About dialog reads BuildConfig.VERSION_NAME; the APK name derives from it.
+val appVersionName = "13.2.0"
+val appVersionCode = 13
+
 base {
-    archivesName.set("APP_NVH_Spectro_v12")
+    archivesName.set("APP_NVH_Spectro_v$appVersionName")
 }
 
 android {
@@ -15,8 +20,8 @@ android {
         applicationId = "com.example.nvhspectro"
         minSdk = 24
         targetSdk = 36
-        versionCode = 12
-        versionName = "12.1.4"
+        versionCode = appVersionCode
+        versionName = appVersionName
     }
 
     buildTypes {
@@ -37,7 +42,7 @@ android {
     buildFeatures {
       compose = true
       aidl = false
-      buildConfig = false
+      buildConfig = true
       shaders = false
     }
 
@@ -85,11 +90,6 @@ dependencies {
   androidTestImplementation(libs.androidx.test.ext.junit)
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.espresso.core)
-
-  // Navigation
-  implementation(libs.androidx.navigation3.ui)
-  implementation(libs.androidx.navigation3.runtime)
-  implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
   // Location Services
   implementation("com.google.android.gms:play-services-location:21.0.1")

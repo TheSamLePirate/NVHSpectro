@@ -13,3 +13,15 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# --- AAA Phase 0 additions (plan step 0.1) ---
+build/
+*.apk
+*.aab
+.kotlin/
+/extracted_images/
+*.pptx
+/.idea/deviceManager.xml
+/.idea/deploymentTargetSelector.xml
+/@run-emulator.sh
+.tools/

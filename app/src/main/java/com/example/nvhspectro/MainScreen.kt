@@ -99,6 +99,7 @@ fun AppScreen(viewModel: MainViewModel) {
     val showAudioModeMenu by viewModel.showAudioModeMenu.collectAsState()
     val showWavSelectionDialog by viewModel.showWavSelectionDialog.collectAsState()
     val loadedWavData by viewModel.loadedWavData.collectAsState()
+    val analysisNotice by viewModel.analysisNotice.collectAsState()
     val loadedWavFileName by viewModel.loadedWavFileName.collectAsState()
     val wavPlaybackPositionMs by viewModel.wavPlaybackPositionMs.collectAsState()
     val isWavPlaying by viewModel.isWavPlaying.collectAsState()
@@ -132,6 +133,9 @@ fun AppScreen(viewModel: MainViewModel) {
 
     val isWavMode = (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER || audioSourceMode == com.example.nvhspectro.AudioSourceMode.VIDEO)
     val isVideoMode = (audioSourceMode == com.example.nvhspectro.AudioSourceMode.VIDEO)
+    // [C1] The rate every frequency axis/order computation must use: the loaded
+    // file's own rate in analyzer/video mode, the live capture rate otherwise.
+    val analysisSampleRate = if (isWavMode) (loadedWavData?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ) else AudioConfig.LIVE_SAMPLE_RATE_HZ
     val wavProgress = if (loadedWavData != null && (loadedWavData?.durationMs ?: 0L) > 0) (wavPlaybackPositionMs.toFloat() / loadedWavData!!.durationMs.toFloat()) else 0f
 
     var showInfoDialog by remember { mutableStateOf(false) }
@@ -414,8 +418,8 @@ fun AppScreen(viewModel: MainViewModel) {
                     maxDb = maxDb,
                     minFreq = minFreq,
                     maxFreq = maxFreq,
-                    fftSize = fftSize,
-                    sampleRate = 44100,
+                    fftSize = if (isWavMode) AudioConfig.WAV_FFT_SIZE else fftSize,
+                    sampleRate = analysisSampleRate,
                     historySize = if (isWavMode && fftHistoryAbsolute.isNotEmpty()) fftHistoryAbsolute.size else viewModel.historySize,
                     displayMode = displayMode,
                     isDetectorEnabled = isDetectorEnabled,
@@ -638,8 +642,26 @@ fun AppScreen(viewModel: MainViewModel) {
                             }
                         }
                     }
+
+                    // Bandeau analyse [C2/C3] : rejets de fichiers, troncature. Tap = fermer.
+                    analysisNotice?.let { notice ->
+                        Surface(
+                            color = Color(0xE6301B0F),
+                            shape = RoundedCornerShape(4.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B)),
+                            modifier = Modifier.clickable { viewModel.dismissAnalysisNotice() }
+                        ) {
+                            Text(
+                                text = "$notice   ✕",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFFE0B2),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
                 }
-                
+
                 if (!processingEstimateMessage.isNullOrEmpty()) {
                     Surface(
                         color = Color(0xF00F172A),
@@ -689,201 +711,202 @@ fun AppScreen(viewModel: MainViewModel) {
             if (!isReportModeActive) {
                 // Lecteur WAV (si un fichier est chargé en mode Analyseur WAV)
                 if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER && loadedWavData != null) {
-                com.example.nvhspectro.ui.WavPlayerBar(
-                    fileName = loadedWavFileName ?: "fichier.wav",
-                    currentPosMs = wavPlaybackPositionMs,
-                    totalDurationMs = loadedWavData?.durationMs ?: 0L,
-                    isPlaying = isWavPlaying,
-                    onPlayToggle = { viewModel.toggleWavPlayPause() },
-                    onSeekTo = { pos -> viewModel.seekWavTo(pos) },
-                    onStepSeconds = { sec -> viewModel.stepWavSeconds(sec) }
-                )
-            }
+                    com.example.nvhspectro.ui.WavPlayerBar(
+                        fileName = loadedWavFileName ?: "fichier.wav",
+                        currentPosMs = wavPlaybackPositionMs,
+                        totalDurationMs = loadedWavData?.durationMs ?: 0L,
+                        isPlaying = isWavPlaying,
+                        onPlayToggle = { viewModel.toggleWavPlayPause() },
+                        onSeekTo = { pos -> viewModel.seekWavTo(pos) },
+                        onStepSeconds = { sec -> viewModel.stepWavSeconds(sec) }
+                    )
+                }
 
-            // Zone 2: Données Véhicule / Télémétrie OU Lecteur Vidéo (Mode Vidéo)
-            if (isVideoMode) {
-                com.example.nvhspectro.ui.VideoPlayerView(
-                    videoUri = loadedVideoUri,
-                    youtubeUrl = loadedYouTubeUrl,
-                    videoTitle = loadedVideoTitle,
-                    isPlaying = isWavPlaying,
-                    positionMs = wavPlaybackPositionMs,
-                    durationMs = loadedWavData?.durationMs ?: 0L,
-                    onSeekTo = { pos -> viewModel.seekWavTo(pos) },
-                    onTogglePlayPause = { viewModel.toggleWavPlayPause() },
-                    onOpenVideoSelection = { viewModel.openVideoSelectionDialog() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(0.45f)
-                )
-            } else {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(0.45f)
-                        .padding(6.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-                ) {
-                    Column(
+                // Zone 2: Données Véhicule / Télémétrie OU Lecteur Vidéo (Mode Vidéo)
+                if (isVideoMode) {
+                    com.example.nvhspectro.ui.VideoPlayerView(
+                        videoUri = loadedVideoUri,
+                        youtubeUrl = loadedYouTubeUrl,
+                        videoTitle = loadedVideoTitle,
+                        isPlaying = isWavPlaying,
+                        positionMs = wavPlaybackPositionMs,
+                        durationMs = loadedWavData?.durationMs ?: 0L,
+                        onSeekTo = { pos -> viewModel.seekWavTo(pos) },
+                        onTogglePlayPause = { viewModel.toggleWavPlayPause() },
+                        onOpenVideoSelection = { viewModel.openVideoSelectionDialog() },
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                            .fillMaxWidth()
+                            .weight(0.45f)
+                    )
+                } else {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(0.45f)
+                            .padding(6.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
                     ) {
-                        // En-tête : Titre + Bouton H1 + LED Signal GPS
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "DONNÉES GPS",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
-                            )
-
-                            // Bouton 👁️ Hx intégré à l'en-tête (Si GMPe activé)
-                            if (kinematicsConfig.isEnabled) {
-                                val showH1Overlay by viewModel.showH1Overlay.collectAsState()
-                                val projectedOrder by viewModel.projectedOrder.collectAsState()
-                                val ordLabel = if (projectedOrder % 1.0 == 0.0) "H${projectedOrder.toInt()}" else "H%.1f".format(projectedOrder)
-                                
-                                FilterChip(
-                                    selected = showH1Overlay,
-                                    onClick = { viewModel.toggleH1Overlay() },
-                                    label = { Text("👁️ $ordLabel", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
-                                    trailingIcon = {
-                                        Text(
-                                            text = "⚙️",
-                                            fontSize = 12.sp,
-                                            modifier = Modifier
-                                                .padding(start = 4.dp)
-                                                .clickable { showProjectedOrderDialog = true }
-                                        )
-                                    },
-                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = Color(0x3300E5FF),
-                                        selectedLabelColor = Color(0xFF00E5FF),
-                                        containerColor = Color.Transparent,
-                                        labelColor = Color.Gray
-                                    ),
-                                    border = FilterChipDefaults.filterChipBorder(
-                                        enabled = true,
-                                        selected = showH1Overlay,
-                                        borderColor = Color.DarkGray,
-                                        selectedBorderColor = Color(0xFF00E5FF)
-                                    ),
-                                    modifier = Modifier.height(26.dp)
-                                )
-                            }
-
-                            // LED GPS
-                            GpsLedIndicator(status = telemetry.gpsStatus)
-                        }
-
-                        // Encart des valeurs instantanées (Vitesse, Accélération, Ordre Traqué)
-                        val ordVal = kinematicsConfig.selectedTrackedOrder
-                        val ordLabel = if (ordVal % 1.0 == 0.0) "H${ordVal.toInt()}" else "H%.1f".format(ordVal)
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround
-                        ) {
-                            val isGMPe = kinematicsConfig.isEnabled
-                            if (isGMPe) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(text = "Vitesse", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                                    Text(text = "GPS: %.1f".format(telemetry.speedKmh), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color.White)
-                                    Text(text = "Théo: %.1f".format(telemetry.theoreticalSpeedKmh), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color(0xFF0275D8))
-                                }
-                            } else {
-                                KpiItem("Vitesse", String.format("%.1f km/h", telemetry.speedKmh))
-                            }
-                            KpiItem("Accélération", String.format("%.2f g", telemetry.accelerationG))
-                            var throttledOrderDbFS by remember { mutableDoubleStateOf(-120.0) }
-                            var lastOrderUpdateTime by remember { mutableLongStateOf(0L) }
-                            
-                            val currentMillis = System.currentTimeMillis()
-                            if (currentMillis - lastOrderUpdateTime > 500 || kotlin.math.abs(throttledOrderDbFS - telemetry.trackedOrderDbFS) > 30.0) {
-                                throttledOrderDbFS = telemetry.trackedOrderDbFS
-                                lastOrderUpdateTime = currentMillis
-                            }
-
-                            KpiItem(
-                                "Ordre $ordLabel",
-                                when {
-                                    !kinematicsConfig.isEnabled -> "Inactif"
-                                    telemetry.speedKmh <= 1.0f -> "/"
-                                    else -> String.format("%.1f dBFS", throttledOrderDbFS)
-                                }
-                            )
-                        }
-
-                        Divider(color = Color.Gray.copy(alpha = 0.3f), thickness = 1.dp)
-
-                        // Onglets Sélecteurs de métrique pour le graphique 2D
-                        Row(
+                        Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 2.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
+                                .fillMaxSize()
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            TelemetryMetric.values().forEach { metric ->
-                                val isOrderMetric = (metric == TelemetryMetric.ORDER)
-                                val isSelected = (selectedMetric == metric)
-                                val chipText = if (isOrderMetric && kinematicsConfig.isEnabled) {
-                                    "Ordre ($ordLabel) ⚙️"
-                                } else {
-                                    metric.label
+                            // En-tête : Titre + Bouton H1 + LED Signal GPS
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "DONNÉES GPS",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
+                                )
+
+                                // Bouton 👁️ Hx intégré à l'en-tête (Si GMPe activé)
+                                if (kinematicsConfig.isEnabled) {
+                                    val showH1Overlay by viewModel.showH1Overlay.collectAsState()
+                                    val projectedOrder by viewModel.projectedOrder.collectAsState()
+                                    val ordLabel = if (projectedOrder % 1.0 == 0.0) "H${projectedOrder.toInt()}" else "H%.1f".format(projectedOrder)
+                                
+                                    FilterChip(
+                                        selected = showH1Overlay,
+                                        onClick = { viewModel.toggleH1Overlay() },
+                                        label = { Text("👁️ $ordLabel", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                                        trailingIcon = {
+                                            Text(
+                                                text = "⚙️",
+                                                fontSize = 12.sp,
+                                                modifier = Modifier
+                                                    .padding(start = 4.dp)
+                                                    .clickable { showProjectedOrderDialog = true }
+                                            )
+                                        },
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Color(0x3300E5FF),
+                                            selectedLabelColor = Color(0xFF00E5FF),
+                                            containerColor = Color.Transparent,
+                                            labelColor = Color.Gray
+                                        ),
+                                        border = FilterChipDefaults.filterChipBorder(
+                                            enabled = true,
+                                            selected = showH1Overlay,
+                                            borderColor = Color.DarkGray,
+                                            selectedBorderColor = Color(0xFF00E5FF)
+                                        ),
+                                        modifier = Modifier.height(26.dp)
+                                    )
                                 }
 
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        if (isOrderMetric && isSelected && kinematicsConfig.isEnabled) {
-                                            showOrderSelectionDialog = true
-                                        } else {
-                                            viewModel.selectMetric(metric)
-                                        }
-                                    },
-                                    label = {
-                                        Text(
-                                            text = chipText,
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                        )
+                                // LED GPS
+                                GpsLedIndicator(status = telemetry.gpsStatus)
+                            }
+
+                            // Encart des valeurs instantanées (Vitesse, Accélération, Ordre Traqué)
+                            val ordVal = kinematicsConfig.selectedTrackedOrder
+                            val ordLabel = if (ordVal % 1.0 == 0.0) "H${ordVal.toInt()}" else "H%.1f".format(ordVal)
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceAround
+                            ) {
+                                val isGMPe = kinematicsConfig.isEnabled
+                                if (isGMPe) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(text = "Vitesse", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                        Text(text = "GPS: %.1f".format(telemetry.speedKmh), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                                        Text(text = "Théo: %.1f".format(telemetry.theoreticalSpeedKmh), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color(0xFF0275D8))
+                                    }
+                                } else {
+                                    KpiItem("Vitesse", String.format("%.1f km/h", telemetry.speedKmh))
+                                }
+                                KpiItem("Accélération", String.format("%.2f g", telemetry.accelerationG))
+                                var throttledOrderDbFS by remember { mutableDoubleStateOf(-120.0) }
+                                var lastOrderUpdateTime by remember { mutableLongStateOf(0L) }
+                            
+                                val currentMillis = System.currentTimeMillis()
+                                if (currentMillis - lastOrderUpdateTime > 500 || kotlin.math.abs(throttledOrderDbFS - telemetry.trackedOrderDbFS) > 30.0) {
+                                    throttledOrderDbFS = telemetry.trackedOrderDbFS
+                                    lastOrderUpdateTime = currentMillis
+                                }
+
+                                KpiItem(
+                                    "Ordre $ordLabel",
+                                    when {
+                                        !kinematicsConfig.isEnabled -> "Inactif"
+                                        telemetry.speedKmh <= 1.0f -> "/"
+                                        else -> String.format("%.1f dBFS", throttledOrderDbFS)
                                     }
                                 )
                             }
-                        }
 
-                        // Zone Graphique 2D synchronisé 1-to-1
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .background(Color.Black.copy(alpha = 0.7f))
-                        ) {
-                            TelemetryGraph(
-                                history = telemetryHistory,
-                                metric = selectedMetric,
-                                timeWindowSec = if (isWavMode && loadedWavData != null) ((loadedWavData?.durationMs ?: 0L) / 1000.0) else timeWindowSec,
-                                historySize = if (isWavMode && fftHistoryAbsolute.isNotEmpty()) fftHistoryAbsolute.size else viewModel.historySize,
-                                ttnrSpectrum = latestTTNRSpectrum,
-                                minFreq = minFreq,
-                                maxFreq = maxFreq,
-                                isKinematicsEnabled = kinematicsConfig.isEnabled,
-                                selectedOrderName = ordLabel,
-                                isWavAnalyzerMode = isWavMode,
-                                wavPlaybackProgress = wavProgress
-                            )
+                            Divider(color = Color.Gray.copy(alpha = 0.3f), thickness = 1.dp)
+
+                            // Onglets Sélecteurs de métrique pour le graphique 2D
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TelemetryMetric.values().forEach { metric ->
+                                    val isOrderMetric = (metric == TelemetryMetric.ORDER)
+                                    val isSelected = (selectedMetric == metric)
+                                    val chipText = if (isOrderMetric && kinematicsConfig.isEnabled) {
+                                        "Ordre ($ordLabel) ⚙️"
+                                    } else {
+                                        metric.label
+                                    }
+
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            if (isOrderMetric && isSelected && kinematicsConfig.isEnabled) {
+                                                showOrderSelectionDialog = true
+                                            } else {
+                                                viewModel.selectMetric(metric)
+                                            }
+                                        },
+                                        label = {
+                                            Text(
+                                                text = chipText,
+                                                fontSize = 11.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+
+                            // Zone Graphique 2D synchronisé 1-to-1
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .background(Color.Black.copy(alpha = 0.7f))
+                            ) {
+                                TelemetryGraph(
+                                    history = telemetryHistory,
+                                    metric = selectedMetric,
+                                    timeWindowSec = if (isWavMode && loadedWavData != null) ((loadedWavData?.durationMs ?: 0L) / 1000.0) else timeWindowSec,
+                                    historySize = if (isWavMode && fftHistoryAbsolute.isNotEmpty()) fftHistoryAbsolute.size else viewModel.historySize,
+                                    ttnrSpectrum = latestTTNRSpectrum,
+                                    minFreq = minFreq,
+                                    maxFreq = maxFreq,
+                                    sampleRate = analysisSampleRate,
+                                    isKinematicsEnabled = kinematicsConfig.isEnabled,
+                                    selectedOrderName = ordLabel,
+                                    isWavAnalyzerMode = isWavMode,
+                                    wavPlaybackProgress = wavProgress
+                                )
+                            }
                         }
                     }
-                }
                 }
             }
         }
@@ -926,6 +949,7 @@ fun AppScreen(viewModel: MainViewModel) {
         if (showSettingsDialog) {
             com.example.nvhspectro.ui.SettingsDialog(
                 onDismiss = { showSettingsDialog = false },
+                sampleRateHz = analysisSampleRate,
                 activeFilters = activeFilters,
                 onAddFilter = { filter -> viewModel.addAudioFilter(filter) },
                 onRemoveFilter = { filterId -> viewModel.removeAudioFilter(filterId) },
@@ -1004,8 +1028,8 @@ fun AppScreen(viewModel: MainViewModel) {
         if (showWavSelectionDialog) {
             com.example.nvhspectro.ui.WavSelectionDialog(
                 onDismiss = { viewModel.closeWavSelectionDialog() },
-                onSelectEntry = { wavFile, jsonFile ->
-                    viewModel.loadWavFile(wavFile, jsonFile)
+                onSelectEntry = { wavUri, jsonUri ->
+                    viewModel.loadWavFromUri(context, wavUri, jsonUri)
                 },
                 onImportExternal = {
                     viewModel.closeWavSelectionDialog()

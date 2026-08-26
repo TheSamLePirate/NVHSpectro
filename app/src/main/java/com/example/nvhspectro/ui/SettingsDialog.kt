@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedTextField
 @Composable
 fun SettingsDialog(
     onDismiss: () -> Unit,
+    sampleRateHz: Int,
     minDb: Double,
     maxDb: Double,
     onMinDbChange: (Double) -> Unit,
@@ -47,7 +48,7 @@ fun SettingsDialog(
     onAddFilter: (AudioFilter) -> Unit = {},
     onRemoveFilter: (String) -> Unit = {}
 ) {
-    val sampleRate = 44100.0
+    val sampleRate = sampleRateHz.toDouble()
     val stepSize = fftSize / 2.0
     val dtStepMs = (stepSize / sampleRate) * 1000.0
     val tBlockMs = (fftSize / sampleRate) * 1000.0

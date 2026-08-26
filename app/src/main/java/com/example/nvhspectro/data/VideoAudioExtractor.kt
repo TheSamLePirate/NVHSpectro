@@ -5,6 +5,7 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
+import com.example.nvhspectro.AudioConfig
 import java.nio.ByteOrder
 
 object VideoAudioExtractor {
@@ -37,10 +38,8 @@ object VideoAudioExtractor {
                 return null
             }
 
-            val sampleRate = if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) format.getInteger(MediaFormat.KEY_SAMPLE_RATE) else 44100
+            val sampleRate = if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) format.getInteger(MediaFormat.KEY_SAMPLE_RATE) else AudioConfig.LIVE_SAMPLE_RATE_HZ
             val channelCount = if (format.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) else 1
-            val durationUs = if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
-
             val codec = MediaCodec.createDecoderByType(mime)
             codec.configure(format, null, null, 0)
             codec.start()
@@ -112,7 +111,9 @@ object VideoAudioExtractor {
                 pcmArray[i] = pcmList[i]
             }
 
-            val computedDurationMs = if (durationUs > 0) durationUs / 1000L else (pcmArray.size.toLong() * 1000L) / sampleRate
+            // [C3] Honest duration: what was actually extracted/analyzed, never the
+            // container's claim (which exceeds the PCM for >5-min videos).
+            val computedDurationMs = (pcmArray.size.toLong() * 1000L) / sampleRate
 
             LoadedWavData(
                 pcmSamples = pcmArray,

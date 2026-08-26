@@ -13,7 +13,7 @@ class BiQuadFilter(
     val type: FilterType,
     val minFreq: Double,
     val maxFreq: Double,
-    val sampleRate: Double = 44100.0,
+    val sampleRate: Double, // [C1] always the source's real rate — no default
     val q: Double = 0.707 // Butterworth Q factor
 ) {
     private var a0: Double = 0.0
@@ -22,9 +22,6 @@ class BiQuadFilter(
     private var b0: Double = 0.0
     private var b1: Double = 0.0
     private var b2: Double = 0.0
-
-    private var z1: Double = 0.0
-    private var z2: Double = 0.0
 
     init {
         calculateCoefficients()
@@ -110,22 +107,7 @@ class BiQuadFilter(
         b2 = b2_t / a0_t
     }
 
-    /**
-     * Applique le filtre BiQuad sur un échantillon et retourne l'échantillon filtré.
-     */
-    fun process(sample: Double): Double {
-        val output = b0 * sample + b1 * z1 + b2 * z2 - a1 * z1 - a2 * z2
-        // Update state
-        z2 = z1
-        z1 = sample
-        // Pour Direct Form I (qui est généralement meilleur en virgule flottante)
-        // Wait, the above is Direct Form II transposed or Direct Form II?
-        // Actually this looks like Direct Form I?
-        // Ah, let's use standard Direct Form I just to be safe.
-        return output
-    }
-    
-    // Correction Direct Form I :
+    // Etat Direct Form I
     private var x1: Double = 0.0
     private var x2: Double = 0.0
     private var y1: Double = 0.0
@@ -145,5 +127,19 @@ class BiQuadFilter(
         x2 = 0.0
         y1 = 0.0
         y2 = 0.0
+    }
+
+    /** Module |H(e^{jω})| à [freqHz] — pour vérification et tests [D4]. */
+    fun magnitudeAt(freqHz: Double): Double {
+        val w = 2.0 * PI * freqHz / sampleRate
+        val cos1 = cos(w)
+        val sin1 = sin(w)
+        val cos2 = cos(2.0 * w)
+        val sin2 = sin(2.0 * w)
+        val numRe = b0 + b1 * cos1 + b2 * cos2
+        val numIm = -(b1 * sin1 + b2 * sin2)
+        val denRe = 1.0 + a1 * cos1 + a2 * cos2
+        val denIm = -(a1 * sin1 + a2 * sin2)
+        return kotlin.math.sqrt((numRe * numRe + numIm * numIm) / (denRe * denRe + denIm * denIm))
     }
 }
