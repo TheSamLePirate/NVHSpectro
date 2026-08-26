@@ -22,6 +22,8 @@ import com.example.nvhspectro.data.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.Executors
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -45,8 +47,12 @@ enum class AudioSourceMode {
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private val audioRepository = AudioRepository(application)
-    private val telemetryRepository = TelemetryRepository(application)
-    private var fftProcessor = FFTProcessor(AudioConfig.DEFAULT_FFT_SIZE, AudioConfig.LIVE_SAMPLE_RATE_HZ)
+    private val speedProvider = SpeedProvider(application)
+    private val captureEngine = CaptureEngine(audioRepository) { msg -> _analysisNotice.value = msg }
+
+    // [C6, L3] Tout l'etat DSP live vit dans LiveAnalysisEngine, confine au thread nvh-dsp.
+    @Volatile
+    private var liveEngine = LiveAnalysisEngine(AudioConfig.DEFAULT_FFT_SIZE, AudioConfig.LIVE_SAMPLE_RATE_HZ)
     private var processingJob: kotlinx.coroutines.Job? = null
     
     // États Kinématiques GMPe & Rapport d'Émergence
@@ -126,9 +132,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _emergenceReportEntries = MutableStateFlow<List<EmergenceReportEntry>>(emptyList())
     val emergenceReportEntries: StateFlow<List<EmergenceReportEntry>> = _emergenceReportEntries.asStateFlow()
 
-    private val emaOrderSpectrum = FloatArray(1000) { 0f }
-    private var ttnrPersistenceCount = IntArray(0)
-    private val recentRawTTNRBuffer = mutableListOf<DoubleArray>()
     private var wavTagsByFrame = emptyMap<Int, List<TrackedHarmonicTag>>()
 
     fun updateKinematicsConfig(config: KinematicsConfig) {
@@ -149,8 +152,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clearEmergenceReport() {
-        ttnrPersistenceCount = IntArray(0)
-        recentRawTTNRBuffer.clear()
+        liveEngine.reset()
         _emergenceReportEntries.value = emptyList()
         _trackedHarmonicTags.value = emptyList()
     }
@@ -273,7 +275,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setAudioSourceMode(mode: AudioSourceMode) {
         if (_audioSourceMode.value == mode) return
         _audioSourceMode.value = mode
-        
+
+        // [C7] Micro et GPS actifs uniquement en mode LIVE.
+        captureEngine.setEnabled(mode == AudioSourceMode.LIVE && _isRecording.value)
+        if (mode == AudioSourceMode.LIVE) speedProvider.start() else speedProvider.stop()
+
         processingJob?.cancel()
 
         stopWavPlayback()
@@ -1149,14 +1155,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // the live setting there wiped the loaded spectrogram with no re-render.
             if (_audioSourceMode.value != AudioSourceMode.LIVE) return
             _fftSize.value = newFftSize
-            fftProcessor = FFTProcessor(newFftSize, AudioConfig.LIVE_SAMPLE_RATE_HZ)
+            // [C5] flatMapLatest restarts the capture cleanly - the old stop/start
+            // here stacked a new consumer on every change.
+            liveEngine = LiveAnalysisEngine(newFftSize, AudioConfig.LIVE_SAMPLE_RATE_HZ)
+            captureEngine.setFftSize(newFftSize)
             _fftHistoryAbsolute.value = emptyList()
             _fftHistoryTTNR.value = emptyList()
             _telemetryHistory.value = emptyList()
-            if (_isRecording.value) {
-                stopRecording()
-                startRecording()
-            }
         }
     }
     
@@ -1193,372 +1198,280 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private var previousTTNRSpectrum = DoubleArray(0)
-    
-    private data class AudioFrame(
-        val timestampMs: Long,
-        val buffer: ShortArray,
-        val telemetryAtCapture: TelemetryData
-    )
-    
-    private val audioBufferChannel = kotlinx.coroutines.channels.Channel<AudioFrame>(kotlinx.coroutines.channels.Channel.UNLIMITED)
-    private val gpsHistory = mutableListOf<TelemetryData>()
+    // ------------------------------------------------------------------
+    // Pipeline live [C5, C6, C7, plan 2.1/2.2/2.4]
+    //
+    // - CaptureEngine est l'unique proprietaire du micro (flatMapLatest :
+    //   aucun producteur/consommateur empile, micro coupe hors mode LIVE).
+    // - TOUT le DSP tourne sur le thread dedie "nvh-dsp" ; seules les
+    //   ecritures StateFlow traversent vers le main thread.
+    // - La vitesse vient PREDITE de SpeedProvider (estimateur alpha-beta sur
+    //   Doppler GNSS) : le delai d'affichage de 1,2 s et l'interpolation
+    //   wall-clock ont ete supprimes [G1-G4, L5].
+    // ------------------------------------------------------------------
+
+    private val analysisDispatcher =
+        Executors.newSingleThreadExecutor { r -> Thread(r, "nvh-dsp") }.asCoroutineDispatcher()
 
     init {
-        startRecording()
+        startLivePipeline()
+        speedProvider.start()
     }
 
-    private fun startRecording() {
-        _isRecording.value = true
-        
-        // 1. Mettre à jour l'état GPS instantané
+    /** ONE consumer for the app's lifetime; enable/fftSize changes flow through CaptureEngine. */
+    private fun startLivePipeline() {
+        viewModelScope.launch(analysisDispatcher) {
+            captureEngine.frames().collect { audioBuffer ->
+                if (_audioSourceMode.value == AudioSourceMode.LIVE) {
+                    processLiveFrame(audioBuffer)
+                }
+            }
+        }
+        // ~1 Hz rafraichissement de la carte GPS ; les valeurs par frame
+        // viennent de speedProvider.currentTelemetry().
         viewModelScope.launch {
-            telemetryRepository.startTelemetry().collect { data ->
-                val isLive = _audioSourceMode.value == AudioSourceMode.LIVE
-                val updatedData = if (isLive) {
+            speedProvider.telemetry.collect { data ->
+                if (_audioSourceMode.value == AudioSourceMode.LIVE) {
                     val current = _telemetryState.value
-                    val newTelem = data.copy(
+                    _telemetryState.value = data.copy(
                         ttnrDb = current.ttnrDb,
                         trackedOrderDbFS = current.trackedOrderDbFS,
                         trackedOrderEmergenceDb = current.trackedOrderEmergenceDb
                     )
-                    _telemetryState.value = newTelem
-                    newTelem
-                } else {
-                    data
-                }
-                
-                synchronized(gpsHistory) {
-                    gpsHistory.add(updatedData)
-                    val cutoff = System.currentTimeMillis() - 5000
-                    gpsHistory.removeAll { it.timestampMs < cutoff }
                 }
             }
         }
-        
-        // 2. Producteur Audio — [C9] un échec micro devient un bandeau, pas un crash.
-        viewModelScope.launch {
-            audioRepository.startAudioCapture(_fftSize.value)
-                .catch { e ->
-                    _analysisNotice.value = "🎙️ ${e.message ?: "Capture micro impossible"}"
-                }
-                .collect { audioBuffer ->
-                    audioBufferChannel.trySend(AudioFrame(System.currentTimeMillis(), audioBuffer, _telemetryState.value.copy()))
-                }
+    }
+
+    private fun startRecording() {
+        _isRecording.value = true
+        captureEngine.setEnabled(true)
+    }
+
+    /** Runs on the dedicated DSP thread [C6]. */
+    private fun processLiveFrame(audioBuffer: ShortArray) {
+        val kConfig = _kinematicsConfig.value
+        // [L5 supprime] Vitesse predite a l'instant meme du frame.
+        val telemetryNow = speedProvider.currentTelemetry()
+        val telemetryForCalc = if (kConfig.isEnabled) {
+            telemetryNow
+        } else {
+            telemetryNow.copy(theoreticalSpeedKmh = telemetryNow.speedKmh)
         }
 
-        // 3. Consommateur Audio (avec délai conditionnel d'1 seconde en GMPe Live)
-        viewModelScope.launch {
-            for (frame in audioBufferChannel) {
-                val timestamp = frame.timestampMs
-                val audioBuffer = frame.buffer
-                val telemetryAtCapture = frame.telemetryAtCapture
+        if (_isAudioRecording.value) {
+            val stepSize = audioBuffer.size / 2
+            val rawChunk = audioBuffer.copyOfRange(audioBuffer.size - stepSize, audioBuffer.size)
+            recordedPcmList.add(rawChunk)
+            recordedTelemetryList.add(telemetryForCalc)
+        }
+        if (_isFrozen.value) return
 
-                val isGMPeLive = _kinematicsConfig.value.isEnabled && _audioSourceMode.value == AudioSourceMode.LIVE
-                if (isGMPeLive) {
-                    val waitTime = 1200L - (System.currentTimeMillis() - timestamp)
-                    if (waitTime > 0) {
-                        kotlinx.coroutines.delay(waitTime)
+        val maxHist = historySize
+        val result = liveEngine.processFrame(audioBuffer)
+        val magnitudes = result.magnitudes
+        val ttnrSpectrum = result.ttnrSpectrum
+        _latestTTNRSpectrum.value = ttnrSpectrum
+
+        // Historique Absolu
+        val curAbs = _fftHistoryAbsolute.value.toMutableList()
+        curAbs.add(0, magnitudes)
+        if (curAbs.size > maxHist) curAbs.removeAt(curAbs.lastIndex)
+        _fftHistoryAbsolute.value = curAbs
+
+        // Historique TTNR avec deverrouillage retroactif 150 ms (Zero Amputation)
+        val curTtnr = _fftHistoryTTNR.value.toMutableList()
+        curTtnr.add(0, ttnrSpectrum)
+        if (result.retroUnmaskBins.isNotEmpty() && curTtnr.size >= 6) {
+            for (k in 1..result.retroRawRows.size) {
+                if (k < curTtnr.size) {
+                    val pastRow = curTtnr[k].clone()
+                    val pastRaw = result.retroRawRows[k - 1]
+                    for (binIdx in result.retroUnmaskBins) {
+                        pastRow[binIdx] = pastRaw[binIdx]
+                    }
+                    curTtnr[k] = pastRow
+                }
+            }
+        }
+        if (curTtnr.size > maxHist) curTtnr.removeAt(curTtnr.lastIndex)
+        _fftHistoryTTNR.value = curTtnr
+
+        // Suivi de l'ordre selectionne (actif uniquement si vitesse > 1 km/h)
+        val speedKmh = if (kConfig.isEnabled) telemetryForCalc.theoreticalSpeedKmh else telemetryForCalc.speedKmh
+        var trackedDbFS = -120.0
+        var trackedEmergence = 0.0
+        if (kConfig.isEnabled && speedKmh > 1.0f) {
+            val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
+            if (h1FreqHz >= 0.5) {
+                val nyquistFreq = AudioConfig.LIVE_SAMPLE_RATE_HZ / 2.0
+                val totalBins = ttnrSpectrum.size
+                val df = nyquistFreq / totalBins
+                val targetFreqHz = kConfig.selectedTrackedOrder * h1FreqHz
+                val centerBin = Math.round(targetFreqHz / df).toInt().coerceIn(0, totalBins - 1)
+
+                var maxMag = -120.0
+                var maxEm = 0.0
+                val searchMin = (centerBin - 1).coerceAtLeast(0)
+                val searchMax = (centerBin + 1).coerceAtMost(totalBins - 1)
+
+                for (b in searchMin..searchMax) {
+                    if (b in magnitudes.indices && magnitudes[b] > maxMag) {
+                        maxMag = magnitudes[b]
+                    }
+                    if (b in ttnrSpectrum.indices && ttnrSpectrum[b] > maxEm) {
+                        maxEm = ttnrSpectrum[b]
                     }
                 }
+                trackedDbFS = maxMag
+                trackedEmergence = maxEm
+            }
+        }
 
-                // Calcul Vitesse Théorique par interpolation
-                var theoSpeed = telemetryAtCapture.speedKmh
-                if (isGMPeLive) {
-                    synchronized(gpsHistory) {
-                        val before = gpsHistory.lastOrNull { it.timestampMs <= timestamp }
-                        val after = gpsHistory.firstOrNull { it.timestampMs >= timestamp }
-                        
-                        if (before != null && after != null && before.timestampMs != after.timestampMs) {
-                            val fraction = (timestamp - before.timestampMs).toFloat() / (after.timestampMs - before.timestampMs)
-                            theoSpeed = before.speedKmh + fraction * (after.speedKmh - before.speedKmh)
-                        } else if (before != null) {
-                            theoSpeed = before.speedKmh
-                        } else if (after != null) {
-                            theoSpeed = after.speedKmh
+        // Telemetrie synchronisee 1-to-1 avec l'affichage audio
+        val ttnrMax = (ttnrSpectrum.maxOrNull() ?: 0.0).toFloat()
+        val telemWithTtnr = telemetryForCalc.copy(
+            ttnrDb = ttnrMax,
+            trackedOrderDbFS = trackedDbFS,
+            trackedOrderEmergenceDb = trackedEmergence
+        )
+        _telemetryState.value = telemWithTtnr
+
+        val curTelem = _telemetryHistory.value.toMutableList()
+        curTelem.add(0, telemWithTtnr)
+        if (curTelem.size > maxHist) curTelem.removeAt(curTelem.lastIndex)
+        _telemetryHistory.value = curTelem
+
+        // Detection d'harmoniques / rapport d'emergence
+        if (kConfig.isEnabled && speedKmh > 1.0f) {
+            val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
+            val nowMs = System.currentTimeMillis()
+
+            if (h1FreqHz >= 0.5) {
+                val currentRpm = kConfig.calculateRpm(speedKmh)
+                val targetOrders = kConfig.parsedTargetOrders()
+                val isWhitelistActive = targetOrders.isNotEmpty()
+
+                val reportList = _emergenceReportEntries.value.toMutableList()
+                val newDetectedTags = mutableListOf<TrackedHarmonicTag>()
+                val nyquistFreq = AudioConfig.LIVE_SAMPLE_RATE_HZ / 2.0
+                val totalBins = ttnrSpectrum.size
+                val df = nyquistFreq / totalBins
+
+                if (currentRpm > 100.0) {
+                    val currentFrameSpectrum = FloatArray(LiveAnalysisEngine.ORDER_BINS) { 0f }
+
+                    for (i in 0 until totalBins) {
+                        val ttnrVal = ttnrSpectrum[i]
+                        if (ttnrVal > 0) {
+                            val freqHz = i * df
+                            val order = freqHz / h1FreqHz
+                            val orderIndex = (order * 10.0).toInt()
+                            if (orderIndex in 0..999) {
+                                currentFrameSpectrum[orderIndex] = maxOf(currentFrameSpectrum[orderIndex], ttnrVal.toFloat())
+                            }
                         }
                     }
-                    _telemetryState.value = _telemetryState.value.copy(theoreticalSpeedKmh = theoSpeed)
-                }
 
-                if (_audioSourceMode.value == AudioSourceMode.LIVE) {
-                    val telemetryForCalc = telemetryAtCapture.copy(theoreticalSpeedKmh = if (isGMPeLive) theoSpeed else telemetryAtCapture.speedKmh)
+                    val ema = liveEngine.blendOrderEma(currentFrameSpectrum)
 
-                    if (_isAudioRecording.value) {
-                        val stepSize = audioBuffer.size / 2
-                        val rawChunk = audioBuffer.copyOfRange(audioBuffer.size - stepSize, audioBuffer.size)
-                        recordedPcmList.add(rawChunk)
-                        recordedTelemetryList.add(telemetryForCalc)
-                    }
-                    if (!_isFrozen.value) {
-                        val maxHist = historySize
-
-                        // Traitement FFT Absolu
-                        val magnitudes = fftProcessor.processFFT(audioBuffer)
-                        val validMags = magnitudes.copyOfRange(0, magnitudes.size / 2)
-                    
-                        // Traitement TTNR (Émergence tonale ECMA-74)
-                    
-
-                        val rawTtnr = fftProcessor.computeTTNR(magnitudes)
-
-                    
-                        // Initialisation / Ajustement de la taille du tampon de persistance 150 ms
-                        if (ttnrPersistenceCount.size != rawTtnr.size) {
-                            ttnrPersistenceCount = IntArray(rawTtnr.size)
-                            recentRawTTNRBuffer.clear()
-                        }
-
-                        // Enregistrement de la trame brute dans le tampon rétrospectif (6 trames ~= 150 ms)
-                        val rawCopy = rawTtnr.clone()
-                        recentRawTTNRBuffer.add(0, rawCopy)
-                        if (recentRawTTNRBuffer.size > 6) {
-                            recentRawTTNRBuffer.removeAt(recentRawTTNRBuffer.lastIndex)
-                        }
-
-                        // Calcul de la persistance par bin et validation du tampon rétrospectif 150 ms
-                        val validatedTtnr = DoubleArray(rawTtnr.size)
-                        val retroUnmaskBins = mutableListOf<Int>()
-
-                        for (i in rawTtnr.indices) {
-                            if (rawTtnr[i] >= -3.0) {
-                                ttnrPersistenceCount[i]++
-                            } else {
-                                ttnrPersistenceCount[i] = 0
-                            }
-
-                            if (ttnrPersistenceCount[i] >= 6) {
-                                validatedTtnr[i] = rawTtnr[i]
-                                if (ttnrPersistenceCount[i] == 6) {
-                                    retroUnmaskBins.add(i)
-                                }
-                            } else {
-                                validatedTtnr[i] = -100.0
-                            }
-                        }
-
-                        // Lissage temporel EMA NVH
-                        val ttnrSpectrum = DoubleArray(rawTtnr.size)
-                        if (previousTTNRSpectrum.size == rawTtnr.size) {
-                            for (i in rawTtnr.indices) {
-                                ttnrSpectrum[i] = 0.75 * validatedTtnr[i] + 0.25 * previousTTNRSpectrum[i]
-                            }
-                        } else {
-                            System.arraycopy(validatedTtnr, 0, ttnrSpectrum, 0, validatedTtnr.size)
-                        }
-                        previousTTNRSpectrum = ttnrSpectrum
-                        _latestTTNRSpectrum.value = ttnrSpectrum
-                    
-                        // Mettre à jour l'historique Absolu
-                        val curAbs = _fftHistoryAbsolute.value.toMutableList()
-                        curAbs.add(0, magnitudes)
-                        if (curAbs.size > maxHist) curAbs.removeAt(curAbs.lastIndex)
-                        _fftHistoryAbsolute.value = curAbs
-
-                        // Mettre à jour l'historique TTNR avec déverrouillage rétroactif 150 ms (Zéro Amputation)
-                        val curTtnr = _fftHistoryTTNR.value.toMutableList()
-                        curTtnr.add(0, ttnrSpectrum)
-                    
-                        // Restitution rétroactive des 5 trames précédentes pour les pics validés à 150 ms
-                        if (retroUnmaskBins.isNotEmpty() && curTtnr.size >= 6 && recentRawTTNRBuffer.size >= 6) {
-                            for (k in 1..5) {
-                                if (k < curTtnr.size && k < recentRawTTNRBuffer.size) {
-                                    val pastRow = curTtnr[k].clone()
-                                    val pastRaw = recentRawTTNRBuffer[k]
-                                    for (binIdx in retroUnmaskBins) {
-                                        pastRow[binIdx] = pastRaw[binIdx]
-                                    }
-                                    curTtnr[k] = pastRow
+                    for (j in 0..999) {
+                        if (ema[j] > 2.0f) {
+                            var isLocalMax = true
+                            for (k in maxOf(0, j - 4)..minOf(999, j + 4)) {
+                                if (ema[k] > ema[j]) {
+                                    isLocalMax = false
+                                    break
+                                } else if (k < j && ema[k] == ema[j]) {
+                                    isLocalMax = false
+                                    break
                                 }
                             }
-                        }
 
-                        if (curTtnr.size > maxHist) curTtnr.removeAt(curTtnr.lastIndex)
-                        _fftHistoryTTNR.value = curTtnr
+                            if (isLocalMax) {
+                                val orderValue = j / 10.0
+                                var isAllowed = true
+                                if (isWhitelistActive) {
+                                    isAllowed = targetOrders.any { Math.abs(it - orderValue) <= 0.25 }
+                                } else {
+                                    if (ema[j] < 3.0f) isAllowed = false
+                                }
 
-                        // Traitement des Harmoniques & Détection de Cinématique NVH (Actif UNIQUEMENT si Vitesse > 1.0 km/h)
-                        val kConfig = _kinematicsConfig.value
-                        val speedKmh = if (isGMPeLive) _telemetryState.value.theoreticalSpeedKmh else _telemetryState.value.speedKmh
+                                if (isAllowed) {
+                                    val orderName = "Ordre H$orderValue"
+                                    val freqHz = (orderValue * h1FreqHz).toInt()
+                                    val binIndex = (freqHz / df).toInt().coerceIn(0, totalBins - 1)
+                                    val absVal = if (binIndex < magnitudes.size) magnitudes[binIndex] else -120.0
 
-                        var trackedDbFS = -120.0
-                        var trackedEmergence = 0.0
+                                    val tag = TrackedHarmonicTag(
+                                        orderName = orderName,
+                                        orderValue = orderValue,
+                                        freqHz = freqHz,
+                                        ttnrDb = ema[j].toDouble(),
+                                        absDbFS = absVal,
+                                        speedKmh = speedKmh,
+                                        rpm = currentRpm,
+                                        binIndex = binIndex,
+                                        lastSeenTimestampMs = nowMs
+                                    )
+                                    newDetectedTags.add(tag)
 
-                        if (kConfig.isEnabled && speedKmh > 1.0f) {
-                            val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
-                            if (h1FreqHz >= 0.5) {
-                                val nyquistFreq = AudioConfig.LIVE_SAMPLE_RATE_HZ / 2.0
-                                val totalBins = ttnrSpectrum.size
-                                val df = nyquistFreq / totalBins
-                                val targetFreqHz = kConfig.selectedTrackedOrder * h1FreqHz
-                                val centerBin = Math.round(targetFreqHz / df).toInt().coerceIn(0, totalBins - 1)
-
-                                var maxMag = -120.0
-                                var maxEm = 0.0
-                                val searchMin = (centerBin - 1).coerceAtLeast(0)
-                                val searchMax = (centerBin + 1).coerceAtMost(totalBins - 1)
-
-                                for (b in searchMin..searchMax) {
-                                    if (b in magnitudes.indices && magnitudes[b] > maxMag) {
-                                        maxMag = magnitudes[b]
+                                    val existingReport = reportList.find {
+                                        Math.abs(it.orderValue - orderValue) <= 0.2 &&
+                                            (speedKmh <= it.maxSpeedKmh + 15f && speedKmh >= it.minSpeedKmh - 15f)
                                     }
-                                    if (b in ttnrSpectrum.indices && ttnrSpectrum[b] > maxEm) {
-                                        maxEm = ttnrSpectrum[b]
+                                    if (existingReport != null) {
+                                        existingReport.minSpeedKmh = minOf(existingReport.minSpeedKmh, speedKmh)
+                                        existingReport.maxSpeedKmh = maxOf(existingReport.maxSpeedKmh, speedKmh)
+                                        existingReport.minRpm = minOf(existingReport.minRpm, currentRpm.toInt())
+                                        existingReport.maxRpm = maxOf(existingReport.maxRpm, currentRpm.toInt())
+                                        existingReport.minFreqHz = minOf(existingReport.minFreqHz, freqHz)
+                                        existingReport.maxFreqHz = maxOf(existingReport.maxFreqHz, freqHz)
+                                        existingReport.maxEmergenceDb = maxOf(existingReport.maxEmergenceDb, ema[j].toDouble())
+                                        existingReport.countDetections++
+                                        existingReport.lastTimestampMs = nowMs
+                                    } else {
+                                        reportList.add(
+                                            EmergenceReportEntry(
+                                                orderName = orderName,
+                                                orderValue = orderValue,
+                                                minSpeedKmh = speedKmh,
+                                                maxSpeedKmh = speedKmh,
+                                                minRpm = currentRpm.toInt(),
+                                                maxRpm = currentRpm.toInt(),
+                                                minFreqHz = freqHz,
+                                                maxFreqHz = freqHz,
+                                                maxEmergenceDb = ema[j].toDouble(),
+                                                countDetections = 1,
+                                                lastTimestampMs = nowMs
+                                            )
+                                        )
                                     }
                                 }
-                                trackedDbFS = maxMag
-                                trackedEmergence = maxEm
-                            }
-                        }
-
-                        // Synchronisation stricte 1-to-1 de la Télémétrie sur le temps d'affichage audio avec la valeur TTNR et l'Ordre Traqué
-                        val ttnrMax = (ttnrSpectrum.maxOrNull() ?: 0.0).toFloat()
-                        val telemWithTtnr = _telemetryState.value.copy(
-                            ttnrDb = ttnrMax,
-                            trackedOrderDbFS = trackedDbFS,
-                            trackedOrderEmergenceDb = trackedEmergence
-                        )
-
-                        _telemetryState.value = telemWithTtnr
-
-                        val curTelem = _telemetryHistory.value.toMutableList()
-                        curTelem.add(0, telemWithTtnr)
-                        if (curTelem.size > maxHist) curTelem.removeAt(curTelem.lastIndex)
-                        _telemetryHistory.value = curTelem
-                        if (kConfig.isEnabled && speedKmh > 1.0f) {
-                            val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
-                            val nowMs = System.currentTimeMillis()
-                        
-                            if (h1FreqHz >= 0.5) {
-                                val currentRpm = kConfig.calculateRpm(speedKmh)
-                                val targetOrders = kConfig.parsedTargetOrders()
-                                val isWhitelistActive = targetOrders.isNotEmpty()
-                            
-                                val reportList = _emergenceReportEntries.value.toMutableList()
-                                val newDetectedTags = mutableListOf<TrackedHarmonicTag>()
-                                val nyquistFreq = AudioConfig.LIVE_SAMPLE_RATE_HZ / 2.0
-                                val totalBins = ttnrSpectrum.size
-                                val df = nyquistFreq / totalBins
-                            
-                                if (currentRpm > 100.0) {
-                                    val currentFrameSpectrum = FloatArray(1000) { 0f }
-                                    val numBins = ttnrSpectrum.size
-                                
-                                    for (i in 0 until numBins) {
-                                        val ttnrVal = ttnrSpectrum[i]
-                                        if (ttnrVal > 0) {
-                                            val freqHz = i * df
-                                            val order = freqHz / h1FreqHz
-                                            val orderIndex = (order * 10.0).toInt()
-                                            if (orderIndex in 0..999) {
-                                                currentFrameSpectrum[orderIndex] = maxOf(currentFrameSpectrum[orderIndex], ttnrVal.toFloat())
-                                            }
-                                        }
-                                    }
-                                
-                                    val alpha = 0.10f
-                                    for (j in 0..999) {
-                                        emaOrderSpectrum[j] = emaOrderSpectrum[j] * (1 - alpha) + currentFrameSpectrum[j] * alpha
-                                    }
-                                
-                                    for (j in 0..999) {
-                                        if (emaOrderSpectrum[j] > 2.0f) {
-                                            var isLocalMax = true
-                                            for (k in maxOf(0, j - 4)..minOf(999, j + 4)) {
-                                                if (emaOrderSpectrum[k] > emaOrderSpectrum[j]) {
-                                                    isLocalMax = false
-                                                    break
-                                                } else if (k < j && emaOrderSpectrum[k] == emaOrderSpectrum[j]) {
-                                                    isLocalMax = false
-                                                    break
-                                                }
-                                            }
-                                        
-                                            if (isLocalMax) {
-                                                val orderValue = j / 10.0
-                                                var isAllowed = true
-                                                if (isWhitelistActive) {
-                                                    isAllowed = targetOrders.any { Math.abs(it - orderValue) <= 0.25 }
-                                                } else {
-                                                    if (emaOrderSpectrum[j] < 3.0f) isAllowed = false
-                                                }
-                                            
-                                                if (isAllowed) {
-                                                    val orderName = "Ordre H$orderValue"
-                                                    val freqHz = (orderValue * h1FreqHz).toInt()
-                                                    val binIndex = (freqHz / df).toInt().coerceIn(0, numBins - 1)
-                                                    val absVal = if (binIndex < magnitudes.size) magnitudes[binIndex] else -120.0
-                                                
-                                                    val tag = TrackedHarmonicTag(
-                                                        orderName = orderName,
-                                                        orderValue = orderValue,
-                                                        freqHz = freqHz,
-                                                        ttnrDb = emaOrderSpectrum[j].toDouble(),
-                                                        absDbFS = absVal,
-                                                        speedKmh = speedKmh,
-                                                        rpm = currentRpm,
-                                                        binIndex = binIndex,
-                                                        lastSeenTimestampMs = nowMs
-                                                    )
-                                                    newDetectedTags.add(tag)
-                                                
-                                                    val existingReport = reportList.find {
-                                                        Math.abs(it.orderValue - orderValue) <= 0.2 &&
-                                                        (speedKmh <= it.maxSpeedKmh + 15f && speedKmh >= it.minSpeedKmh - 15f)
-                                                    }
-                                                    if (existingReport != null) {
-                                                        existingReport.minSpeedKmh = minOf(existingReport.minSpeedKmh, speedKmh)
-                                                        existingReport.maxSpeedKmh = maxOf(existingReport.maxSpeedKmh, speedKmh)
-                                                        existingReport.minRpm = minOf(existingReport.minRpm, currentRpm.toInt())
-                                                        existingReport.maxRpm = maxOf(existingReport.maxRpm, currentRpm.toInt())
-                                                        existingReport.minFreqHz = minOf(existingReport.minFreqHz, freqHz)
-                                                        existingReport.maxFreqHz = maxOf(existingReport.maxFreqHz, freqHz)
-                                                        existingReport.maxEmergenceDb = maxOf(existingReport.maxEmergenceDb, emaOrderSpectrum[j].toDouble())
-                                                        existingReport.countDetections++
-                                                        existingReport.lastTimestampMs = nowMs
-                                                    } else {
-                                                        reportList.add(EmergenceReportEntry(
-                                                            orderName = orderName,
-                                                            orderValue = orderValue,
-                                                            minSpeedKmh = speedKmh,
-                                                            maxSpeedKmh = speedKmh,
-                                                            minRpm = currentRpm.toInt(),
-                                                            maxRpm = currentRpm.toInt(),
-                                                            minFreqHz = freqHz,
-                                                            maxFreqHz = freqHz,
-                                                            maxEmergenceDb = emaOrderSpectrum[j].toDouble(),
-                                                            countDetections = 1,
-                                                            lastTimestampMs = nowMs
-                                                        ))
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            
-                                val maxHoldMs = (kConfig.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L)
-                                val updatedTagMap = _trackedHarmonicTags.value
-                                    .filter { nowMs - it.lastSeenTimestampMs < maxHoldMs }
-                                    .associateBy { it.orderName }
-                                    .toMutableMap()
-                            
-                                for (tag in newDetectedTags) {
-                                    updatedTagMap[tag.orderName] = tag
-                                }
-                            
-                                _trackedHarmonicTags.value = updatedTagMap.values.sortedBy { it.orderValue }
-                                _emergenceReportEntries.value = reportList
                             }
                         }
                     }
                 }
+
+                val maxHoldMs = (kConfig.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L)
+                val updatedTagMap = _trackedHarmonicTags.value
+                    .filter { nowMs - it.lastSeenTimestampMs < maxHoldMs }
+                    .associateBy { it.orderName }
+                    .toMutableMap()
+
+                for (tag in newDetectedTags) {
+                    updatedTagMap[tag.orderName] = tag
+                }
+
+                _trackedHarmonicTags.value = updatedTagMap.values.sortedBy { it.orderValue }
+                _emergenceReportEntries.value = reportList
             }
         }
     }
 
     private fun stopRecording() {
         _isRecording.value = false
-        audioRepository.stopAudioCapture()
+        captureEngine.setEnabled(false) // mic released via the capture flow's awaitClose
     }
     
     fun exportData(pedalPercent: String, comments: String) {
