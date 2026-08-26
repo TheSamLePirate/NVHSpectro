@@ -176,6 +176,7 @@
     <ID>MagicNumber:FFTProcessor.kt$FFTProcessor$75.0</ID>
     <ID>MagicNumber:FFTProcessor.kt$FFTProcessor$8.0</ID>
     <ID>MagicNumber:FFTProcessor.kt$FFTProcessor$85.0</ID>
+    <ID>MagicNumber:FieldLocationLogger.kt$FieldLocationLogger$26</ID>
     <ID>MagicNumber:InfoDialog.kt$0xFF00E5FF</ID>
     <ID>MagicNumber:InfoDialog.kt$0xFF101827</ID>
     <ID>MagicNumber:InfoDialog.kt$0xFF38BDF8</ID>
@@ -769,6 +770,7 @@
     <ID>SwallowedException:MainViewModel.kt$MainViewModel$e: Exception</ID>
     <ID>SwallowedException:PdfReportGenerator.kt$PdfReportGenerator$e: Exception</ID>
     <ID>SwallowedException:TelemetryRepository.kt$TelemetryRepository$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:FieldLocationLogger.kt$FieldLocationLogger$e: Exception</ID>
     <ID>TooGenericExceptionCaught:MainViewModel.kt$MainViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:PdfReportGenerator.kt$PdfReportGenerator$e: Exception</ID>
     <ID>TooGenericExceptionCaught:TelemetryRepository.kt$TelemetryRepository$e: Exception</ID>

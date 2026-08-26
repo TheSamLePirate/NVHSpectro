@@ -7,6 +7,7 @@ import android.location.GnssMeasurementRequest
 import android.location.GnssMeasurementsEvent
 import android.location.LocationManager
 import android.os.Build
+import com.example.nvhspectro.data.FieldLocationLogger
 import com.google.android.gms.location.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -33,9 +34,12 @@ data class TelemetryData(
 )
 
 class TelemetryRepository(private val context: Context) {
-    private val fusedLocationClient: FusedLocationProviderClient = 
+    private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(context)
     private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    // Debug-only drive logger (AAA plan 0.8): raw fixes feed the Phase 2 speed-estimator tuning.
+    private val fieldLogger: FieldLocationLogger? =
+        if (BuildConfig.DEBUG) FieldLocationLogger(context) else null
 
     @SuppressLint("MissingPermission")
     fun startTelemetry(): Flow<TelemetryData> = callbackFlow {
@@ -50,6 +54,8 @@ class TelemetryRepository(private val context: Context) {
 
         val locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
+                // Log every fix in the batch, not just the last one.
+                fieldLogger?.let { logger -> result.locations.forEach(logger::log) }
                 result.lastLocation?.let { loc ->
                     val nowMs = loc.time
                     val speedMs = if (loc.hasSpeed()) loc.speed else 0f // m/s

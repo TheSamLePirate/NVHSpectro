@@ -1861,30 +1861,30 @@
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/TelemetryRepository.kt">
         <error line="3" column="1" source="standard:import-ordering" />
-        <error line="10" column="1" source="standard:no-wildcard-imports" />
-        <error line="16" column="11" source="standard:no-multi-spaces" />
+        <error line="11" column="1" source="standard:no-wildcard-imports" />
         <error line="17" column="11" source="standard:no-multi-spaces" />
-        <error line="18" column="9" source="standard:trailing-comma-on-declaration-site" />
-        <error line="18" column="10" source="standard:no-multi-spaces" />
-        <error line="32" column="40" source="standard:trailing-comma-on-declaration-site" />
-        <error line="35" column="27" source="standard:class-signature" />
-        <error line="35" column="55" source="standard:class-signature" />
-        <error line="36" column="67" source="standard:no-trailing-spaces" />
-        <error line="41" column="49" source="standard:multiline-expression-wrapping" />
-        <error line="41" column="49" source="standard:function-signature" />
-        <error line="47" column="31" source="standard:multiline-expression-wrapping" />
-        <error line="47" column="46" source="standard:chain-method-continuation" />
-        <error line="51" column="32" source="standard:multiline-expression-wrapping" />
-        <error line="58" column="1" source="standard:no-trailing-spaces" />
-        <error line="69" column="1" source="standard:no-trailing-spaces" />
-        <error line="73" column="34" source="standard:multiline-expression-wrapping" />
-        <error line="79" column="35" source="standard:multiline-expression-wrapping" />
-        <error line="86" column="44" source="standard:trailing-comma-on-call-site" />
-        <error line="97" column="27" source="standard:multiline-expression-wrapping" />
-        <error line="97" column="49" source="standard:chain-method-continuation" />
-        <error line="115" column="24" source="standard:keyword-spacing" />
-        <error line="115" column="40" source="standard:try-catch-finally-spacing" />
-        <error line="115" column="40" source="standard:try-catch-finally-spacing" />
+        <error line="18" column="11" source="standard:no-multi-spaces" />
+        <error line="19" column="9" source="standard:trailing-comma-on-declaration-site" />
+        <error line="19" column="10" source="standard:no-multi-spaces" />
+        <error line="33" column="40" source="standard:trailing-comma-on-declaration-site" />
+        <error line="36" column="27" source="standard:class-signature" />
+        <error line="36" column="55" source="standard:class-signature" />
+        <error line="40" column="5" source="standard:spacing-between-declarations-with-comments" />
+        <error line="45" column="49" source="standard:multiline-expression-wrapping" />
+        <error line="45" column="49" source="standard:function-signature" />
+        <error line="51" column="31" source="standard:multiline-expression-wrapping" />
+        <error line="51" column="46" source="standard:chain-method-continuation" />
+        <error line="55" column="32" source="standard:multiline-expression-wrapping" />
+        <error line="64" column="1" source="standard:no-trailing-spaces" />
+        <error line="75" column="1" source="standard:no-trailing-spaces" />
+        <error line="79" column="34" source="standard:multiline-expression-wrapping" />
+        <error line="85" column="35" source="standard:multiline-expression-wrapping" />
+        <error line="92" column="44" source="standard:trailing-comma-on-call-site" />
+        <error line="103" column="27" source="standard:multiline-expression-wrapping" />
+        <error line="103" column="49" source="standard:chain-method-continuation" />
+        <error line="121" column="24" source="standard:keyword-spacing" />
+        <error line="121" column="40" source="standard:try-catch-finally-spacing" />
+        <error line="121" column="40" source="standard:try-catch-finally-spacing" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/data/AudioFilter.kt">
         <error line="9" column="14" source="standard:trailing-comma-on-declaration-site" />
