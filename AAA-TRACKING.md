@@ -137,3 +137,16 @@ Unit tests: **61** total, all green; lint 0 errors; minified release builds; all
 - `PlaybackController`, `SpeedProvider`, `CaptureEngine`, `LiveAnalysisEngine` are the extraction pattern Phase 3 continues (`:core` module split).
 - The live history lists are still newest-first — plan 3.4's canonical-chronology change is the U9/U10 root fix.
 
+---
+
+## Supplemental GNSS/GPS quality audit — planning only (2026-08-26)
+
+- `audit-gps.md` records a focused measurement-quality audit of the current
+  internal-GNSS speed chain, with findings `GPS-01` through `GPS-15`.
+- `plan-gps.md` defines corrective phases `GPS-0` through `GPS-5`, plus the
+  optional raw-GNSS R&D phase `GPS-6`, with traceability, tests and field gates.
+- **No application code changed and no GPS finding is closed by these documents.**
+- The emulator evidence for Phase 2 remains valid, but strict Gate 2 acceptance
+  must remain conditional until the three P0 findings are resolved: stale speed
+  invalidation (`GPS-01`), uncertainty-aware estimation (`GPS-02`) and
+  GNSS/audio capture-time alignment (`GPS-03`).
