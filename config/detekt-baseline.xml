@@ -93,7 +93,7 @@
     <ID>LongMethod:MainScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppScreen(viewModel: MainViewModel)</ID>
     <ID>LongMethod:MainViewModel.kt$MainViewModel$fun exportData(pedalPercent: String, comments: String)</ID>
     <ID>LongMethod:MainViewModel.kt$MainViewModel$fun validateCurrentOrder(customName: String? = null)</ID>
-    <ID>LongMethod:MainViewModel.kt$MainViewModel$private fun processFullWavSpectrogram(data: LoadedWavData)</ID>
+    <ID>LongMethod:MainViewModel.kt$MainViewModel$private fun processFullWavSpectrogram(data: LoadedWavData, analysisData: LoadedWavData = data)</ID>
     <ID>LongMethod:MainViewModel.kt$MainViewModel$private fun processLiveFrame(audioBuffer: ShortArray)</ID>
     <ID>LongMethod:MainViewModel.kt$MainViewModel$private fun processWavFrameAt(posMs: Long)</ID>
     <ID>LongMethod:MainViewModel.kt$MainViewModel$private fun recalculateOrderTrackingForWav()</ID>
@@ -640,7 +640,6 @@
     <ID>MaxLineLength:MainScreen.kt$}</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$" {\"index\": $idx, \"speedKmh\": ${item.speedKmh}, \"accelerationG\": ${item.accelerationG}, \"lat\": ${item.latitude}, \"lng\": ${item.longitude}, \"gpsStatus\": \"${item.gpsStatus}\"}"</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$"⏱️ Analyse limitée aux ${WavDataReader.MAX_DURATION_SEC / 60} premières minutes de la vidéo"</ID>
-    <ID>MaxLineLength:MainViewModel.kt$MainViewModel$BiQuadFilter(filter.type, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), data.sampleRate.toDouble(), q)</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$_processingEstimateMessage.value = "⏳ Traitement du spectrogramme en cours...\nVidéo (${min}m ${sec}s) | Temps estimé: ~${estimatedSec} s"</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$currentFrameSpectrum[orderIndex] = maxOf(currentFrameSpectrum[orderIndex], ttnrVal.toFloat())</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$existingReport.maxEmergenceDb = maxOf(existingReport.maxEmergenceDb, ema[j].toDouble())</ID>

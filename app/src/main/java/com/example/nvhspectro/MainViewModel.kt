@@ -62,16 +62,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val activeFilters: StateFlow<List<AudioFilter>> = _activeFilters.asStateFlow()
     fun addAudioFilter(filter: AudioFilter) {
         _activeFilters.value = _activeFilters.value + filter
-        applyDigitalFiltersToPlayback()
-        _loadedWavData.value?.let { processFullWavSpectrogram(it) }
+        applyDigitalFilters()
     }
+
     fun removeAudioFilter(filterId: String) {
         _activeFilters.value = _activeFilters.value.filter { it.id != filterId }
-        applyDigitalFiltersToPlayback()
-        _loadedWavData.value?.let { processFullWavSpectrogram(it) }
+        applyDigitalFilters()
     }
     
-    private fun applyDigitalFiltersToPlayback() {
+    /**
+     * [C10] Filters now shape BOTH what the user hears and what the display
+     * analyzes — the old version reprocessed the UNFILTERED spectrogram while
+     * playing filtered audio. _loadedWavData always keeps the original PCM so
+     * every filter change re-renders from the raw signal.
+     */
+    private fun applyDigitalFilters() {
         val originalData = _loadedWavData.value ?: return
         val filters = _activeFilters.value
         val context = getApplication<android.app.Application>()
@@ -86,6 +91,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 playback.restoreOriginalSource()
                 playback.seekTo(currentPos)
                 if (wasPlaying) playback.play()
+                processFullWavSpectrogram(originalData) // [C10] display back to raw
             }
             return
         }
@@ -104,6 +110,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 playback.setFilteredSource(tempFile)
                 playback.seekTo(currentPos)
                 if (wasPlaying) playback.play()
+                // [C10] The display analyzes the same signal the user hears.
+                processFullWavSpectrogram(
+                    originalData,
+                    analysisData = originalData.copy(pcmSamples = filteredPcm)
+                )
             }
         }
     }
@@ -116,11 +127,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ): ShortArray {
         val pcm = data.pcmSamples
         val filteredPcm = ShortArray(pcm.size)
-        // Cascade de 4 sections aux Q de Butterworth 8e ordre (-48 dB/octave)
+        val sr = data.sampleRate.toDouble()
+        // Q d'un Butterworth 8e ordre (valide pour les sections LP/HP uniquement)
         val qFactors = listOf(0.509795579, 0.601344887, 0.899976223, 2.562915448)
         val biquads = filters.flatMap { filter ->
-            qFactors.map { q ->
-                BiQuadFilter(filter.type, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), data.sampleRate.toDouble(), q)
+            when (filter.type) {
+                // [D4] Un vrai passe-bande Butterworth 8e ordre = HP(minFreq)
+                // 8e ordre cascade avec LP(maxFreq) 8e ordre. L'ancienne
+                // cascade de 4 sections band-pass identiques n'etait pas
+                // Butterworth (leur formule ignore q).
+                FilterType.BAND_PASS ->
+                    qFactors.map { q ->
+                        BiQuadFilter(FilterType.HIGH_PASS, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), sr, q)
+                    } + qFactors.map { q ->
+                        BiQuadFilter(FilterType.LOW_PASS, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), sr, q)
+                    }
+                // [D4] Le coupe-bande reste une cascade de 4 notchs identiques
+                // (q inutilise par la formule) : cela approfondit/elargit la
+                // rejection — assume, et documente honnetement.
+                else ->
+                    qFactors.map { q ->
+                        BiQuadFilter(filter.type, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), sr, q)
+                    }
             }
         }
         for (i in pcm.indices) {
@@ -680,7 +708,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _emergenceReportEntries.value = currentReportList
     }
 
-    private fun processFullWavSpectrogram(data: LoadedWavData) {
+    /** [C10] analysisData carries the (possibly filtered) PCM to analyze; [data] stays the original. */
+    private fun processFullWavSpectrogram(data: LoadedWavData, analysisData: LoadedWavData = data) {
         val durationSec = data.durationMs / 1000.0
         val isLongVideo = (durationSec >= 60.0)
 
@@ -699,7 +728,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val sampleRate = data.sampleRate
             val fftN = AudioConfig.WAV_FFT_SIZE
             val stepSize = fftN / 2
-            val totalSamples = data.pcmSamples.size
+            val totalSamples = analysisData.pcmSamples.size
 
             if (totalSamples < fftN) {
                 withContext(Dispatchers.Main) {
@@ -723,7 +752,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val avail = totalSamples - startSample
                 val copyLen = avail.coerceAtMost(fftN)
                 if (copyLen > 0) {
-                    System.arraycopy(data.pcmSamples, startSample, frameBuffer, 0, copyLen)
+                    System.arraycopy(analysisData.pcmSamples, startSample, frameBuffer, 0, copyLen)
                 } else {
                     java.util.Arrays.fill(frameBuffer, 0.toShort())
                 }
