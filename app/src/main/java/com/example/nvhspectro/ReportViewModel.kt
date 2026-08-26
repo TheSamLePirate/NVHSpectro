@@ -29,14 +29,14 @@ class ReportViewModel(application: Application, val session: MeasurementSession)
     private val _isReportModeActive = MutableStateFlow(false)
     val isReportModeActive: StateFlow<Boolean> = _isReportModeActive.asStateFlow()
 
-    private val _reportFftHistory = MutableStateFlow<List<DoubleArray>>(emptyList())
-    val reportFftHistory: StateFlow<List<DoubleArray>> = _reportFftHistory.asStateFlow()
+    private val _reportFftHistory = MutableStateFlow<List<FloatArray>>(emptyList())
+    val reportFftHistory: StateFlow<List<FloatArray>> = _reportFftHistory.asStateFlow()
 
-    private val _reportFftHistoryAbsolute = MutableStateFlow<List<DoubleArray>>(emptyList())
-    val reportFftHistoryAbsolute: StateFlow<List<DoubleArray>> = _reportFftHistoryAbsolute.asStateFlow()
+    private val _reportFftHistoryAbsolute = MutableStateFlow<List<FloatArray>>(emptyList())
+    val reportFftHistoryAbsolute: StateFlow<List<FloatArray>> = _reportFftHistoryAbsolute.asStateFlow()
 
-    private val _reportFftHistoryTTNR = MutableStateFlow<List<DoubleArray>>(emptyList())
-    val reportFftHistoryTTNR: StateFlow<List<DoubleArray>> = _reportFftHistoryTTNR.asStateFlow()
+    private val _reportFftHistoryTTNR = MutableStateFlow<List<FloatArray>>(emptyList())
+    val reportFftHistoryTTNR: StateFlow<List<FloatArray>> = _reportFftHistoryTTNR.asStateFlow()
 
     private val _isBrillanceModeEnabled = MutableStateFlow(false)
     val isBrillanceModeEnabled: StateFlow<Boolean> = _isBrillanceModeEnabled.asStateFlow()
@@ -126,7 +126,7 @@ class ReportViewModel(application: Application, val session: MeasurementSession)
                 val freqHz = (b * df).toInt()
                 if (freqHz < minFreqHz) minFreqHz = freqHz
                 if (freqHz > maxFreqHz) maxFreqHz = freqHz
-                val emergence = reportHistoryTTNR[f][b]
+                val emergence = reportHistoryTTNR[f][b].toDouble()
                 if (emergence > maxEmergence) maxEmergence = emergence
             }
 

@@ -27,7 +27,7 @@ import kotlin.math.min
 object PngExporter {
 
     class Input(
-        val history: List<DoubleArray>,
+        val history: List<FloatArray>,
         val telemetryHistory: List<TelemetryData>,
         val currentTelemetry: TelemetryData,
         val displayMode: DisplayMode,
@@ -82,7 +82,7 @@ object PngExporter {
             val frameData = history[x]
             for (y in 0 until bitmapHeight) {
                 val b = bitmapHeight - 1 - y
-                val valMagnitude = if (b < frameData.size) frameData[b] else minVal
+                val valMagnitude = if (b < frameData.size) frameData[b].toDouble() else minVal
                 val normalized = ((valMagnitude - minVal) / (maxVal - minVal)).toFloat()
                 pixels[y * bitmapWidth + x] = getJetColorInt(normalized)
             }

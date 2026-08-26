@@ -137,7 +137,7 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
 
         // Telemetry stays 1-to-1 with the audio display.
         val telemWithTtnr = telemetryForCalc.copy(
-            ttnrDb = (ttnrSpectrum.maxOrNull() ?: 0.0).toFloat(),
+            ttnrDb = ttnrSpectrum.maxOrNull() ?: 0f,
             trackedOrderDbFS = trackedDbFS,
             trackedOrderEmergenceDb = trackedEmergence
         )

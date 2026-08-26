@@ -24,21 +24,21 @@ class OrderTrackingEngineTest {
     /** Order 18 lands near bin 25 (538 Hz): its folded order index is 17.9. */
     private val order18Bin = (18.0 * h1FreqHz / df).toInt()
 
-    private fun frame(ttnrDb: Double): OrderTrackingEngine.Frame {
-        val ttnr = DoubleArray(binCount)
+    private fun frame(ttnrDb: Float): OrderTrackingEngine.Frame {
+        val ttnr = FloatArray(binCount)
         ttnr[order18Bin] = ttnrDb
-        val abs = DoubleArray(binCount) { -90.0 }
+        val abs = FloatArray(binCount) { -90f }
         // The tag's bin is re-projected from the DETECTED order value (17.9 →
         // 537 Hz → truncated bin 24), one bin below the excitation bin (25) —
         // historical behavior both copies shared. Cover the window.
-        for (b in order18Bin - 1..order18Bin + 1) abs[b] = -40.0
+        for (b in order18Bin - 1..order18Bin + 1) abs[b] = -40f
         return OrderTrackingEngine.Frame(ttnr, abs, df, speedKmh, rpm, h1FreqHz)
     }
 
     private fun run(
         engine: OrderTrackingEngine,
         frames: Int,
-        ttnrDb: Double = 10.0,
+        ttnrDb: Float = 10f,
         targetOrders: List<Double> = listOf(18.0),
         report: MutableList<EmergenceReportEntry> = mutableListOf()
     ): Pair<List<TrackedHarmonicTag>, MutableList<EmergenceReportEntry>> {
@@ -75,9 +75,9 @@ class OrderTrackingEngineTest {
     fun a2_openMode_requiresThreeDbNotJustThreshold() {
         // EMA of a 2.5 dB tone converges to 2.5: above TAG_THRESHOLD_DB (2.0)
         // but below OPEN_DETECTION_MIN_DB (3.0) → never tagged without whitelist.
-        val (weak, _) = run(OrderTrackingEngine(), frames = 40, ttnrDb = 2.5, targetOrders = emptyList())
+        val (weak, _) = run(OrderTrackingEngine(), frames = 40, ttnrDb = 2.5f, targetOrders = emptyList())
         assertTrue("open mode must gate at 3 dB", weak.isEmpty())
-        val (strong, _) = run(OrderTrackingEngine(), frames = 40, ttnrDb = 10.0, targetOrders = emptyList())
+        val (strong, _) = run(OrderTrackingEngine(), frames = 40, ttnrDb = 10f, targetOrders = emptyList())
         assertEquals(1, strong.size)
     }
 
@@ -87,7 +87,7 @@ class OrderTrackingEngineTest {
         var (tags, report) = run(engine, frames = 8)
         assertEquals(1, tags.size)
         // Vehicle stops: detection gated off, decay still runs.
-        val still = OrderTrackingEngine.Frame(DoubleArray(binCount), DoubleArray(binCount), df, 0f, 0.0, 0.0)
+        val still = OrderTrackingEngine.Frame(FloatArray(binCount), FloatArray(binCount), df, 0f, 0.0, 0.0)
         tags = engine.step(still, nowMs = 1000L, holdMs = 3000L, targetOrders = listOf(18.0), activeTags = tags, report = report)
         assertEquals("inside hold time the tag survives", 1, tags.size)
         tags = engine.step(still, nowMs = 10_000L, holdMs = 3000L, targetOrders = listOf(18.0), activeTags = tags, report = report)
@@ -98,7 +98,7 @@ class OrderTrackingEngineTest {
     fun l7_reset_clearsOrderEmaGhosts() {
         val engine = OrderTrackingEngine()
         run(engine, frames = 20) // EMA at bin 179 ≈ 10 dB
-        val silent = frame(0.0)
+        val silent = frame(0f)
 
         // WITHOUT reset a silent frame still fires the ghost tag (EMA ≈ 9 dB).
         val ghostTags = engine.step(silent, 9_999L, 3000L, listOf(18.0), emptyList(), mutableListOf())
@@ -111,9 +111,9 @@ class OrderTrackingEngineTest {
 
     @Test
     fun d7_searchTrackedOrder_roundsCenterBin() {
-        val abs = DoubleArray(binCount) { -100.0 }
-        val ttnr = DoubleArray(binCount)
-        abs[27] = -20.0
+        val abs = FloatArray(binCount) { -100f }
+        val ttnr = FloatArray(binCount)
+        abs[27] = -20f
         // Target sits at 26.6 bins: rounding → 27 (the historical sweep copy
         // truncated to 26 — resolved deliberately to rounding).
         val levels = OrderTrackingEngine.searchTrackedOrder(abs, ttnr, 26.6 * df, df, radiusBins = 0)
@@ -122,9 +122,9 @@ class OrderTrackingEngineTest {
 
     @Test
     fun d7_searchTrackedOrder_radiusBoundsTheWindow() {
-        val abs = DoubleArray(binCount) { -100.0 }
-        val ttnr = DoubleArray(binCount)
-        abs[30] = -20.0
+        val abs = FloatArray(binCount) { -100f }
+        val ttnr = FloatArray(binCount)
+        abs[30] = -20f
         val center = 27.0 * df
         val narrow = OrderTrackingEngine.searchTrackedOrder(abs, ttnr, center, df, OrderTrackingEngine.TRACKED_SEARCH_RADIUS_FRAME_BINS)
         assertEquals("±1 bin must not see a peak 3 bins away", -100.0, narrow.dbFS, 1e-9)

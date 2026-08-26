@@ -139,6 +139,35 @@ Unit tests: **61** total, all green; lint 0 errors; minified release builds; all
 
 ---
 
+## Phase 3 — Architecture extraction & persistence (IN PROGRESS)
+
+### Steps executed (2026-08-27)
+
+| Step | What was done | Commit |
+|---|---|---|
+| 3.1 | **[A1]** `:core` module (pure Kotlin/JVM, **zero Android imports** — new armed gate in `ci/checks.sh`): FFTProcessor, LiveAnalysisEngine, AudioConfig, TimelineMapper, AlphaBetaSpeedEstimator, BiQuadFilter, KinematicsConfig+models, Telemetry, NumberParsing. Packages unchanged (no `:app` import churn). SmartTrackedOrder (Compose Color) stays app-side; FilterType split out of AudioFilter. 6 test classes + golden snapshot moved (51 JVM tests, seconds); SynthSignals via test fixtures. Kover wired with the plan-§1 90 % line rule. JTransforms → catalog, :core-only. CI covers both modules | `2013ee1` |
+| 3.2 | **[A2, D7]** ONE `OrderTrackingEngine` in `:core` consumed by live path AND WAV sweep (the drifted ~130-line copies deleted); tracked-order search (3 copies) → `searchTrackedOrder`. Every threshold a named constant; deliberate D7 resolutions documented in-code: ±1 (per-frame) vs ±3 (interpolated sweep) radii kept with rationale; sweep center-bin projection unified to rounding. 7 engine tests (`a2_*`, `d7_*`, `l7_*`) | `89b8be3` |
+| 3.3 | **[A1, C6-export]** MainViewModel (2,024 lines) **deleted**. `:core MeasurementSession` = shared state machine w/ registered transition hooks + resettables (single L7 enforcement point). `LiveViewModel` (281 code lines), `AnalyzerViewModel` (296, playback driving in `WavPlaybackCoordinator`), `ReportViewModel` (189) share it via `AppGraph`/factory. Pure computation to `:core`: `WavAnalysis` (STFT sweep, speed interpolation, cursor state, order sweep), `SmartPathTracker`, `FilterChain`; `LoadedWavData` moved. `export/` package: `PngExporter` renders on **Default** (was Main), PdfReportGenerator moved from utils/, PDF errors now hit the notice banner | `e479dbd` |
+| 3.4 | **[U9, U10]** Canonical **chronological** history (newest LAST) in every mode; draw layer alone knows live scrolls right-to-left. Report-from-live no longer mirrored vs its own axis [U9]; PNG export column-mirror deleted, export time scale follows the actual data [U10]. 6 session tests | `8e612e4` |
+
+### Phase-3 device verification so far (2026-08-27, emulator NVH_API_37_compact, debug)
+
+- ✅ Post-3.3 smoke: boot, 30 s live session, `LivePipeline produced==consumed thread=nvh-dsp`, LIVE→WAV (mic **released**, appops finalized) → LIVE (mic `(running)`, restarts=2), report-mode round trip — zero FATAL.
+- ✅ Post-3.4: synthetic 200→4000 Hz sweep WAV loads via SAF; renders **rising left→right** on screen; frozen-view PNG export shows the same orientation (old code mirrored it) with the −10 s→0 s axis spanning the real file duration; export no longer freezes the UI.
+
+### Phase-3 deviations so far
+
+| ID | Deviation | Rationale |
+|---|---|---|
+| DEV-22 | Kover 90 % gate wired but `koverVerify` not yet in CI (80.2 % at 3.1, 87.9 % after 3.2) | Gap = dead code dying in 3.8 + data-class boilerplate; arm when green within the phase |
+| DEV-23 | A4 dead members (`toggleRecording`/`isRecording`, `toggleDrawingMode`) dropped during 3.3 instead of 3.8 | They were VM members; carrying them through the decomposition made no sense |
+| DEV-24 | Pure dialog visibility (audio-mode menu, WAV/video pickers) became local Compose state | It was never ViewModel state; survives nothing it needs to survive |
+| DEV-25 | Session (AppGraph) is process-scoped: measurement state now survives activity finish→relaunch | Direction of S1; VMs re-register hooks via unregister-on-clear handles |
+| DEV-26 | `session.clearEmergenceReport()` also clears `latestTTNRSpectrum`/tags (slightly broader than the old method) | One reset path [L7]; display-only nuance mid-sweep |
+| DEV-27 | Detector beacons in WAV mode now read the LAST frame (was frame 0 after load) | Chronological `.last()` = "most recent frame" semantics; live behavior unchanged |
+
+---
+
 ## Supplemental GNSS/GPS quality audit — planning only (2026-08-26)
 
 - `audit-gps.md` records a focused measurement-quality audit of the current

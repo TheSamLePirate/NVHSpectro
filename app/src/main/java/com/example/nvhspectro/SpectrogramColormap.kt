@@ -68,9 +68,9 @@ fun getJetColorInt(v: Float): Int {
 
 @Composable
 fun SpectrogramCanvas(
-    history: List<DoubleArray>,
-    absHistory: List<DoubleArray> = emptyList(),
-    ttnrHistory: List<DoubleArray> = emptyList(),
+    history: List<FloatArray>,
+    absHistory: List<FloatArray> = emptyList(),
+    ttnrHistory: List<FloatArray> = emptyList(),
     modifier: Modifier = Modifier,
     minDb: Double = -120.0,
     maxDb: Double = 0.0,
@@ -113,7 +113,13 @@ fun SpectrogramCanvas(
     val actualMinFreq = (minBin * nyquistFreq) / totalBinCount
     val actualMaxFreq = (maxBin * nyquistFreq) / totalBinCount
 
-    val bitmapWidth = if ((isWavAnalyzerMode || isReportModeActive) && history.isNotEmpty()) history.size else historySize
+    // [P1, plan 3.5] Full-file bitmaps are downsampled to the producer's
+    // column budget instead of one column per FFT frame (~13k for 5 min).
+    val bitmapWidth = if ((isWavAnalyzerMode || isReportModeActive) && history.isNotEmpty()) {
+        SpectrogramImageProducer.columnsFor(history.size)
+    } else {
+        historySize
+    }
     val bitmapHeight = displayedBinCount
 
     var cursorYRatio by remember { mutableFloatStateOf(0.5f) }
@@ -158,75 +164,33 @@ fun SpectrogramCanvas(
         label = "pulseAlpha"
     )
 
-    val bitmap by remember(bitmapWidth, bitmapHeight) {
-        mutableStateOf(Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888))
-    }
-    val pixels by remember(bitmapWidth, bitmapHeight) {
-        mutableStateOf(IntArray(bitmapWidth * bitmapHeight) { AndroidColor.BLACK })
-    }
-
     val effectiveMin = if (displayMode == DisplayMode.TTNR) 1.0 else minDb
     val effectiveMax = if (displayMode == DisplayMode.TTNR) 20.0 else maxDb
 
-    LaunchedEffect(history, effectiveMin, effectiveMax, displayMode, isWavAnalyzerMode, isReportModeActive) {
+    // [P1/U2, plan 3.5] Pixels are produced OFF the main thread and delivered
+    // as alternating double-buffered bitmaps: every data change repaints,
+    // without per-frame allocation. (The old code mutated one remembered
+    // bitmap in a LaunchedEffect and relied on an unrelated recomposition to
+    // repaint — the "black spectrogram until first interaction" quirk.)
+    val producer = remember(bitmapWidth, bitmapHeight) {
+        SpectrogramImageProducer(bitmapWidth, bitmapHeight)
+    }
+    val imageBitmap by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
+        initialValue = null,
+        history, effectiveMin, effectiveMax, displayMode, isWavAnalyzerMode, isReportModeActive, minBin, maxBin, producer
+    ) {
         if (history.isNotEmpty()) {
-            if (isWavAnalyzerMode || isReportModeActive) {
-                val numFrames = history.size
-                for (x in 0 until bitmapWidth) {
-                    val frameIdx = (x * (numFrames - 1)) / maxOf(1, bitmapWidth - 1)
-                    val frame = if (frameIdx in history.indices) history[frameIdx] else DoubleArray(0)
-
-                    for (y in 0 until bitmapHeight) {
-                        val binIndex = (maxBin - 1) - (y * (displayedBinCount - 1)) / maxOf(1, bitmapHeight - 1)
-                        val magnitude = if (binIndex in frame.indices) frame[binIndex] else effectiveMin
-                        
-                        val colorInt = if (displayMode == DisplayMode.TTNR && magnitude < 1.0) {
-                            AndroidColor.BLACK
-                        } else {
-                            val rawNormalized = ((magnitude - effectiveMin) / (effectiveMax - effectiveMin)).coerceIn(0.0, 1.0).toFloat()
-                            val normalized = if (displayMode == DisplayMode.TTNR && rawNormalized > 0f) {
-                                Math.pow(rawNormalized.toDouble(), 0.65).toFloat()
-                            } else {
-                                rawNormalized
-                            }
-                            getJetColorInt(normalized)
-                        }
-                        
-                        pixels[y * bitmapWidth + x] = colorInt
-                    }
+            val isTtnr = displayMode == DisplayMode.TTNR
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                if (isWavAnalyzerMode || isReportModeActive) {
+                    producer.renderFull(history, minBin, maxBin, effectiveMin, effectiveMax, isTtnr)
+                } else {
+                    // [plan 3.4] Chronological history: the newest frame is LAST.
+                    producer.appendLatest(history.last(), minBin, maxBin, effectiveMin, effectiveMax, isTtnr)
                 }
-            } else {
-                // [plan 3.4] Histories are chronological (newest LAST); the live
-                // scroll direction lives here in the draw layer only.
-                val latestFrame = history.last()
-
-                for (y in 0 until bitmapHeight) {
-                    System.arraycopy(pixels, y * bitmapWidth + 1, pixels, y * bitmapWidth, bitmapWidth - 1)
-
-                    val binIndex = (maxBin - 1) - (y * (displayedBinCount - 1)) / (bitmapHeight - 1)
-                    val magnitude = if (binIndex in latestFrame.indices) latestFrame[binIndex] else effectiveMin
-                    
-                    val colorInt = if (displayMode == DisplayMode.TTNR && magnitude < 1.0) {
-                        AndroidColor.BLACK
-                    } else {
-                        val rawNormalized = ((magnitude - effectiveMin) / (effectiveMax - effectiveMin)).coerceIn(0.0, 1.0).toFloat()
-                        val normalized = if (displayMode == DisplayMode.TTNR && rawNormalized > 0f) {
-                            Math.pow(rawNormalized.toDouble(), 0.65).toFloat()
-                        } else {
-                            rawNormalized
-                        }
-                        getJetColorInt(normalized)
-                    }
-                    
-                    pixels[y * bitmapWidth + (bitmapWidth - 1)] = colorInt
-                }
-            }
-            
-            bitmap.setPixels(pixels, 0, bitmapWidth, 0, 0, bitmapWidth, bitmapHeight)
+            }.asImageBitmap()
         }
     }
-
-    val imageBitmap = bitmap.asImageBitmap()
     
     val textPaint = remember {
         Paint().apply {
@@ -318,6 +282,65 @@ fun SpectrogramCanvas(
         }
     }
 
+    // [P2, plan 3.5] Paints hoisted out of the 43 Hz draw loop.
+    val filterFillPaint = remember {
+        Paint().apply {
+            style = Paint.Style.FILL
+            isAntiAlias = true
+            xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SCREEN)
+        }
+    }
+    val filterStrokePaint = remember {
+        Paint().apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 5f
+            isAntiAlias = true
+        }
+    }
+    val manualTagBgPaint = remember {
+        Paint().apply {
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+    }
+    val manualTagTextPaint = remember {
+        Paint().apply {
+            color = AndroidColor.WHITE
+            textSize = 28f
+            typeface = Typeface.DEFAULT_BOLD
+            isAntiAlias = true
+        }
+    }
+    val manualTagLeaderPaint = remember {
+        Paint().apply {
+            color = AndroidColor.WHITE
+            strokeWidth = 2f
+            isAntiAlias = true
+            alpha = 150
+        }
+    }
+    val harmonicTagBgPaint = remember {
+        Paint().apply {
+            style = Paint.Style.FILL
+            isAntiAlias = true
+        }
+    }
+    val harmonicTagBorderPaint = remember {
+        Paint().apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 2.5f
+            isAntiAlias = true
+        }
+    }
+    val harmonicTagTextPaint = remember {
+        Paint().apply {
+            color = AndroidColor.WHITE
+            textSize = 22f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            isAntiAlias = true
+        }
+    }
+
     // --- DÉTECTION DES PICS D'ÉMERGENCE SUR LA TRAME COURANTE ---
     val detectedPeaks = remember(absHistory, ttnrHistory, isDetectorEnabled, emergenceThresholdDb, magnitudeGateDbFS, minBin, maxBin) {
         val peaksList = mutableListOf<EmergencePeak>()
@@ -329,8 +352,8 @@ fun SpectrogramCanvas(
             val endBin = minOf(latestAbs.size - 1, latestTtnr.size - 1, maxBin)
 
             for (i in startBin until endBin) {
-                val ttnr = latestTtnr[i]
-                val absVal = latestAbs[i]
+                val ttnr = latestTtnr[i].toDouble()
+                val absVal = latestAbs[i].toDouble()
                 val freqHz = (i * nyquistFreq).toDouble() / totalBinCount
 
                 val reqThreshold = when {
@@ -345,8 +368,8 @@ fun SpectrogramCanvas(
                     else -> magnitudeGateDbFS
                 }
 
-                val prevTtnr = latestTtnr[i - 1]
-                val nextTtnr = latestTtnr[i + 1]
+                val prevTtnr = latestTtnr[i - 1].toDouble()
+                val nextTtnr = latestTtnr[i + 1].toDouble()
 
                 // Validation Pic Structuré NVH (anti-spikes isolés de 1 pixel)
                 if (ttnr >= reqThreshold && absVal >= reqGate && (prevTtnr > 0.5 || nextTtnr > 0.5)) {
@@ -489,14 +512,16 @@ fun SpectrogramCanvas(
         val srcW = (bitmapWidth / zoom).toInt().coerceIn(1, bitmapWidth - srcX)
         val srcH = (bitmapHeight / zoom).toInt().coerceIn(1, bitmapHeight - srcY)
 
-        drawImage(
-            image = imageBitmap,
-            srcOffset = androidx.compose.ui.unit.IntOffset(srcX, srcY),
-            srcSize = androidx.compose.ui.unit.IntSize(srcW, srcH),
-            dstOffset = androidx.compose.ui.unit.IntOffset(marginLeft.toInt(), marginTop.toInt()),
-            dstSize = androidx.compose.ui.unit.IntSize(plotWidth.toInt(), plotHeight.toInt()),
-            filterQuality = androidx.compose.ui.graphics.FilterQuality.None
-        )
+        imageBitmap?.let { img ->
+            drawImage(
+                image = img,
+                srcOffset = androidx.compose.ui.unit.IntOffset(srcX, srcY),
+                srcSize = androidx.compose.ui.unit.IntSize(srcW, srcH),
+                dstOffset = androidx.compose.ui.unit.IntOffset(marginLeft.toInt(), marginTop.toInt()),
+                dstSize = androidx.compose.ui.unit.IntSize(plotWidth.toInt(), plotHeight.toInt()),
+                filterQuality = androidx.compose.ui.graphics.FilterQuality.None
+            )
+        }
 
         // 1b. Curseur temporel de lecture en mode Analyseur WAV
         if (isWavAnalyzerMode) {
@@ -547,18 +572,6 @@ fun SpectrogramCanvas(
 
             // --- DESSIN DES OVERLAYS DE FILTRES AUDIO (Bandes Semi-Transparentes) ---
             if (activeFilters.isNotEmpty()) {
-                val filterFillPaint = Paint().apply {
-                    style = Paint.Style.FILL
-                    isAntiAlias = true
-                    // Rendu AAA : Mode SCREEN pour un effet de faisceau lumineux sans griser le fond
-                    xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SCREEN)
-                }
-                val filterStrokePaint = Paint().apply {
-                    style = Paint.Style.STROKE
-                    strokeWidth = 5f
-                    isAntiAlias = true
-                }
-                
                 for (filter in activeFilters) {
                     val baseColor = android.graphics.Color.argb(
                         (filter.color.alpha * 255).toInt(),
@@ -729,17 +742,9 @@ fun SpectrogramCanvas(
                 // Draw manual tags
                 drawIntoCanvas { canvas ->
                     val nativeCanvas = canvas.nativeCanvas
-                    val bgPaint = android.graphics.Paint().apply {
-                        style = android.graphics.Paint.Style.FILL
-                        isAntiAlias = true
-                    }
-                    val textPaint = android.graphics.Paint().apply {
-                        color = android.graphics.Color.WHITE
-                        textSize = 28f
-                        typeface = android.graphics.Typeface.DEFAULT_BOLD
-                        isAntiAlias = true
-                    }
-                    
+                    val bgPaint = manualTagBgPaint
+                    val textPaint = manualTagTextPaint
+
                     val occupiedRects = mutableListOf<android.graphics.RectF>()
                     
                     manualTrackedOrders.forEach { order ->
@@ -816,14 +821,8 @@ fun SpectrogramCanvas(
                             
                             val distY = Math.abs(currentRect.centerY() - pt.y)
                             if (distY > 20f) {
-                                val linePaint = android.graphics.Paint().apply {
-                                    color = android.graphics.Color.WHITE
-                                    strokeWidth = 2f
-                                    isAntiAlias = true
-                                    alpha = 150
-                                }
                                 val boxEdgeX = if (tx > pt.x) currentRect.left else currentRect.right
-                                nativeCanvas.drawLine(pt.x, pt.y, boxEdgeX, currentRect.centerY(), linePaint)
+                                nativeCanvas.drawLine(pt.x, pt.y, boxEdgeX, currentRect.centerY(), manualTagLeaderPaint)
                             }
                             
                             nativeCanvas.drawText(text, currentRect.left + paddingX, currentRect.bottom - paddingY - 2f, textPaint)
@@ -933,21 +932,9 @@ fun SpectrogramCanvas(
 
             // --- DESSIN DES ÉTIQUETTES D'HARMONIQUES (H_k) AVEC RÉMANENCE VISUELLE ---
             if (kinematicsConfig.isEnabled && trackedHarmonicTags.isNotEmpty()) {
-                val tagBgPaint = Paint().apply {
-                    style = Paint.Style.FILL
-                    isAntiAlias = true
-                }
-                val tagBorderPaint = Paint().apply {
-                    style = Paint.Style.STROKE
-                    strokeWidth = 2.5f
-                    isAntiAlias = true
-                }
-                val tagTextPaint = Paint().apply {
-                    color = AndroidColor.WHITE
-                    textSize = 22f
-                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                    isAntiAlias = true
-                }
+                val tagBgPaint = harmonicTagBgPaint
+                val tagBorderPaint = harmonicTagBorderPaint
+                val tagTextPaint = harmonicTagTextPaint
 
                 val nowMs = System.currentTimeMillis()
                 val maxHoldMs = (kinematicsConfig.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L)

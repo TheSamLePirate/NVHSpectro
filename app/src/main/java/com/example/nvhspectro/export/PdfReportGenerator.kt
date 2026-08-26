@@ -37,7 +37,7 @@ object PdfReportGenerator {
         return Color.argb(255, (r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt())
     }
 
-    private fun createBitmapFromHistory(history: List<DoubleArray>, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap? {
+    private fun createBitmapFromHistory(history: List<FloatArray>, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap? {
         if (history.isEmpty()) return null
         
         val width = history.size
@@ -50,7 +50,7 @@ object PdfReportGenerator {
             for (y in 0 until height) {
                 // Y-axis is inverted (0 is top, maxFreq is top in spectrogram)
                 val binIndex = (height - 1) - y
-                val magnitude = if (binIndex in frame.indices) frame[binIndex] else minVal
+                val magnitude = if (binIndex in frame.indices) frame[binIndex].toDouble() else minVal
                 
                 val colorInt = if (isTtnr && magnitude < 1.0) {
                     Color.BLACK
@@ -72,8 +72,8 @@ object PdfReportGenerator {
     fun generateReport(
         context: Context,
         outStream: OutputStream,
-        historyAbs: List<DoubleArray>,
-        historyTtnr: List<DoubleArray>,
+        historyAbs: List<FloatArray>,
+        historyTtnr: List<FloatArray>,
         minDb: Double,
         maxDb: Double,
         trackedOrders: List<SmartTrackedOrder>,

@@ -18,12 +18,13 @@ class LiveAnalysisEngine(val fftSize: Int, private val sampleRateHz: Int) {
     private val recentRawTTNR = ArrayDeque<DoubleArray>() // newest first
 
     class FrameResult(
-        val magnitudes: DoubleArray,
-        val ttnrSpectrum: DoubleArray,
+        /** [P1, plan 3.5] Spectra cross the engine boundary as FloatArray — display precision at half the memory. */
+        val magnitudes: FloatArray,
+        val ttnrSpectrum: FloatArray,
         /** Bins whose 6-frame persistence just completed — history rows 1..5 get retro-unmasked. */
         val retroUnmaskBins: List<Int>,
         /** Raw TTNR rows k=1..5 (newest first) when retro fires, else empty. */
-        val retroRawRows: List<DoubleArray>
+        val retroRawRows: List<FloatArray>
     )
 
     @Synchronized
@@ -69,11 +70,11 @@ class LiveAnalysisEngine(val fftSize: Int, private val sampleRateHz: Int) {
         previousTTNRSpectrum = smoothed
 
         val retroRows = if (retroBins.isNotEmpty() && recentRawTTNR.size >= RETRO_FRAMES) {
-            recentRawTTNR.drop(1).take(RETRO_FRAMES - 1)
+            recentRawTTNR.drop(1).take(RETRO_FRAMES - 1).map { it.toFloatSpectrum() }
         } else {
             emptyList()
         }
-        return FrameResult(magnitudes, smoothed, retroBins, retroRows)
+        return FrameResult(magnitudes.toFloatSpectrum(), smoothed.toFloatSpectrum(), retroBins, retroRows)
     }
 
     /**
@@ -95,3 +96,6 @@ class LiveAnalysisEngine(val fftSize: Int, private val sampleRateHz: Int) {
         const val RETRO_FRAMES = 6
     }
 }
+
+/** [P1, plan 3.5] Spectrum storage/display conversion — computation stays double inside the DSP. */
+fun DoubleArray.toFloatSpectrum(): FloatArray = FloatArray(size) { this[it].toFloat() }

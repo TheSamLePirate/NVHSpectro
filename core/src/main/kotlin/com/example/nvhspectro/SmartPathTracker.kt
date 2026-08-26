@@ -19,7 +19,7 @@ object SmartPathTracker {
     private const val MAX_JUMP_BINS = 15f
     private const val SMOOTHING_HALF_WINDOW = 2
 
-    fun compute(points: List<ManualOrderAnchor>, history: List<DoubleArray>): List<ManualOrderAnchor> {
+    fun compute(points: List<ManualOrderAnchor>, history: List<FloatArray>): List<ManualOrderAnchor> {
         if (points.size < 2 || history.isEmpty()) return emptyList()
 
         val startFrame = points.first().frameIndex.coerceIn(0, history.size - 1)
@@ -48,7 +48,7 @@ object SmartPathTracker {
 
         val dbEnergies = Array(numFrames) { f ->
             val spectrum = history[startFrame + f]
-            FloatArray(binCount) { b -> spectrum[b].toFloat() }
+            FloatArray(binCount) { b -> spectrum[b] }
         }
 
         val rawPath = mutableListOf<ManualOrderAnchor>()

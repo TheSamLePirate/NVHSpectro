@@ -16,18 +16,18 @@ class MeasurementSessionTest {
 
     private fun session() = MeasurementSession(CoroutineScope(SupervisorJob() + Dispatchers.Unconfined))
 
-    private fun frame(value: Double) = DoubleArray(4) { value }
+    private fun frame(value: Float) = FloatArray(4) { value }
 
     @Test
     fun u9_liveHistories_areChronological_newestLast() {
         val s = session()
         for (v in 1..3) {
-            s.appendLiveFrame(frame(v.toDouble()), frame(v * 10.0), emptyList(), emptyList(), maxHistory = 10)
+            s.appendLiveFrame(frame(v.toFloat()), frame(v * 10f), emptyList(), emptyList(), maxHistory = 10)
             s.appendLiveTelemetry(TelemetryData(speedKmh = v.toFloat()), maxHistory = 10)
         }
-        assertEquals("oldest frame first", 1.0, s.fftHistoryAbsolute.value.first()[0], 1e-12)
-        assertEquals("newest frame LAST", 3.0, s.fftHistoryAbsolute.value.last()[0], 1e-12)
-        assertEquals(30.0, s.fftHistoryTTNR.value.last()[0], 1e-12)
+        assertEquals("oldest frame first", 1f, s.fftHistoryAbsolute.value.first()[0], 1e-6f)
+        assertEquals("newest frame LAST", 3f, s.fftHistoryAbsolute.value.last()[0], 1e-6f)
+        assertEquals(30f, s.fftHistoryTTNR.value.last()[0], 1e-6f)
         assertEquals(1f, s.telemetryHistory.value.first().speedKmh)
         assertEquals(3f, s.telemetryHistory.value.last().speedKmh)
     }
@@ -36,11 +36,11 @@ class MeasurementSessionTest {
     fun u9_liveHistory_trimsTheOldestFrame() {
         val s = session()
         for (v in 1..5) {
-            s.appendLiveFrame(frame(v.toDouble()), frame(v.toDouble()), emptyList(), emptyList(), maxHistory = 3)
+            s.appendLiveFrame(frame(v.toFloat()), frame(v.toFloat()), emptyList(), emptyList(), maxHistory = 3)
         }
         assertEquals(3, s.fftHistoryAbsolute.value.size)
-        assertEquals("trim drops the OLDEST", 3.0, s.fftHistoryAbsolute.value.first()[0], 1e-12)
-        assertEquals(5.0, s.fftHistoryAbsolute.value.last()[0], 1e-12)
+        assertEquals("trim drops the OLDEST", 3f, s.fftHistoryAbsolute.value.first()[0], 1e-6f)
+        assertEquals(5f, s.fftHistoryAbsolute.value.last()[0], 1e-6f)
     }
 
     @Test
@@ -48,15 +48,15 @@ class MeasurementSessionTest {
         val s = session()
         // 6 plain frames, then one carrying a retro unmask of bin 2 for the
         // 5 previous rows (raw values 91..95, k=1 the most recent).
-        repeat(6) { s.appendLiveFrame(frame(0.0), frame(-100.0), emptyList(), emptyList(), 20) }
-        val retroRows = (1..5).map { k -> DoubleArray(4) { 90.0 + k } }
-        s.appendLiveFrame(frame(0.0), frame(5.0), listOf(2), retroRows, 20)
+        repeat(6) { s.appendLiveFrame(frame(0f), frame(-100f), emptyList(), emptyList(), 20) }
+        val retroRows = (1..5).map { k -> FloatArray(4) { 90f + k } }
+        s.appendLiveFrame(frame(0f), frame(5f), listOf(2), retroRows, 20)
 
         val ttnr = s.fftHistoryTTNR.value
-        assertEquals("row k frames ago gets raw row k", 91.0, ttnr[ttnr.lastIndex - 1][2], 1e-12)
-        assertEquals(95.0, ttnr[ttnr.lastIndex - 5][2], 1e-12)
-        assertEquals("untouched bins stay masked", -100.0, ttnr[ttnr.lastIndex - 1][0], 1e-12)
-        assertEquals("older rows untouched", -100.0, ttnr[ttnr.lastIndex - 6][2], 1e-12)
+        assertEquals("row k frames ago gets raw row k", 91f, ttnr[ttnr.lastIndex - 1][2], 1e-6f)
+        assertEquals(95f, ttnr[ttnr.lastIndex - 5][2], 1e-6f)
+        assertEquals("untouched bins stay masked", -100f, ttnr[ttnr.lastIndex - 1][0], 1e-6f)
+        assertEquals("older rows untouched", -100f, ttnr[ttnr.lastIndex - 6][2], 1e-6f)
     }
 
     @Test
@@ -66,8 +66,8 @@ class MeasurementSessionTest {
         s.registerModeTransitionHook { order.add("hook:$it") }
         s.registerAnalysisResettable { order.add("reset") }
 
-        s.appendLiveFrame(frame(1.0), frame(1.0), emptyList(), emptyList(), 10)
-        s.setLatestTtnrSpectrum(frame(9.0))
+        s.appendLiveFrame(frame(1f), frame(1f), emptyList(), emptyList(), 10)
+        s.setLatestTtnrSpectrum(frame(9f))
         s.setTrackedHarmonicTags(emptyList())
 
         s.setAudioSourceMode(AudioSourceMode.WAV_ANALYZER)

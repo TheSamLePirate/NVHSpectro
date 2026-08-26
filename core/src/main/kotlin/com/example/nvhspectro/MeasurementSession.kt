@@ -83,7 +83,7 @@ class MeasurementSession(scope: CoroutineScope) {
     /** [L7] No ghost EMA/tags across any source or kinematics transition. */
     fun resetAnalysisState() {
         analysisResettables.forEach { it() }
-        _latestTTNRSpectrum.value = DoubleArray(0)
+        _latestTTNRSpectrum.value = FloatArray(0)
         _trackedHarmonicTags.value = emptyList()
     }
 
@@ -116,21 +116,21 @@ class MeasurementSession(scope: CoroutineScope) {
     }
 
     // ------------------------------------------------------------- histories
-    private val _fftHistoryAbsolute = MutableStateFlow<List<DoubleArray>>(emptyList())
-    val fftHistoryAbsolute: StateFlow<List<DoubleArray>> = _fftHistoryAbsolute.asStateFlow()
+    private val _fftHistoryAbsolute = MutableStateFlow<List<FloatArray>>(emptyList())
+    val fftHistoryAbsolute: StateFlow<List<FloatArray>> = _fftHistoryAbsolute.asStateFlow()
 
-    private val _fftHistoryTTNR = MutableStateFlow<List<DoubleArray>>(emptyList())
-    val fftHistoryTTNR: StateFlow<List<DoubleArray>> = _fftHistoryTTNR.asStateFlow()
+    private val _fftHistoryTTNR = MutableStateFlow<List<FloatArray>>(emptyList())
+    val fftHistoryTTNR: StateFlow<List<FloatArray>> = _fftHistoryTTNR.asStateFlow()
 
-    val fftHistory: StateFlow<List<DoubleArray>> =
+    val fftHistory: StateFlow<List<FloatArray>> =
         combine(_displayMode, _fftHistoryAbsolute, _fftHistoryTTNR) { mode, absList, ttnrList ->
             if (mode == DisplayMode.TTNR) ttnrList else absList
         }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
-    private val _latestTTNRSpectrum = MutableStateFlow(DoubleArray(0))
-    val latestTTNRSpectrum: StateFlow<DoubleArray> = _latestTTNRSpectrum.asStateFlow()
+    private val _latestTTNRSpectrum = MutableStateFlow(FloatArray(0))
+    val latestTTNRSpectrum: StateFlow<FloatArray> = _latestTTNRSpectrum.asStateFlow()
 
-    fun setLatestTtnrSpectrum(spectrum: DoubleArray) {
+    fun setLatestTtnrSpectrum(spectrum: FloatArray) {
         _latestTTNRSpectrum.value = spectrum
     }
 
@@ -141,10 +141,10 @@ class MeasurementSession(scope: CoroutineScope) {
      * patch to the k most recent TTNR rows and ring-trims to [maxHistory].
      */
     fun appendLiveFrame(
-        magnitudes: DoubleArray,
-        ttnrSpectrum: DoubleArray,
+        magnitudes: FloatArray,
+        ttnrSpectrum: FloatArray,
         retroUnmaskBins: List<Int>,
-        retroRawRows: List<DoubleArray>,
+        retroRawRows: List<FloatArray>,
         maxHistory: Int
     ) {
         _latestTTNRSpectrum.value = ttnrSpectrum
@@ -175,7 +175,7 @@ class MeasurementSession(scope: CoroutineScope) {
     }
 
     /** Analyzer-mode replace: the full-file sweep result. */
-    fun setWavAnalysis(absList: List<DoubleArray>, ttnrList: List<DoubleArray>) {
+    fun setWavAnalysis(absList: List<FloatArray>, ttnrList: List<FloatArray>) {
         _fftHistoryAbsolute.value = absList
         _fftHistoryTTNR.value = ttnrList
     }

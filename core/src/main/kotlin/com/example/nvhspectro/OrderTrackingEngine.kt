@@ -22,8 +22,8 @@ class OrderTrackingEngine {
 
     /** One analysis frame, in the source's own bin grid ([df] = sampleRate / fftSize). */
     class Frame(
-        val ttnrRow: DoubleArray,
-        val absRow: DoubleArray,
+        val ttnrRow: FloatArray,
+        val absRow: FloatArray,
         val df: Double,
         val speedKmh: Float,
         val rpm: Double,
@@ -61,7 +61,7 @@ class OrderTrackingEngine {
                     val orderIndex = (order * ORDER_RESOLUTION).toInt()
                     if (orderIndex in 0 until ORDER_BINS) {
                         currentFrameSpectrum[orderIndex] =
-                            maxOf(currentFrameSpectrum[orderIndex], ttnrVal.toFloat())
+                            maxOf(currentFrameSpectrum[orderIndex], ttnrVal)
                     }
                 }
             }
@@ -93,7 +93,7 @@ class OrderTrackingEngine {
                         orderValue = orderValue,
                         freqHz = freqHz,
                         ttnrDb = emaOrderSpectrum[j].toDouble(),
-                        absDbFS = frame.absRow[binIndex],
+                        absDbFS = frame.absRow[binIndex].toDouble(),
                         speedKmh = frame.speedKmh,
                         rpm = frame.rpm,
                         binIndex = binIndex,
@@ -220,8 +220,8 @@ class OrderTrackingEngine {
          * truncated — resolved deliberately to rounding, audit D7).
          */
         fun searchTrackedOrder(
-            absRow: DoubleArray,
-            ttnrRow: DoubleArray,
+            absRow: FloatArray,
+            ttnrRow: FloatArray,
             targetFreqHz: Double,
             df: Double,
             radiusBins: Int
@@ -234,8 +234,8 @@ class OrderTrackingEngine {
             val lo = (centerBin - radiusBins).coerceAtLeast(0)
             val hi = (centerBin + radiusBins).coerceAtMost(totalBins - 1)
             for (b in lo..hi) {
-                if (absRow[b] > maxMag) maxMag = absRow[b]
-                if (b < ttnrRow.size && ttnrRow[b] > maxEm) maxEm = ttnrRow[b]
+                if (absRow[b] > maxMag) maxMag = absRow[b].toDouble()
+                if (b < ttnrRow.size && ttnrRow[b] > maxEm) maxEm = ttnrRow[b].toDouble()
             }
             return TrackedOrderLevels(maxMag, maxEm)
         }

@@ -32,7 +32,7 @@ fun TelemetryGraph(
     metric: TelemetryMetric,
     timeWindowSec: Double,
     historySize: Int = 150,
-    ttnrSpectrum: DoubleArray = DoubleArray(0),
+    ttnrSpectrum: FloatArray = FloatArray(0),
     minFreq: Int = 0,
     maxFreq: Int = 10000,
     sampleRate: Int,
@@ -171,7 +171,7 @@ fun TelemetryGraph(
 
                 for (i in 0 until displayedBins) {
                     val bin = minBin + i
-                    val valTtnr = if (bin in ttnrSpectrum.indices) ttnrSpectrum[bin] else 0.0
+                    val valTtnr = if (bin in ttnrSpectrum.indices) ttnrSpectrum[bin].toDouble() else 0.0
                     if (valTtnr > maxEmergence) {
                         maxEmergence = valTtnr
                         maxEmergenceBin = bin

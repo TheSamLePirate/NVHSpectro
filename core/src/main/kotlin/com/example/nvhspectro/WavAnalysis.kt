@@ -12,7 +12,7 @@ import com.example.nvhspectro.data.TrackedHarmonicTag
  */
 object WavAnalysis {
 
-    class Spectrogram(val absList: List<DoubleArray>, val ttnrList: List<DoubleArray>)
+    class Spectrogram(val absList: List<FloatArray>, val ttnrList: List<FloatArray>)
 
     /**
      * Full-file STFT at 50 % overlap on a fresh [FFTProcessor] (stateful —
@@ -32,8 +32,8 @@ object WavAnalysis {
 
         val processor = FFTProcessor(fftSize, sampleRate)
         val frameCount = ((totalSamples - fftSize) / stepSize).coerceAtLeast(1)
-        val absList = ArrayList<DoubleArray>(frameCount)
-        val ttnrList = ArrayList<DoubleArray>(frameCount)
+        val absList = ArrayList<FloatArray>(frameCount)
+        val ttnrList = ArrayList<FloatArray>(frameCount)
 
         val frameBuffer = ShortArray(fftSize)
         for (i in 0 until frameCount) {
@@ -46,8 +46,8 @@ object WavAnalysis {
                 java.util.Arrays.fill(frameBuffer, 0.toShort())
             }
             val magnitudes = processor.processFFT(frameBuffer)
-            ttnrList.add(processor.computeTTNR(magnitudes))
-            absList.add(magnitudes)
+            ttnrList.add(processor.computeTTNR(magnitudes).toFloatSpectrum())
+            absList.add(magnitudes.toFloatSpectrum())
         }
         return Spectrogram(absList, ttnrList)
     }
@@ -89,7 +89,7 @@ object WavAnalysis {
     class CursorState(
         val frameIndex: Int,
         /** TTNR row under the cursor, or null when no history exists. */
-        val ttnrSpectrum: DoubleArray?,
+        val ttnrSpectrum: FloatArray?,
         val telemetry: TelemetryData
     )
 
@@ -102,8 +102,8 @@ object WavAnalysis {
     fun cursorStateAt(
         posMs: Long,
         durationMs: Long,
-        absList: List<DoubleArray>,
-        ttnrList: List<DoubleArray>,
+        absList: List<FloatArray>,
+        ttnrList: List<FloatArray>,
         telemetrySource: List<TelemetryData>,
         config: KinematicsConfig,
         sampleRate: Int
@@ -111,8 +111,8 @@ object WavAnalysis {
         val totalMs = durationMs.coerceAtLeast(1L)
         val ratio = (posMs.toDouble() / totalMs.toDouble()).coerceIn(0.0, 1.0)
 
-        var currentAbs = DoubleArray(0)
-        var currentTtnr: DoubleArray? = null
+        var currentAbs = FloatArray(0)
+        var currentTtnr: FloatArray? = null
         var frameIdx = 0
         if (absList.isNotEmpty()) {
             frameIdx = TimelineMapper.timeToIndex(posMs, totalMs, absList.size)
@@ -149,7 +149,7 @@ object WavAnalysis {
                     OrderTrackingEngine.TRACKED_SEARCH_RADIUS_FRAME_BINS
                 )
                 telem = telem.copy(
-                    ttnrDb = (ttnr.maxOrNull() ?: 0.0).toFloat(),
+                    ttnrDb = ttnr.maxOrNull() ?: 0f,
                     trackedOrderDbFS = levels.dbFS,
                     trackedOrderEmergenceDb = levels.emergenceDb
                 )
@@ -172,8 +172,8 @@ object WavAnalysis {
      * frame-by-frame [OrderTrackingEngine] pass on a fresh engine instance.
      */
     fun orderSweep(
-        absHistory: List<DoubleArray>,
-        ttnrHistory: List<DoubleArray>,
+        absHistory: List<FloatArray>,
+        ttnrHistory: List<FloatArray>,
         telemetry: List<TelemetryData>,
         config: KinematicsConfig,
         sampleRate: Int
