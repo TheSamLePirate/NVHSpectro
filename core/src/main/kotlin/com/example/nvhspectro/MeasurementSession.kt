@@ -135,8 +135,10 @@ class MeasurementSession(scope: CoroutineScope) {
     }
 
     /**
-     * Live-mode append: newest-first insertion with the 150 ms retro-unmask
-     * patch of recent TTNR rows and ring-trim to [maxHistory].
+     * Live-mode append. [U9/U10 root fix, plan 3.4] Histories are CANONICAL
+     * CHRONOLOGICAL — newest LAST — in every mode; only the draw layer knows
+     * the live view scrolls right-to-left. Applies the 150 ms retro-unmask
+     * patch to the k most recent TTNR rows and ring-trims to [maxHistory].
      */
     fun appendLiveFrame(
         magnitudes: DoubleArray,
@@ -148,25 +150,27 @@ class MeasurementSession(scope: CoroutineScope) {
         _latestTTNRSpectrum.value = ttnrSpectrum
 
         val curAbs = _fftHistoryAbsolute.value.toMutableList()
-        curAbs.add(0, magnitudes)
-        if (curAbs.size > maxHistory) curAbs.removeAt(curAbs.lastIndex)
+        curAbs.add(magnitudes)
+        if (curAbs.size > maxHistory) curAbs.removeAt(0)
         _fftHistoryAbsolute.value = curAbs
 
         val curTtnr = _fftHistoryTTNR.value.toMutableList()
-        curTtnr.add(0, ttnrSpectrum)
+        curTtnr.add(ttnrSpectrum)
         if (retroUnmaskBins.isNotEmpty() && curTtnr.size >= LiveAnalysisEngine.RETRO_FRAMES) {
+            // retroRawRows[k-1] is the raw spectrum k frames ago.
             for (k in 1..retroRawRows.size) {
-                if (k < curTtnr.size) {
-                    val pastRow = curTtnr[k].clone()
+                val idx = curTtnr.lastIndex - k
+                if (idx >= 0) {
+                    val pastRow = curTtnr[idx].clone()
                     val pastRaw = retroRawRows[k - 1]
                     for (binIdx in retroUnmaskBins) {
                         pastRow[binIdx] = pastRaw[binIdx]
                     }
-                    curTtnr[k] = pastRow
+                    curTtnr[idx] = pastRow
                 }
             }
         }
-        if (curTtnr.size > maxHistory) curTtnr.removeAt(curTtnr.lastIndex)
+        if (curTtnr.size > maxHistory) curTtnr.removeAt(0)
         _fftHistoryTTNR.value = curTtnr
     }
 
@@ -191,11 +195,12 @@ class MeasurementSession(scope: CoroutineScope) {
         _telemetryHistory.value = history
     }
 
+    /** Chronological, like the spectral histories [plan 3.4]. */
     fun appendLiveTelemetry(data: TelemetryData, maxHistory: Int) {
         _telemetryState.value = data
         val cur = _telemetryHistory.value.toMutableList()
-        cur.add(0, data)
-        if (cur.size > maxHistory) cur.removeAt(cur.lastIndex)
+        cur.add(data)
+        if (cur.size > maxHistory) cur.removeAt(0)
         _telemetryHistory.value = cur
     }
 

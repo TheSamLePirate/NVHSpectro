@@ -196,7 +196,9 @@ fun SpectrogramCanvas(
                     }
                 }
             } else {
-                val latestFrame = history.first()
+                // [plan 3.4] Histories are chronological (newest LAST); the live
+                // scroll direction lives here in the draw layer only.
+                val latestFrame = history.last()
 
                 for (y in 0 until bitmapHeight) {
                     System.arraycopy(pixels, y * bitmapWidth + 1, pixels, y * bitmapWidth, bitmapWidth - 1)
@@ -320,8 +322,9 @@ fun SpectrogramCanvas(
     val detectedPeaks = remember(absHistory, ttnrHistory, isDetectorEnabled, emergenceThresholdDb, magnitudeGateDbFS, minBin, maxBin) {
         val peaksList = mutableListOf<EmergencePeak>()
         if (isDetectorEnabled && absHistory.isNotEmpty() && ttnrHistory.isNotEmpty()) {
-            val latestAbs = absHistory.first()
-            val latestTtnr = ttnrHistory.first()
+            // [plan 3.4] Chronological history: the latest frame is LAST.
+            val latestAbs = absHistory.last()
+            val latestTtnr = ttnrHistory.last()
             val startBin = maxOf(1, minBin)
             val endBin = minOf(latestAbs.size - 1, latestTtnr.size - 1, maxBin)
 
@@ -888,12 +891,9 @@ fun SpectrogramCanvas(
                 val numFrames = telemetryHistory.size
                 
                 for (x in 0 until plotWidth.toInt()) {
-                    val exactIdx = if (isWavAnalyzerMode) {
-                        (x.toFloat() * (numFrames - 1)) / maxOf(1f, plotWidth - 1f)
-                    } else {
-                        val reversedX = maxOf(0f, plotWidth - 1f - x.toFloat())
-                        (reversedX * (numFrames - 1)) / maxOf(1f, plotWidth - 1f)
-                    }
+                    // [plan 3.4] One chronological mapping for every mode:
+                    // left = oldest, right = newest.
+                    val exactIdx = (x.toFloat() * (numFrames - 1)) / maxOf(1f, plotWidth - 1f)
                     val idxBefore = exactIdx.toInt().coerceIn(0, numFrames - 1)
                     val idxAfter = (idxBefore + 1).coerceIn(0, numFrames - 1)
                     val fraction = exactIdx - idxBefore

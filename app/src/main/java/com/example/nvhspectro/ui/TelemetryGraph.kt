@@ -316,12 +316,14 @@ fun TelemetryGraph(
 
                 if (metric == TelemetryMetric.ORDER) {
                     for (i in 0 until pointCount - 1) {
-                        val fractionX1 = if (isWavAnalyzerMode) i.toFloat() / max(1, pointCount - 1) else i.toFloat() / max(1, targetHistSize - 1)
+                        // [plan 3.4] History is chronological (newest LAST); the live
+                        // view anchors the newest sample to the right edge.
+                        val fractionX1 = if (isWavAnalyzerMode) i.toFloat() / max(1, pointCount - 1) else (pointCount - 1 - i).toFloat() / max(1, targetHistSize - 1)
                         val x1 = if (isWavAnalyzerMode) marginLeft + fractionX1 * plotWidth else marginLeft + (1f - fractionX1) * plotWidth
                         val normY1 = ((values[i] - minVal) / valRange).toFloat()
                         val y1 = (marginTop + plotHeight) - (normY1 * plotHeight)
 
-                        val fractionX2 = if (isWavAnalyzerMode) (i + 1).toFloat() / max(1, pointCount - 1) else (i + 1).toFloat() / max(1, targetHistSize - 1)
+                        val fractionX2 = if (isWavAnalyzerMode) (i + 1).toFloat() / max(1, pointCount - 1) else (pointCount - 2 - i).toFloat() / max(1, targetHistSize - 1)
                         val x2 = if (isWavAnalyzerMode) marginLeft + fractionX2 * plotWidth else marginLeft + (1f - fractionX2) * plotWidth
                         val normY2 = ((values[i + 1] - minVal) / valRange).toFloat()
                         val y2 = (marginTop + plotHeight) - (normY2 * plotHeight)
@@ -346,7 +348,8 @@ fun TelemetryGraph(
                 } else {
                     val path = Path()
                     for (i in 0 until pointCount) {
-                        val fractionX = if (isWavAnalyzerMode) i.toFloat() / max(1, pointCount - 1) else i.toFloat() / max(1, targetHistSize - 1)
+                        // [plan 3.4] Chronological history; live anchors newest right.
+                        val fractionX = if (isWavAnalyzerMode) i.toFloat() / max(1, pointCount - 1) else (pointCount - 1 - i).toFloat() / max(1, targetHistSize - 1)
                         val x = if (isWavAnalyzerMode) marginLeft + fractionX * plotWidth else marginLeft + (1f - fractionX) * plotWidth
 
                         val normY = ((values[i] - minVal) / valRange).toFloat()

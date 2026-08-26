@@ -75,13 +75,16 @@ object PngExporter {
         val minVal = if (mode == DisplayMode.TTNR) 1.0 else input.minDb
         val maxVal = if (mode == DisplayMode.TTNR) 20.0 else input.maxDb
 
+        // [U10, plan 3.4] History is chronological in every mode — no column
+        // mirror. (The old unconditional reversal was right only for the
+        // newest-first live list and time-mirrored every WAV export.)
         for (x in 0 until bitmapWidth) {
             val frameData = history[x]
             for (y in 0 until bitmapHeight) {
                 val b = bitmapHeight - 1 - y
                 val valMagnitude = if (b < frameData.size) frameData[b] else minVal
                 val normalized = ((valMagnitude - minVal) / (maxVal - minVal)).toFloat()
-                pixels[y * bitmapWidth + (bitmapWidth - 1 - x)] = getJetColorInt(normalized)
+                pixels[y * bitmapWidth + x] = getJetColorInt(normalized)
             }
         }
         spectroBitmap.setPixels(pixels, 0, bitmapWidth, 0, 0, bitmapWidth, bitmapHeight)

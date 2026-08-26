@@ -635,6 +635,7 @@
     <ID>MaxLineLength:MainScreen.kt$val wavProgress = if (loadedWavData != null &amp;&amp; (loadedWavData?.durationMs ?: 0L) &gt; 0) (wavPlaybackPositionMs.toFloat() / loadedWavData!!.durationMs.toFloat()) else 0f</ID>
     <ID>MaxLineLength:MainScreen.kt$}</ID>
     <ID>MaxLineLength:MeasurementSession.kt$MeasurementSession$fun</ID>
+    <ID>MaxLineLength:MeasurementSessionTest.kt$MeasurementSessionTest$s.updateDisplaySettings(newMinDb = -2.0, newMaxDb = -4.0, newMinFreq = 0, newMaxFreq = 8000, newTimeWindowSec = 5.0)</ID>
     <ID>MaxLineLength:OrderSelectionDialog.kt$var customOrderText by remember { mutableStateOf(if (presets.contains(currentOrder)) "" else currentOrder.toString()) }</ID>
     <ID>MaxLineLength:OrderTrackingEngineTest.kt$OrderTrackingEngineTest$tags = engine.step(frame(ttnrDb), nowMs = i * 23L, holdMs = 3000L, targetOrders = targetOrders, activeTags = tags, report = report)</ID>
     <ID>MaxLineLength:OrderTrackingEngineTest.kt$OrderTrackingEngineTest$tags = engine.step(still, nowMs = 1000L, holdMs = 3000L, targetOrders = listOf(18.0), activeTags = tags, report = report)</ID>
@@ -712,9 +713,9 @@
     <ID>MaxLineLength:SpectrogramColormap.kt$val visibleMinTimeSec = if (isReportModeActive) (-pan.x / (plotWidth * zoom)) * totalTimeSec else (if (isWavAnalyzerMode) 0.0 else -totalTimeSec)</ID>
     <ID>MaxLineLength:SpectrogramColormap.kt$var currentRect = android.graphics.RectF(tx, ty - 25f - paddingY, tx + boxWidth, ty + 10f + paddingY)</ID>
     <ID>MaxLineLength:TelemetryGraph.kt$native.drawLine(marginLeft, marginTop + plotHeight, marginLeft + plotWidth, marginTop + plotHeight, axisPaint)</ID>
-    <ID>MaxLineLength:TelemetryGraph.kt$val fractionX = if (isWavAnalyzerMode) i.toFloat() / max(1, pointCount - 1) else i.toFloat() / max(1, targetHistSize - 1)</ID>
-    <ID>MaxLineLength:TelemetryGraph.kt$val fractionX1 = if (isWavAnalyzerMode) i.toFloat() / max(1, pointCount - 1) else i.toFloat() / max(1, targetHistSize - 1)</ID>
-    <ID>MaxLineLength:TelemetryGraph.kt$val fractionX2 = if (isWavAnalyzerMode) (i + 1).toFloat() / max(1, pointCount - 1) else (i + 1).toFloat() / max(1, targetHistSize - 1)</ID>
+    <ID>MaxLineLength:TelemetryGraph.kt$val fractionX = if (isWavAnalyzerMode) i.toFloat() / max(1, pointCount - 1) else (pointCount - 1 - i).toFloat() / max(1, targetHistSize - 1)</ID>
+    <ID>MaxLineLength:TelemetryGraph.kt$val fractionX1 = if (isWavAnalyzerMode) i.toFloat() / max(1, pointCount - 1) else (pointCount - 1 - i).toFloat() / max(1, targetHistSize - 1)</ID>
+    <ID>MaxLineLength:TelemetryGraph.kt$val fractionX2 = if (isWavAnalyzerMode) (i + 1).toFloat() / max(1, pointCount - 1) else (pointCount - 2 - i).toFloat() / max(1, targetHistSize - 1)</ID>
     <ID>MaxLineLength:TelemetryGraph.kt$val x = if (isWavAnalyzerMode) marginLeft + fractionX * plotWidth else marginLeft + (1f - fractionX) * plotWidth</ID>
     <ID>MaxLineLength:TelemetryGraph.kt$val x1 = if (isWavAnalyzerMode) marginLeft + fractionX1 * plotWidth else marginLeft + (1f - fractionX1) * plotWidth</ID>
     <ID>MaxLineLength:TelemetryGraph.kt$val x2 = if (isWavAnalyzerMode) marginLeft + fractionX2 * plotWidth else marginLeft + (1f - fractionX2) * plotWidth</ID>

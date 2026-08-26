@@ -169,17 +169,25 @@ class ReportViewModel(application: Application, val session: MeasurementSession)
 
     /** [C6-export] PNG snapshot rendered on Default, written via MediaStore. */
     fun exportData(pedalPercent: String, comments: String) {
+        // [U10, plan 3.4] The export scale follows the ACTUAL data: a loaded
+        // file spans its own duration/sample count, not the live scroll window.
+        val isFileMode = session.audioSourceMode.value != AudioSourceMode.LIVE
+        val telemHistory = session.telemetryHistory.value
         val input = PngExporter.Input(
             history = session.fftHistory.value,
-            telemetryHistory = session.telemetryHistory.value,
+            telemetryHistory = telemHistory,
             currentTelemetry = session.telemetryState.value,
             displayMode = session.displayMode.value,
             minDb = session.minDb.value,
             maxDb = session.maxDb.value,
             maxFreq = session.maxFreq.value,
             sampleRate = session.analysisSampleRate,
-            timeWindowSec = session.timeWindowSec.value,
-            historySize = session.historySize,
+            timeWindowSec = if (isFileMode) {
+                (session.loadedWavData.value?.durationMs ?: 0L) / 1000.0
+            } else {
+                session.timeWindowSec.value
+            },
+            historySize = if (isFileMode) telemHistory.size.coerceAtLeast(2) else session.historySize,
             pedalPercent = pedalPercent,
             comments = comments
         )
