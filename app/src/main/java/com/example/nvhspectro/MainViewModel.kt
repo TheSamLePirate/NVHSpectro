@@ -1220,7 +1220,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** ONE consumer for the app's lifetime; enable/fftSize changes flow through CaptureEngine. */
     private fun startLivePipeline() {
         viewModelScope.launch(analysisDispatcher) {
+            var frameCount = 0L
             captureEngine.frames().collect { audioBuffer ->
+                // [plan 2.6] Debug integrity log (~every 6 s): produced==consumed
+                // proves the single consumer loses nothing; the thread name
+                // proves DSP is off main.
+                if (BuildConfig.DEBUG && ++frameCount % 256 == 0L) {
+                    android.util.Log.d(
+                        "LivePipeline",
+                        "produced=${captureEngine.framesProduced.get()} " +
+                            "consumed=${captureEngine.framesConsumed.get()} " +
+                            "restarts=${captureEngine.captureRestarts.get()} " +
+                            "thread=${Thread.currentThread().name}"
+                    )
+                }
                 if (_audioSourceMode.value == AudioSourceMode.LIVE) {
                     processLiveFrame(audioBuffer)
                 }
