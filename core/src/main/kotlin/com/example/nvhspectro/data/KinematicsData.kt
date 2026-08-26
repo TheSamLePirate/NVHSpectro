@@ -168,16 +168,3 @@ data class ManualOrderAnchor(
     val isUserPlaced: Boolean = true,
     val exactBinF: Float = binIndex.toFloat()
 )
-
-data class SmartTrackedOrder(
-    val name: String,
-    val color: androidx.compose.ui.graphics.Color,
-    val path: List<ManualOrderAnchor>,
-    val minRpm: Int?,
-    val maxRpm: Int?,
-    val minSpeedKmh: Float?,
-    val maxSpeedKmh: Float?,
-    val minFreqHz: Int,
-    val maxFreqHz: Int,
-    val maxEmergenceDb: Double
-)

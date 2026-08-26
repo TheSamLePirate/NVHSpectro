@@ -38,7 +38,7 @@ jobs:
             "https://github.com/pinterest/ktlint/releases/download/${KTLINT_VERSION}/ktlint"
           chmod +x /tmp/ktlint
           /tmp/ktlint --baseline=config/ktlint-baseline.xml \
-            "app/src/main/**/*.kt" "app/src/test/**/*.kt"
+            "app/src/main/**/*.kt" "app/src/test/**/*.kt" "core/src/**/*.kt"
 
       - name: detekt (baselined)
         run: |
@@ -46,11 +46,11 @@ jobs:
             "https://github.com/detekt/detekt/releases/download/v${DETEKT_VERSION}/detekt-cli-${DETEKT_VERSION}.zip"
           unzip -qo /tmp/detekt.zip -d /tmp/detekt
           /tmp/detekt/detekt-cli-${DETEKT_VERSION}/bin/detekt-cli \
-            --input app/src --build-upon-default-config \
+            --input app/src,core/src --build-upon-default-config \
             --baseline config/detekt-baseline.xml
 
-      - name: Unit tests (characterization suite)
-        run: ./gradlew :app:testDebugUnitTest
+      - name: Unit tests (characterization suite, :core + :app)
+        run: ./gradlew :core:test :app:testDebugUnitTest
 
       - name: Android lint (zero errors, no baseline)
         run: ./gradlew :app:lintDebug

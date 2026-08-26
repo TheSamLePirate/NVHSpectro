@@ -34,15 +34,21 @@ if ! grep -q 'BuildConfig.VERSION_NAME' app/src/main/java/com/example/nvhspectro
   violation "InfoDialog no longer reads BuildConfig.VERSION_NAME [audit B1]"
 fi
 
-# --- [DISARMED until Phase 1] no literal 44100 outside AudioConfig --------
-SR_COUNT=$(grep -RIn '44100' app/src/main --include='*.kt' | grep -v 'AudioConfig.kt' | wc -l | tr -d ' ')
+# --- [ARMED in Phase 1] no literal 44100 outside AudioConfig --------------
+SR_COUNT=$(grep -RIn '44100' app/src/main core/src/main --include='*.kt' | grep -v 'AudioConfig.kt' | wc -l | tr -d ' ')
 if [ "${ARM_SAMPLE_RATE_GATE:-0}" = "1" ]; then
   if [ "$SR_COUNT" -gt 0 ]; then
     violation "literal 44100 outside AudioConfig.kt ($SR_COUNT occurrences) [audit C1]:"
-    grep -RIn '44100' app/src/main --include='*.kt' | grep -v 'AudioConfig.kt' | head -20
+    grep -RIn '44100' app/src/main core/src/main --include='*.kt' | grep -v 'AudioConfig.kt' | head -20
   fi
 else
   say "INFO: sample-rate gate disarmed (Phase 1 arms it). Current literal-44100 count: $SR_COUNT [audit C1]"
+fi
+
+# --- [ARMED] :core stays pure Kotlin — zero Android imports [plan 3.1] ----
+if grep -RIn --include='*.kt' -E '^import (android\.|androidx\.|com\.google\.android\.)' core/src >/dev/null 2>&1; then
+  violation ":core imports Android classes (must stay pure JVM) [plan 3.1]:"
+  grep -RIn --include='*.kt' -E '^import (android\.|androidx\.|com\.google\.android\.)' core/src | head -10
 fi
 
 if [ "$fail" -ne 0 ]; then

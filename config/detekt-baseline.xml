@@ -469,6 +469,9 @@
     <ID>MagicNumber:SplashScreen.kt$0.7f</ID>
     <ID>MagicNumber:SplashScreen.kt$0xFF007AFF</ID>
     <ID>MagicNumber:SplashScreen.kt$2000L</ID>
+    <ID>MagicNumber:SynthSignals.kt$SynthSignals$32767</ID>
+    <ID>MagicNumber:SynthSignals.kt$SynthSignals$32767.0</ID>
+    <ID>MagicNumber:SynthSignals.kt$SynthSignals$32768</ID>
     <ID>MagicNumber:Telemetry.kt$TelemetryData$120.0</ID>
     <ID>MagicNumber:TelemetryGraph.kt$0x00D500F9</ID>
     <ID>MagicNumber:TelemetryGraph.kt$0x55D500F9</ID>

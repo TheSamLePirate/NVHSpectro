@@ -17,26 +17,6 @@
         <error line="49" column="38" source="standard:function-signature" />
         <error line="56" column="32" source="standard:chain-method-continuation" />
     </file>
-    <file name="app/src/main/java/com/example/nvhspectro/FFTProcessor.kt">
-        <error line="3" column="1" source="standard:import-ordering" />
-        <error line="15" column="20" source="standard:class-signature" />
-        <error line="15" column="69" source="standard:class-signature" />
-        <error line="15" column="98" source="standard:class-signature" />
-        <error line="24" column="26" source="standard:multiline-expression-wrapping" />
-        <error line="79" column="27" source="standard:multiline-expression-wrapping" />
-        <error line="97" column="40" source="standard:multiline-expression-wrapping" />
-        <error line="109" column="41" source="standard:multiline-expression-wrapping" />
-        <error line="109" column="50" source="standard:condition-wrapping" />
-        <error line="176" column="37" source="standard:multiline-expression-wrapping" />
-    </file>
-    <file name="app/src/main/java/com/example/nvhspectro/LiveAnalysisEngine.kt">
-        <error line="13" column="26" source="standard:class-signature" />
-        <error line="13" column="44" source="standard:class-signature" />
-        <error line="13" column="73" source="standard:class-signature" />
-        <error line="14" column="1" source="standard:no-empty-first-line-in-class-body" />
-        <error line="27" column="44" source="standard:trailing-comma-on-declaration-site" />
-        <error line="72" column="25" source="standard:multiline-expression-wrapping" />
-    </file>
     <file name="app/src/main/java/com/example/nvhspectro/MainActivity.kt">
         <error line="14" column="1" source="standard:indent" />
         <error line="15" column="1" source="standard:indent" />
@@ -1874,119 +1854,11 @@
         <error line="162" column="43" source="standard:function-signature" />
         <error line="162" column="57" source="standard:function-signature" />
     </file>
-    <file name="app/src/main/java/com/example/nvhspectro/Telemetry.kt">
-        <error line="7" column="9" source="standard:trailing-comma-on-declaration-site" />
-        <error line="25" column="40" source="standard:trailing-comma-on-declaration-site" />
-    </file>
-    <file name="app/src/main/java/com/example/nvhspectro/data/AlphaBetaSpeedEstimator.kt">
-        <error line="28" column="51" source="standard:trailing-comma-on-declaration-site" />
-        <error line="44" column="16" source="standard:function-signature" />
-        <error line="44" column="44" source="standard:function-signature" />
-        <error line="44" column="62" source="standard:function-signature" />
-        <error line="80" column="18" source="standard:multiline-expression-wrapping" />
-        <error line="92" column="22" source="standard:function-signature" />
-        <error line="92" column="35" source="standard:function-signature" />
-        <error line="92" column="50" source="standard:function-signature" />
-    </file>
     <file name="app/src/main/java/com/example/nvhspectro/data/AudioFilter.kt">
-        <error line="9" column="14" source="standard:trailing-comma-on-declaration-site" />
-        <error line="10" column="1" source="standard:enum-wrapping" />
-        <error line="10" column="1" source="standard:no-trailing-spaces" />
-        <error line="11" column="5" source="standard:blank-line-before-declaration" />
-        <error line="11" column="34" source="standard:function-expression-body" />
-        <error line="22" column="36" source="standard:chain-method-continuation" />
-        <error line="22" column="49" source="standard:chain-method-continuation" />
-        <error line="26" column="21" source="standard:trailing-comma-on-declaration-site" />
-        <error line="28" column="48" source="standard:function-expression-body" />
-    </file>
-    <file name="app/src/main/java/com/example/nvhspectro/data/BiQuadFilter.kt">
-        <error line="6" column="1" source="standard:no-unused-imports" />
-        <error line="17" column="26" source="standard:trailing-comma-on-declaration-site" />
-        <error line="17" column="27" source="standard:value-parameter-comment" />
-        <error line="40" column="21" source="standard:property-naming" />
-        <error line="41" column="21" source="standard:property-naming" />
-        <error line="42" column="21" source="standard:property-naming" />
-        <error line="43" column="21" source="standard:property-naming" />
-        <error line="44" column="21" source="standard:property-naming" />
-        <error line="45" column="21" source="standard:property-naming" />
-        <error line="54" column="21" source="standard:property-naming" />
-        <error line="55" column="21" source="standard:property-naming" />
-        <error line="56" column="21" source="standard:property-naming" />
-        <error line="57" column="21" source="standard:property-naming" />
-        <error line="58" column="21" source="standard:property-naming" />
-        <error line="59" column="21" source="standard:property-naming" />
-        <error line="72" column="21" source="standard:property-naming" />
-        <error line="73" column="21" source="standard:property-naming" />
-        <error line="74" column="21" source="standard:property-naming" />
-        <error line="75" column="21" source="standard:property-naming" />
-        <error line="76" column="21" source="standard:property-naming" />
-        <error line="77" column="21" source="standard:property-naming" />
-        <error line="89" column="21" source="standard:property-naming" />
-        <error line="90" column="21" source="standard:property-naming" />
-        <error line="91" column="21" source="standard:property-naming" />
-        <error line="92" column="21" source="standard:property-naming" />
-        <error line="93" column="21" source="standard:property-naming" />
-        <error line="94" column="21" source="standard:property-naming" />
-        <error line="101" column="27" source="standard:function-signature" />
-        <error line="101" column="41" source="standard:function-signature" />
-        <error line="101" column="55" source="standard:function-signature" />
-        <error line="101" column="69" source="standard:function-signature" />
-        <error line="101" column="83" source="standard:function-signature" />
-        <error line="101" column="97" source="standard:function-signature" />
-        <error line="101" column="109" source="standard:function-signature" />
-        <error line="115" column="1" source="standard:no-trailing-spaces" />
-        <error line="116" column="5" source="standard:blank-line-before-declaration" />
-    </file>
-    <file name="app/src/main/java/com/example/nvhspectro/data/KinematicsData.kt">
-        <error line="3" column="32" source="standard:class-signature" />
-        <error line="3" column="49" source="standard:class-signature" />
-        <error line="6" column="39" source="standard:trailing-comma-on-declaration-site" />
-        <error line="12" column="33" source="standard:parameter-list-spacing" />
-        <error line="12" column="34" source="standard:no-multi-spaces" />
-        <error line="13" column="39" source="standard:parameter-list-spacing" />
-        <error line="13" column="40" source="standard:no-multi-spaces" />
-        <error line="14" column="42" source="standard:parameter-list-spacing" />
-        <error line="14" column="43" source="standard:no-multi-spaces" />
-        <error line="15" column="33" source="standard:parameter-list-spacing" />
-        <error line="15" column="34" source="standard:no-multi-spaces" />
-        <error line="16" column="32" source="standard:parameter-list-spacing" />
-        <error line="16" column="33" source="standard:no-multi-spaces" />
-        <error line="17" column="35" source="standard:parameter-list-spacing" />
-        <error line="17" column="36" source="standard:no-multi-spaces" />
-        <error line="18" column="37" source="standard:parameter-list-spacing" />
-        <error line="18" column="38" source="standard:no-multi-spaces" />
-        <error line="19" column="42" source="standard:parameter-list-spacing" />
-        <error line="19" column="43" source="standard:no-multi-spaces" />
-        <error line="20" column="34" source="standard:parameter-list-spacing" />
-        <error line="20" column="35" source="standard:no-multi-spaces" />
-        <error line="21" column="32" source="standard:parameter-list-spacing" />
-        <error line="21" column="33" source="standard:no-multi-spaces" />
-        <error line="22" column="31" source="standard:parameter-list-spacing" />
-        <error line="22" column="32" source="standard:no-multi-spaces" />
-        <error line="23" column="35" source="standard:parameter-list-spacing" />
-        <error line="23" column="36" source="standard:no-multi-spaces" />
-        <error line="24" column="45" source="standard:parameter-list-spacing" />
-        <error line="24" column="46" source="standard:no-multi-spaces" />
-        <error line="25" column="41" source="standard:trailing-comma-on-declaration-site" />
-        <error line="25" column="42" source="standard:no-multi-spaces" />
-        <error line="25" column="47" source="standard:value-parameter-comment" />
-        <error line="36" column="26" source="standard:multiline-expression-wrapping" />
-        <error line="47" column="13" source="standard:chain-method-continuation" />
-        <error line="49" column="5" source="standard:blank-line-before-declaration" />
-        <error line="49" column="5" source="standard:spacing-between-declarations-with-comments" />
-        <error line="107" column="27" source="standard:parameter-list-spacing" />
-        <error line="107" column="28" source="standard:no-multi-spaces" />
-        <error line="108" column="28" source="standard:parameter-list-spacing" />
-        <error line="108" column="29" source="standard:no-multi-spaces" />
-        <error line="115" column="34" source="standard:trailing-comma-on-declaration-site" />
-        <error line="122" column="27" source="standard:parameter-list-spacing" />
-        <error line="122" column="28" source="standard:no-multi-spaces" />
-        <error line="123" column="28" source="standard:parameter-list-spacing" />
-        <error line="123" column="29" source="standard:no-multi-spaces" />
-        <error line="132" column="59" source="standard:trailing-comma-on-declaration-site" />
-        <error line="153" column="38" source="standard:trailing-comma-on-declaration-site" />
-        <error line="169" column="46" source="standard:trailing-comma-on-declaration-site" />
-        <error line="182" column="31" source="standard:trailing-comma-on-declaration-site" />
+        <error line="6" column="36" source="standard:chain-method-continuation" />
+        <error line="6" column="49" source="standard:chain-method-continuation" />
+        <error line="10" column="21" source="standard:trailing-comma-on-declaration-site" />
+        <error line="12" column="48" source="standard:function-expression-body" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/data/RecordingStore.kt">
         <error line="19" column="24" source="standard:trailing-comma-on-declaration-site" />
@@ -2015,16 +1887,8 @@
         <error line="172" column="23" source="standard:multiline-expression-wrapping" />
         <error line="179" column="47" source="standard:trailing-comma-on-call-site" />
     </file>
-    <file name="app/src/main/java/com/example/nvhspectro/data/TimelineMapper.kt">
-        <error line="12" column="1" source="standard:no-empty-first-line-in-class-body" />
-        <error line="17" column="18" source="standard:function-signature" />
-        <error line="17" column="30" source="standard:function-signature" />
-        <error line="17" column="45" source="standard:function-signature" />
-        <error line="17" column="56" source="standard:function-signature" />
-        <error line="26" column="21" source="standard:function-signature" />
-        <error line="26" column="34" source="standard:function-signature" />
-        <error line="26" column="52" source="standard:function-signature" />
-        <error line="26" column="61" source="standard:function-signature" />
+    <file name="app/src/main/java/com/example/nvhspectro/data/SmartTrackedOrder.kt">
+        <error line="19" column="31" source="standard:trailing-comma-on-declaration-site" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/data/VideoAudioExtractor.kt">
         <error line="12" column="1" source="standard:no-empty-first-line-in-class-body" />
@@ -3120,7 +2984,166 @@
         <error line="394" column="1" source="standard:no-trailing-spaces" />
         <error line="428" column="1" source="standard:no-trailing-spaces" />
     </file>
-    <file name="app/src/test/java/com/example/nvhspectro/FFTProcessorCharacterizationTest.kt">
+    <file name="app/src/test/java/com/example/nvhspectro/data/WavRoundTripTest.kt">
+        <error line="3" column="1" source="standard:import-ordering" />
+        <error line="22" column="1" source="standard:no-empty-first-line-in-class-body" />
+        <error line="77" column="9" source="standard:blank-line-before-declaration" />
+        <error line="77" column="40" source="standard:chain-method-continuation" />
+        <error line="77" column="60" source="standard:chain-method-continuation" />
+        <error line="77" column="91" source="standard:chain-method-continuation" />
+        <error line="77" column="97" source="standard:chain-method-continuation" />
+        <error line="98" column="110" source="standard:trailing-comma-on-call-site" />
+        <error line="137" column="97" source="standard:trailing-comma-on-call-site" />
+        <error line="169" column="97" source="standard:trailing-comma-on-call-site" />
+        <error line="188" column="29" source="standard:trailing-comma-on-declaration-site" />
+        <error line="213" column="28" source="standard:function-signature" />
+        <error line="213" column="56" source="standard:function-signature" />
+        <error line="213" column="68" source="standard:function-signature" />
+        <error line="213" column="86" source="standard:function-signature" />
+        <error line="220" column="42" source="standard:function-signature" />
+        <error line="221" column="19" source="standard:chain-method-continuation" />
+        <error line="221" column="31" source="standard:chain-method-continuation" />
+        <error line="221" column="62" source="standard:chain-method-continuation" />
+        <error line="221" column="72" source="standard:chain-method-continuation" />
+    </file>
+    <file name="core/src/main/kotlin/com/example/nvhspectro/FFTProcessor.kt">
+        <error line="3" column="1" source="standard:import-ordering" />
+        <error line="15" column="20" source="standard:class-signature" />
+        <error line="15" column="69" source="standard:class-signature" />
+        <error line="15" column="98" source="standard:class-signature" />
+        <error line="24" column="26" source="standard:multiline-expression-wrapping" />
+        <error line="79" column="27" source="standard:multiline-expression-wrapping" />
+        <error line="97" column="40" source="standard:multiline-expression-wrapping" />
+        <error line="109" column="41" source="standard:multiline-expression-wrapping" />
+        <error line="109" column="50" source="standard:condition-wrapping" />
+        <error line="176" column="37" source="standard:multiline-expression-wrapping" />
+    </file>
+    <file name="core/src/main/kotlin/com/example/nvhspectro/LiveAnalysisEngine.kt">
+        <error line="13" column="26" source="standard:class-signature" />
+        <error line="13" column="44" source="standard:class-signature" />
+        <error line="13" column="73" source="standard:class-signature" />
+        <error line="14" column="1" source="standard:no-empty-first-line-in-class-body" />
+        <error line="27" column="44" source="standard:trailing-comma-on-declaration-site" />
+        <error line="72" column="25" source="standard:multiline-expression-wrapping" />
+    </file>
+    <file name="core/src/main/kotlin/com/example/nvhspectro/Telemetry.kt">
+        <error line="7" column="9" source="standard:trailing-comma-on-declaration-site" />
+        <error line="25" column="40" source="standard:trailing-comma-on-declaration-site" />
+    </file>
+    <file name="core/src/main/kotlin/com/example/nvhspectro/data/AlphaBetaSpeedEstimator.kt">
+        <error line="28" column="51" source="standard:trailing-comma-on-declaration-site" />
+        <error line="44" column="16" source="standard:function-signature" />
+        <error line="44" column="44" source="standard:function-signature" />
+        <error line="44" column="62" source="standard:function-signature" />
+        <error line="80" column="18" source="standard:multiline-expression-wrapping" />
+        <error line="92" column="22" source="standard:function-signature" />
+        <error line="92" column="35" source="standard:function-signature" />
+        <error line="92" column="50" source="standard:function-signature" />
+    </file>
+    <file name="core/src/main/kotlin/com/example/nvhspectro/data/BiQuadFilter.kt">
+        <error line="6" column="1" source="standard:no-unused-imports" />
+        <error line="17" column="26" source="standard:trailing-comma-on-declaration-site" />
+        <error line="17" column="27" source="standard:value-parameter-comment" />
+        <error line="40" column="21" source="standard:property-naming" />
+        <error line="41" column="21" source="standard:property-naming" />
+        <error line="42" column="21" source="standard:property-naming" />
+        <error line="43" column="21" source="standard:property-naming" />
+        <error line="44" column="21" source="standard:property-naming" />
+        <error line="45" column="21" source="standard:property-naming" />
+        <error line="54" column="21" source="standard:property-naming" />
+        <error line="55" column="21" source="standard:property-naming" />
+        <error line="56" column="21" source="standard:property-naming" />
+        <error line="57" column="21" source="standard:property-naming" />
+        <error line="58" column="21" source="standard:property-naming" />
+        <error line="59" column="21" source="standard:property-naming" />
+        <error line="72" column="21" source="standard:property-naming" />
+        <error line="73" column="21" source="standard:property-naming" />
+        <error line="74" column="21" source="standard:property-naming" />
+        <error line="75" column="21" source="standard:property-naming" />
+        <error line="76" column="21" source="standard:property-naming" />
+        <error line="77" column="21" source="standard:property-naming" />
+        <error line="89" column="21" source="standard:property-naming" />
+        <error line="90" column="21" source="standard:property-naming" />
+        <error line="91" column="21" source="standard:property-naming" />
+        <error line="92" column="21" source="standard:property-naming" />
+        <error line="93" column="21" source="standard:property-naming" />
+        <error line="94" column="21" source="standard:property-naming" />
+        <error line="101" column="27" source="standard:function-signature" />
+        <error line="101" column="41" source="standard:function-signature" />
+        <error line="101" column="55" source="standard:function-signature" />
+        <error line="101" column="69" source="standard:function-signature" />
+        <error line="101" column="83" source="standard:function-signature" />
+        <error line="101" column="97" source="standard:function-signature" />
+        <error line="101" column="109" source="standard:function-signature" />
+        <error line="115" column="1" source="standard:no-trailing-spaces" />
+        <error line="116" column="5" source="standard:blank-line-before-declaration" />
+    </file>
+    <file name="core/src/main/kotlin/com/example/nvhspectro/data/FilterType.kt">
+        <error line="7" column="14" source="standard:trailing-comma-on-declaration-site" />
+        <error line="9" column="34" source="standard:function-expression-body" />
+    </file>
+    <file name="core/src/main/kotlin/com/example/nvhspectro/data/KinematicsData.kt">
+        <error line="3" column="32" source="standard:class-signature" />
+        <error line="3" column="49" source="standard:class-signature" />
+        <error line="6" column="39" source="standard:trailing-comma-on-declaration-site" />
+        <error line="12" column="33" source="standard:parameter-list-spacing" />
+        <error line="12" column="34" source="standard:no-multi-spaces" />
+        <error line="13" column="39" source="standard:parameter-list-spacing" />
+        <error line="13" column="40" source="standard:no-multi-spaces" />
+        <error line="14" column="42" source="standard:parameter-list-spacing" />
+        <error line="14" column="43" source="standard:no-multi-spaces" />
+        <error line="15" column="33" source="standard:parameter-list-spacing" />
+        <error line="15" column="34" source="standard:no-multi-spaces" />
+        <error line="16" column="32" source="standard:parameter-list-spacing" />
+        <error line="16" column="33" source="standard:no-multi-spaces" />
+        <error line="17" column="35" source="standard:parameter-list-spacing" />
+        <error line="17" column="36" source="standard:no-multi-spaces" />
+        <error line="18" column="37" source="standard:parameter-list-spacing" />
+        <error line="18" column="38" source="standard:no-multi-spaces" />
+        <error line="19" column="42" source="standard:parameter-list-spacing" />
+        <error line="19" column="43" source="standard:no-multi-spaces" />
+        <error line="20" column="34" source="standard:parameter-list-spacing" />
+        <error line="20" column="35" source="standard:no-multi-spaces" />
+        <error line="21" column="32" source="standard:parameter-list-spacing" />
+        <error line="21" column="33" source="standard:no-multi-spaces" />
+        <error line="22" column="31" source="standard:parameter-list-spacing" />
+        <error line="22" column="32" source="standard:no-multi-spaces" />
+        <error line="23" column="35" source="standard:parameter-list-spacing" />
+        <error line="23" column="36" source="standard:no-multi-spaces" />
+        <error line="24" column="45" source="standard:parameter-list-spacing" />
+        <error line="24" column="46" source="standard:no-multi-spaces" />
+        <error line="25" column="41" source="standard:trailing-comma-on-declaration-site" />
+        <error line="25" column="42" source="standard:no-multi-spaces" />
+        <error line="25" column="47" source="standard:value-parameter-comment" />
+        <error line="36" column="26" source="standard:multiline-expression-wrapping" />
+        <error line="47" column="13" source="standard:chain-method-continuation" />
+        <error line="49" column="5" source="standard:blank-line-before-declaration" />
+        <error line="49" column="5" source="standard:spacing-between-declarations-with-comments" />
+        <error line="107" column="27" source="standard:parameter-list-spacing" />
+        <error line="107" column="28" source="standard:no-multi-spaces" />
+        <error line="108" column="28" source="standard:parameter-list-spacing" />
+        <error line="108" column="29" source="standard:no-multi-spaces" />
+        <error line="115" column="34" source="standard:trailing-comma-on-declaration-site" />
+        <error line="122" column="27" source="standard:parameter-list-spacing" />
+        <error line="122" column="28" source="standard:no-multi-spaces" />
+        <error line="123" column="28" source="standard:parameter-list-spacing" />
+        <error line="123" column="29" source="standard:no-multi-spaces" />
+        <error line="132" column="59" source="standard:trailing-comma-on-declaration-site" />
+        <error line="153" column="38" source="standard:trailing-comma-on-declaration-site" />
+        <error line="169" column="46" source="standard:trailing-comma-on-declaration-site" />
+    </file>
+    <file name="core/src/main/kotlin/com/example/nvhspectro/data/TimelineMapper.kt">
+        <error line="12" column="1" source="standard:no-empty-first-line-in-class-body" />
+        <error line="17" column="18" source="standard:function-signature" />
+        <error line="17" column="30" source="standard:function-signature" />
+        <error line="17" column="45" source="standard:function-signature" />
+        <error line="17" column="56" source="standard:function-signature" />
+        <error line="26" column="21" source="standard:function-signature" />
+        <error line="26" column="34" source="standard:function-signature" />
+        <error line="26" column="52" source="standard:function-signature" />
+        <error line="26" column="61" source="standard:function-signature" />
+    </file>
+    <file name="core/src/test/kotlin/com/example/nvhspectro/FFTProcessorCharacterizationTest.kt">
         <error line="3" column="1" source="standard:import-ordering" />
         <error line="22" column="1" source="standard:no-empty-first-line-in-class-body" />
         <error line="35" column="20" source="standard:multiline-expression-wrapping" />
@@ -3146,7 +3169,7 @@
         <error line="181" column="49" source="standard:chain-method-continuation" />
         <error line="182" column="40" source="standard:chain-method-continuation" />
     </file>
-    <file name="app/src/test/java/com/example/nvhspectro/LiveAnalysisEngineTest.kt">
+    <file name="core/src/test/kotlin/com/example/nvhspectro/LiveAnalysisEngineTest.kt">
         <error line="14" column="1" source="standard:no-empty-first-line-in-class-body" />
         <error line="17" column="30" source="standard:multiline-expression-wrapping" />
         <error line="19" column="21" source="standard:argument-list-wrapping" />
@@ -3158,10 +3181,10 @@
         <error line="74" column="34" source="standard:argument-list-wrapping" />
         <error line="74" column="39" source="standard:trailing-comma-on-call-site" />
     </file>
-    <file name="app/src/test/java/com/example/nvhspectro/data/AlphaBetaSpeedEstimatorTest.kt">
+    <file name="core/src/test/kotlin/com/example/nvhspectro/data/AlphaBetaSpeedEstimatorTest.kt">
         <error line="9" column="1" source="standard:no-empty-first-line-in-class-body" />
     </file>
-    <file name="app/src/test/java/com/example/nvhspectro/data/BiQuadFilterTest.kt">
+    <file name="core/src/test/kotlin/com/example/nvhspectro/data/BiQuadFilterTest.kt">
         <error line="3" column="1" source="standard:import-ordering" />
         <error line="10" column="1" source="standard:no-empty-first-line-in-class-body" />
         <error line="14" column="27" source="standard:function-signature" />
@@ -3170,7 +3193,7 @@
         <error line="14" column="82" source="standard:function-signature" />
         <error line="41" column="20" source="standard:multiline-expression-wrapping" />
     </file>
-    <file name="app/src/test/java/com/example/nvhspectro/data/KinematicsConfigTest.kt">
+    <file name="core/src/test/kotlin/com/example/nvhspectro/data/KinematicsConfigTest.kt">
         <error line="19" column="1" source="standard:no-empty-first-line-in-class-body" />
         <error line="20" column="17" source="standard:property-naming" />
         <error line="20" column="33" source="standard:multiline-expression-wrapping" />
@@ -3187,32 +3210,10 @@
         <error line="125" column="87" source="standard:trailing-comma-on-call-site" />
         <error line="133" column="93" source="standard:trailing-comma-on-call-site" />
     </file>
-    <file name="app/src/test/java/com/example/nvhspectro/data/TimelineMapperTest.kt">
+    <file name="core/src/test/kotlin/com/example/nvhspectro/data/TimelineMapperTest.kt">
         <error line="8" column="1" source="standard:no-empty-first-line-in-class-body" />
     </file>
-    <file name="app/src/test/java/com/example/nvhspectro/data/WavRoundTripTest.kt">
-        <error line="3" column="1" source="standard:import-ordering" />
-        <error line="22" column="1" source="standard:no-empty-first-line-in-class-body" />
-        <error line="77" column="9" source="standard:blank-line-before-declaration" />
-        <error line="77" column="40" source="standard:chain-method-continuation" />
-        <error line="77" column="60" source="standard:chain-method-continuation" />
-        <error line="77" column="91" source="standard:chain-method-continuation" />
-        <error line="77" column="97" source="standard:chain-method-continuation" />
-        <error line="98" column="110" source="standard:trailing-comma-on-call-site" />
-        <error line="137" column="97" source="standard:trailing-comma-on-call-site" />
-        <error line="169" column="97" source="standard:trailing-comma-on-call-site" />
-        <error line="188" column="29" source="standard:trailing-comma-on-declaration-site" />
-        <error line="213" column="28" source="standard:function-signature" />
-        <error line="213" column="56" source="standard:function-signature" />
-        <error line="213" column="68" source="standard:function-signature" />
-        <error line="213" column="86" source="standard:function-signature" />
-        <error line="220" column="42" source="standard:function-signature" />
-        <error line="221" column="19" source="standard:chain-method-continuation" />
-        <error line="221" column="31" source="standard:chain-method-continuation" />
-        <error line="221" column="62" source="standard:chain-method-continuation" />
-        <error line="221" column="72" source="standard:chain-method-continuation" />
-    </file>
-    <file name="app/src/test/java/com/example/nvhspectro/testutil/SynthSignals.kt">
+    <file name="core/src/testFixtures/kotlin/com/example/nvhspectro/testutil/SynthSignals.kt">
         <error line="13" column="1" source="standard:no-empty-first-line-in-class-body" />
         <error line="20" column="28" source="standard:trailing-comma-on-declaration-site" />
         <error line="21" column="21" source="standard:multiline-expression-wrapping" />

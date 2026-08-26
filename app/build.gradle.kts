@@ -58,6 +58,10 @@ kotlin {
 }
 
 dependencies {
+  // Measurement engine (pure Kotlin, JVM-tested) [plan 3.1]
+  implementation(project(":core"))
+  testImplementation(testFixtures(project(":core")))
+
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
   androidTestImplementation(composeBom)
@@ -93,7 +97,4 @@ dependencies {
 
   // Location Services
   implementation("com.google.android.gms:play-services-location:21.0.1")
-
-  // Math (FFT) - JTransforms
-  implementation("com.github.wendykierp:JTransforms:3.1")
 }
