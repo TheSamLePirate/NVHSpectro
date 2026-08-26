@@ -128,6 +128,8 @@
     <ID>LoopWithTooManyJumpStatements:FFTProcessor.kt$FFTProcessor$for</ID>
     <ID>LoopWithTooManyJumpStatements:MainViewModel.kt$MainViewModel$for</ID>
     <ID>LoopWithTooManyJumpStatements:SpectrogramColormap.kt$for</ID>
+    <ID>MagicNumber:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$15f</ID>
+    <ID>MagicNumber:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$1e9f</ID>
     <ID>MagicNumber:BiQuadFilter.kt$BiQuadFilter$2.0</ID>
     <ID>MagicNumber:Color.kt$0xFF625b71</ID>
     <ID>MagicNumber:Color.kt$0xFF6650a4</ID>
@@ -758,6 +760,7 @@
     <ID>NestedBlockDepth:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
     <ID>PrintStackTrace:MainViewModel.kt$MainViewModel$e</ID>
     <ID>PrintStackTrace:VideoAudioExtractor.kt$VideoAudioExtractor$e</ID>
+    <ID>ReturnCount:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$fun update(elapsedRealtimeNanos: Long, measuredMps: Float)</ID>
     <ID>ReturnCount:MainViewModel.kt$MainViewModel$fun getExpectedBinF(globalFrame: Int): Float</ID>
     <ID>ReturnCount:MainViewModel.kt$MainViewModel$private fun recalculateSmartPath()</ID>
     <ID>ReturnCount:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;DoubleArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap?</ID>

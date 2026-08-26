@@ -1892,6 +1892,16 @@
         <error line="121" column="40" source="standard:try-catch-finally-spacing" />
         <error line="121" column="40" source="standard:try-catch-finally-spacing" />
     </file>
+    <file name="app/src/main/java/com/example/nvhspectro/data/AlphaBetaSpeedEstimator.kt">
+        <error line="28" column="51" source="standard:trailing-comma-on-declaration-site" />
+        <error line="44" column="16" source="standard:function-signature" />
+        <error line="44" column="44" source="standard:function-signature" />
+        <error line="44" column="62" source="standard:function-signature" />
+        <error line="80" column="18" source="standard:multiline-expression-wrapping" />
+        <error line="92" column="22" source="standard:function-signature" />
+        <error line="92" column="35" source="standard:function-signature" />
+        <error line="92" column="50" source="standard:function-signature" />
+    </file>
     <file name="app/src/main/java/com/example/nvhspectro/data/AudioFilter.kt">
         <error line="9" column="14" source="standard:trailing-comma-on-declaration-site" />
         <error line="10" column="1" source="standard:enum-wrapping" />
@@ -3151,6 +3161,9 @@
         <error line="181" column="32" source="standard:chain-method-continuation" />
         <error line="181" column="49" source="standard:chain-method-continuation" />
         <error line="182" column="40" source="standard:chain-method-continuation" />
+    </file>
+    <file name="app/src/test/java/com/example/nvhspectro/data/AlphaBetaSpeedEstimatorTest.kt">
+        <error line="9" column="1" source="standard:no-empty-first-line-in-class-body" />
     </file>
     <file name="app/src/test/java/com/example/nvhspectro/data/KinematicsConfigTest.kt">
         <error line="19" column="1" source="standard:no-empty-first-line-in-class-body" />
