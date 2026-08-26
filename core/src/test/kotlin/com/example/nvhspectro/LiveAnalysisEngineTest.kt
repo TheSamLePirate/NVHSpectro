@@ -60,18 +60,4 @@ class LiveAnalysisEngineTest {
         )
     }
 
-    @Test
-    fun l7_reset_clearsOrderDomainEmaGhosts() {
-        val engine = LiveAnalysisEngine(fftSize, sampleRate)
-        val excited = FloatArray(LiveAnalysisEngine.ORDER_BINS).also { it[180] = 10f }
-        repeat(20) { engine.blendOrderEma(excited) }
-        assertTrue(engine.blendOrderEma(FloatArray(LiveAnalysisEngine.ORDER_BINS))[180] > 2f)
-
-        engine.reset()
-        val afterReset = engine.blendOrderEma(FloatArray(LiveAnalysisEngine.ORDER_BINS))
-        assertEquals(
-            "order EMA must not carry ghosts across a reset [L7]",
-            0f, afterReset[180], 1e-6f
-        )
-    }
 }

@@ -14,8 +14,8 @@
     <ID>CyclomaticComplexMethod:MainViewModel.kt$MainViewModel$fun validateCurrentOrder(customName: String? = null)</ID>
     <ID>CyclomaticComplexMethod:MainViewModel.kt$MainViewModel$private fun processLiveFrame(audioBuffer: ShortArray)</ID>
     <ID>CyclomaticComplexMethod:MainViewModel.kt$MainViewModel$private fun processWavFrameAt(posMs: Long)</ID>
-    <ID>CyclomaticComplexMethod:MainViewModel.kt$MainViewModel$private fun recalculateOrderTrackingForWav()</ID>
     <ID>CyclomaticComplexMethod:MainViewModel.kt$MainViewModel$private fun recalculateSmartPath()</ID>
+    <ID>CyclomaticComplexMethod:OrderTrackingEngine.kt$OrderTrackingEngine$@Synchronized fun step( frame: Frame, nowMs: Long, holdMs: Long, targetOrders: List&lt;Double&gt;, activeTags: List&lt;TrackedHarmonicTag&gt;, report: MutableList&lt;EmergenceReportEntry&gt; ): List&lt;TrackedHarmonicTag&gt;</ID>
     <ID>CyclomaticComplexMethod:PdfReportGenerator.kt$PdfReportGenerator$fun generateReport( context: Context, outStream: OutputStream, historyAbs: List&lt;DoubleArray&gt;, historyTtnr: List&lt;DoubleArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
     <ID>CyclomaticComplexMethod:ReportModeScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ReportModeScreen( viewModel: MainViewModel, onBack: () -&gt; Unit )</ID>
     <ID>CyclomaticComplexMethod:SettingsDialog.kt$@Composable fun SettingsDialog( onDismiss: () -&gt; Unit, sampleRateHz: Int, minDb: Double, maxDb: Double, onMinDbChange: (Double) -&gt; Unit, onMaxDbChange: (Double) -&gt; Unit, fftSize: Int, onFftSizeChange: (Int) -&gt; Unit, minFreq: Int = 0, onMinFreqChange: (Int) -&gt; Unit = {}, maxFreq: Int, onMaxFreqChange: (Int) -&gt; Unit = {}, timeWindowSec: Double, onTimeWindowChange: (Double) -&gt; Unit, isDetectorEnabled: Boolean = true, onDetectorEnabledChange: (Boolean) -&gt; Unit = {}, emergenceThresholdDb: Double = 2.5, onEmergenceThresholdChange: (Double) -&gt; Unit = {}, magnitudeGateDbFS: Double = -90.0, onMagnitudeGateChange: (Double) -&gt; Unit = {}, isWavAnalyzerMode: Boolean = false, wavDurationSec: Double = 0.0, activeFilters: List&lt;AudioFilter&gt; = emptyList(), onAddFilter: (AudioFilter) -&gt; Unit = {}, onRemoveFilter: (String) -&gt; Unit = {} )</ID>
@@ -115,6 +115,8 @@
     <ID>LongMethod:WavSelectionDialog.kt$@Composable fun WavSelectionDialog( onDismiss: () -&gt; Unit, onSelectEntry: (wavUri: Uri, jsonUri: Uri?) -&gt; Unit, onImportExternal: () -&gt; Unit )</ID>
     <ID>LongParameterList:BiQuadFilter.kt$BiQuadFilter$(a0_t: Double, a1_t: Double, a2_t: Double, b0_t: Double, b1_t: Double, b2_t: Double)</ID>
     <ID>LongParameterList:MainViewModel.kt$MainViewModel$(newMinDb: Double, newMaxDb: Double, newFftSize: Int, newMinFreq: Int, newMaxFreq: Int, newTimeWindow: Double)</ID>
+    <ID>LongParameterList:OrderTrackingEngine.kt$OrderTrackingEngine$( frame: Frame, nowMs: Long, holdMs: Long, targetOrders: List&lt;Double&gt;, activeTags: List&lt;TrackedHarmonicTag&gt;, report: MutableList&lt;EmergenceReportEntry&gt; )</ID>
+    <ID>LongParameterList:OrderTrackingEngine.kt$OrderTrackingEngine$( report: MutableList&lt;EmergenceReportEntry&gt;, orderValue: Double, orderName: String, freqHz: Int, emergenceDb: Double, frame: Frame, nowMs: Long )</ID>
     <ID>LongParameterList:PdfReportGenerator.kt$PdfReportGenerator$( context: Context, outStream: OutputStream, historyAbs: List&lt;DoubleArray&gt;, historyTtnr: List&lt;DoubleArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
     <ID>LongParameterList:ReportModeScreen.kt$( text: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier, fontWeight: androidx.compose.ui.text.font.FontWeight? = null, initialFontSize: androidx.compose.ui.unit.TextUnit = 11.sp, minFontSize: androidx.compose.ui.unit.TextUnit = 8.sp )</ID>
     <ID>LongParameterList:SettingsDialog.kt$( onDismiss: () -&gt; Unit, sampleRateHz: Int, minDb: Double, maxDb: Double, onMinDbChange: (Double) -&gt; Unit, onMaxDbChange: (Double) -&gt; Unit, fftSize: Int, onFftSizeChange: (Int) -&gt; Unit, minFreq: Int = 0, onMinFreqChange: (Int) -&gt; Unit = {}, maxFreq: Int, onMaxFreqChange: (Int) -&gt; Unit = {}, timeWindowSec: Double, onTimeWindowChange: (Double) -&gt; Unit, isDetectorEnabled: Boolean = true, onDetectorEnabledChange: (Boolean) -&gt; Unit = {}, emergenceThresholdDb: Double = 2.5, onEmergenceThresholdChange: (Double) -&gt; Unit = {}, magnitudeGateDbFS: Double = -90.0, onMagnitudeGateChange: (Double) -&gt; Unit = {}, isWavAnalyzerMode: Boolean = false, wavDurationSec: Double = 0.0, activeFilters: List&lt;AudioFilter&gt; = emptyList(), onAddFilter: (AudioFilter) -&gt; Unit = {}, onRemoveFilter: (String) -&gt; Unit = {} )</ID>
@@ -125,7 +127,7 @@
     <ID>LongParameterList:WavRoundTripTest.kt$WavRoundTripTest$( sampleRate: Int, channels: Int, bits: Int, pcmBytes: ByteArray, extraChunkBeforeData: Boolean = false, audioFormat: Int = 1 )</ID>
     <ID>LoopWithTooManyJumpStatements:AudioRepository.kt$AudioRepository$while</ID>
     <ID>LoopWithTooManyJumpStatements:FFTProcessor.kt$FFTProcessor$for</ID>
-    <ID>LoopWithTooManyJumpStatements:MainViewModel.kt$MainViewModel$for</ID>
+    <ID>LoopWithTooManyJumpStatements:OrderTrackingEngine.kt$OrderTrackingEngine$for</ID>
     <ID>LoopWithTooManyJumpStatements:SpectrogramColormap.kt$for</ID>
     <ID>MagicNumber:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$15f</ID>
     <ID>MagicNumber:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$1e9f</ID>
@@ -235,10 +237,7 @@
     <ID>MagicNumber:MainScreen.kt$500</ID>
     <ID>MagicNumber:MainScreen.kt$60</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0.002</ID>
-    <ID>MagicNumber:MainViewModel.kt$MainViewModel$0.10f</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0.1f</ID>
-    <ID>MagicNumber:MainViewModel.kt$MainViewModel$0.2</ID>
-    <ID>MagicNumber:MainViewModel.kt$MainViewModel$0.25</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0.5</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0.509795579</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0.5f</ID>
@@ -254,10 +253,8 @@
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$0xFFFFD700</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$1.5f</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$10</ID>
-    <ID>MagicNumber:MainViewModel.kt$MainViewModel$10.0</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$100</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$100.0</ID>
-    <ID>MagicNumber:MainViewModel.kt$MainViewModel$1000</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$1000.0</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$10000</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$1000L</ID>
@@ -281,13 +278,10 @@
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$26f</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$280f</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$28f</ID>
-    <ID>MagicNumber:MainViewModel.kt$MainViewModel$3</ID>
-    <ID>MagicNumber:MainViewModel.kt$MainViewModel$3.0f</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$3.5f</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$30</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$30f</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$35f</ID>
-    <ID>MagicNumber:MainViewModel.kt$MainViewModel$4</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$40f</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$42f</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$45f</ID>
@@ -300,7 +294,6 @@
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$60f</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$7</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$90.0</ID>
-    <ID>MagicNumber:MainViewModel.kt$MainViewModel$999</ID>
     <ID>MagicNumber:OrderSelectionDialog.kt$0xFF00E5FF</ID>
     <ID>MagicNumber:OrderSelectionDialog.kt$12.0</ID>
     <ID>MagicNumber:OrderSelectionDialog.kt$16.0</ID>
@@ -311,6 +304,7 @@
     <ID>MagicNumber:OrderSelectionDialog.kt$5</ID>
     <ID>MagicNumber:OrderSelectionDialog.kt$6.0</ID>
     <ID>MagicNumber:OrderSelectionDialog.kt$8.0</ID>
+    <ID>MagicNumber:OrderTrackingEngine.kt$OrderTrackingEngine.Companion$120.0</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$0.125f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$0.375f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$0.5f</ID>
@@ -645,9 +639,6 @@
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$" {\"index\": $idx, \"speedKmh\": ${item.speedKmh}, \"accelerationG\": ${item.accelerationG}, \"lat\": ${item.latitude}, \"lng\": ${item.longitude}, \"gpsStatus\": \"${item.gpsStatus}\"}"</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$"⏱️ Analyse limitée aux ${WavDataReader.MAX_DURATION_SEC / 60} premières minutes de la vidéo"</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$_processingEstimateMessage.value = "⏳ Traitement du spectrogramme en cours...\nVidéo (${min}m ${sec}s) | Temps estimé: ~${estimatedSec} s"</ID>
-    <ID>MaxLineLength:MainViewModel.kt$MainViewModel$currentFrameSpectrum[orderIndex] = maxOf(currentFrameSpectrum[orderIndex], ttnrVal.toFloat())</ID>
-    <ID>MaxLineLength:MainViewModel.kt$MainViewModel$existingReport.maxEmergenceDb = maxOf(existingReport.maxEmergenceDb, ema[j].toDouble())</ID>
-    <ID>MaxLineLength:MainViewModel.kt$MainViewModel$existingReport.maxEmergenceDb = maxOf(existingReport.maxEmergenceDb, localEmaSpectrum[j].toDouble())</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$fun</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$rawPath.add(ManualOrderAnchor(globalFrame, pt.binIndex, isUserPlaced = true, exactBinF = pt.binIndex.toFloat()))</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$val</ID>
@@ -655,6 +646,11 @@
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$val interpTheo = telemBefore.theoreticalSpeedKmh + fraction * (telemAfter.theoreticalSpeedKmh - telemBefore.theoreticalSpeedKmh)</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$val metadataStr = "Vitesse: ${String.format("%.1f", telemetry.speedKmh)} km/h | Pédale: ${if (pedalPercent.isBlank()) "-" else pedalPercent}% | Accél: ${String.format("%.2f", telemetry.accelerationG)}g | Mode: ${mode.label}"</ID>
     <ID>MaxLineLength:OrderSelectionDialog.kt$var customOrderText by remember { mutableStateOf(if (presets.contains(currentOrder)) "" else currentOrder.toString()) }</ID>
+    <ID>MaxLineLength:OrderTrackingEngineTest.kt$OrderTrackingEngineTest$tags = engine.step(frame(ttnrDb), nowMs = i * 23L, holdMs = 3000L, targetOrders = targetOrders, activeTags = tags, report = report)</ID>
+    <ID>MaxLineLength:OrderTrackingEngineTest.kt$OrderTrackingEngineTest$tags = engine.step(still, nowMs = 1000L, holdMs = 3000L, targetOrders = listOf(18.0), activeTags = tags, report = report)</ID>
+    <ID>MaxLineLength:OrderTrackingEngineTest.kt$OrderTrackingEngineTest$tags = engine.step(still, nowMs = 10_000L, holdMs = 3000L, targetOrders = listOf(18.0), activeTags = tags, report = report)</ID>
+    <ID>MaxLineLength:OrderTrackingEngineTest.kt$OrderTrackingEngineTest$val narrow = OrderTrackingEngine.searchTrackedOrder(abs, ttnr, center, df, OrderTrackingEngine.TRACKED_SEARCH_RADIUS_FRAME_BINS)</ID>
+    <ID>MaxLineLength:OrderTrackingEngineTest.kt$OrderTrackingEngineTest$val wide = OrderTrackingEngine.searchTrackedOrder(abs, ttnr, center, df, OrderTrackingEngine.TRACKED_SEARCH_RADIUS_SWEEP_BINS)</ID>
     <ID>MaxLineLength:PdfReportGenerator.kt$PdfReportGenerator$canvas.drawText("GMPe : ${kinematicsConfig.motorName.ifEmpty { "Non renseigné" }}", col2X, infoBoxTop + 20f, textBoldPaint)</ID>
     <ID>MaxLineLength:PdfReportGenerator.kt$PdfReportGenerator$canvas.drawText("Véhicule : ${kinematicsConfig.vehicleName.ifEmpty { "Non renseigné" }}", col1X, infoBoxTop + 20f, textBoldPaint)</ID>
     <ID>MaxLineLength:PdfReportGenerator.kt$PdfReportGenerator$drawColormapBox(canvas, absoluteBitmap, brillianceLeftX, currentY, brillianceMapWidth, smallMapHeight, "Absolue (Brillance)", true)</ID>
@@ -738,9 +734,8 @@
     <ID>NestedBlockDepth:FFTProcessor.kt$FFTProcessor$fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</ID>
     <ID>NestedBlockDepth:MainViewModel.kt$MainViewModel$fun validateCurrentOrder(customName: String? = null)</ID>
     <ID>NestedBlockDepth:MainViewModel.kt$MainViewModel$private fun processLiveFrame(audioBuffer: ShortArray)</ID>
-    <ID>NestedBlockDepth:MainViewModel.kt$MainViewModel$private fun processWavFrameAt(posMs: Long)</ID>
-    <ID>NestedBlockDepth:MainViewModel.kt$MainViewModel$private fun recalculateOrderTrackingForWav()</ID>
     <ID>NestedBlockDepth:MainViewModel.kt$MainViewModel$private fun recalculateSmartPath()</ID>
+    <ID>NestedBlockDepth:OrderTrackingEngine.kt$OrderTrackingEngine$@Synchronized fun step( frame: Frame, nowMs: Long, holdMs: Long, targetOrders: List&lt;Double&gt;, activeTags: List&lt;TrackedHarmonicTag&gt;, report: MutableList&lt;EmergenceReportEntry&gt; ): List&lt;TrackedHarmonicTag&gt;</ID>
     <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$fun generateReport( context: Context, outStream: OutputStream, historyAbs: List&lt;DoubleArray&gt;, historyTtnr: List&lt;DoubleArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
     <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;DoubleArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap?</ID>
     <ID>NestedBlockDepth:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
@@ -748,6 +743,7 @@
     <ID>ReturnCount:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$fun update(elapsedRealtimeNanos: Long, measuredMps: Float)</ID>
     <ID>ReturnCount:MainViewModel.kt$MainViewModel$fun getExpectedBinF(globalFrame: Int): Float</ID>
     <ID>ReturnCount:MainViewModel.kt$MainViewModel$private fun recalculateSmartPath()</ID>
+    <ID>ReturnCount:OrderTrackingEngine.kt$OrderTrackingEngine$private fun isLocalOrderMax(j: Int): Boolean</ID>
     <ID>ReturnCount:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;DoubleArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap?</ID>
     <ID>ReturnCount:PlaybackController.kt$PlaybackController$private suspend fun prepare(file: File?, uri: Uri?): Long?</ID>
     <ID>ReturnCount:SpectrogramColormap.kt$fun getFreqY(freqHz: Float): Float</ID>

@@ -7,8 +7,8 @@ package com.example.nvhspectro
  * on mode/config transitions [L7]).
  *
  * Behavior is a faithful extraction of the historical live path (persistence
- * counters, 150 ms retro-unmask buffer, 0.75/0.25 EMA); the order-domain EMA
- * blend also lives here. Full live/WAV order-engine unification is plan 3.2.
+ * counters, 150 ms retro-unmask buffer, 0.75/0.25 EMA). Order-domain work
+ * (EMA blend, tag detection) lives in [OrderTrackingEngine] [plan 3.2].
  */
 class LiveAnalysisEngine(val fftSize: Int, private val sampleRateHz: Int) {
 
@@ -16,7 +16,6 @@ class LiveAnalysisEngine(val fftSize: Int, private val sampleRateHz: Int) {
     private var previousTTNRSpectrum = DoubleArray(0)
     private var ttnrPersistenceCount = IntArray(0)
     private val recentRawTTNR = ArrayDeque<DoubleArray>() // newest first
-    private val emaOrderSpectrum = FloatArray(ORDER_BINS)
 
     class FrameResult(
         val magnitudes: DoubleArray,
@@ -77,19 +76,11 @@ class LiveAnalysisEngine(val fftSize: Int, private val sampleRateHz: Int) {
         return FrameResult(magnitudes, smoothed, retroBins, retroRows)
     }
 
-    /** Order-domain EMA (0.1 blend); returns the engine-owned accumulator. */
-    @Synchronized
-    fun blendOrderEma(frameSpectrum: FloatArray): FloatArray {
-        for (j in 0 until ORDER_BINS) {
-            emaOrderSpectrum[j] = emaOrderSpectrum[j] * (1 - ORDER_EMA_ALPHA) + frameSpectrum[j] * ORDER_EMA_ALPHA
-        }
-        return emaOrderSpectrum
-    }
-
     /**
      * [L7] Full state wipe on any source/config transition: shock detector,
-     * TTNR integration, persistence, retro buffer, and the order-domain EMA —
-     * ghost tags from a previous session/config can no longer re-fire.
+     * TTNR integration, persistence and retro buffer — ghost data from a
+     * previous session/config can no longer re-fire. (The companion order
+     * EMA is reset on its own [OrderTrackingEngine.reset].)
      */
     @Synchronized
     fun reset() {
@@ -97,12 +88,9 @@ class LiveAnalysisEngine(val fftSize: Int, private val sampleRateHz: Int) {
         previousTTNRSpectrum = DoubleArray(0)
         ttnrPersistenceCount = IntArray(0)
         recentRawTTNR.clear()
-        emaOrderSpectrum.fill(0f)
     }
 
     companion object {
-        const val ORDER_BINS = 1000
-        const val ORDER_EMA_ALPHA = 0.10f
         const val PERSISTENCE_FRAMES = 6
         const val RETRO_FRAMES = 6
     }
