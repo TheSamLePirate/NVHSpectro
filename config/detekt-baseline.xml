@@ -258,6 +258,7 @@
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$120.0</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$1200L</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$1400</ID>
+    <ID>MagicNumber:MainViewModel.kt$MainViewModel$1500L</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$15L</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$15f</ID>
     <ID>MagicNumber:MainViewModel.kt$MainViewModel$1850</ID>
@@ -634,6 +635,7 @@
     <ID>MaxLineLength:MainScreen.kt$viewModel.setAudioSourceMode(com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER)</ID>
     <ID>MaxLineLength:MainScreen.kt$}</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$" {\"index\": $idx, \"speedKmh\": ${item.speedKmh}, \"accelerationG\": ${item.accelerationG}, \"lat\": ${item.latitude}, \"lng\": ${item.longitude}, \"gpsStatus\": \"${item.gpsStatus}\"}"</ID>
+    <ID>MaxLineLength:MainViewModel.kt$MainViewModel$"⏱️ Analyse limitée aux ${WavDataReader.MAX_DURATION_SEC / 60} premières minutes de la vidéo"</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$(speedKmh &lt;= it.maxSpeedKmh + 15f &amp;&amp; speedKmh &gt;= it.minSpeedKmh - 15f)</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$// Synchronisation stricte 1-to-1 de la Télémétrie sur le temps d'affichage audio avec la valeur TTNR et l'Ordre Traqué</ID>
     <ID>MaxLineLength:MainViewModel.kt$MainViewModel$// Traitement des Harmoniques &amp; Détection de Cinématique NVH (Actif UNIQUEMENT si Vitesse &gt; 1.0 km/h)</ID>
@@ -737,8 +739,6 @@
     <ID>MaxLineLength:TelemetryGraph.kt$val x2 = if (isWavAnalyzerMode) marginLeft + fractionX2 * plotWidth else marginLeft + (1f - fractionX2) * plotWidth</ID>
     <ID>MaxLineLength:TelemetryGraph.kt$}</ID>
     <ID>MaxLineLength:VideoAudioExtractor.kt$VideoAudioExtractor$val channelCount = if (format.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) else 1</ID>
-    <ID>MaxLineLength:VideoAudioExtractor.kt$VideoAudioExtractor$val computedDurationMs = if (durationUs &gt; 0) durationUs / 1000L else (pcmArray.size.toLong() * 1000L) / sampleRate</ID>
-    <ID>MaxLineLength:VideoAudioExtractor.kt$VideoAudioExtractor$val durationUs = if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L</ID>
     <ID>MaxLineLength:VideoAudioExtractor.kt$VideoAudioExtractor$val sampleRate = if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) format.getInteger(MediaFormat.KEY_SAMPLE_RATE) else AudioConfig.LIVE_SAMPLE_RATE_HZ</ID>
     <ID>MaxLineLength:VideoPlayerView.kt$mp.setVolume(0f, 0f)</ID>
     <ID>MaxLineLength:VideoPlayerView.kt$text = "Pas de données vidéo. Cliquez sur [Charger Vidéo] à côté de TTNR pour ouvrir un fichier local ou un lien YouTube (limité à 5 min max)."</ID>

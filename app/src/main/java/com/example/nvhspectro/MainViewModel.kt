@@ -362,7 +362,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             is WavReadResult.Success -> {
                 val data = result.data
                 initPlayer()
-                val exactDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 } ?: data.durationMs
+                val mediaDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 }
+                // [C3] The playback timeline must never exceed the analyzed PCM range —
+                // the old max-of-both desynchronized playhead and spectrum for >5-min files.
+                val exactDuration = minOf(mediaDuration ?: data.durationMs, data.durationMs)
+                if (result.truncatedToCap) {
+                    _analysisNotice.value =
+                        "⏱️ Analyse limitée aux ${WavDataReader.MAX_DURATION_SEC / 60} premières minutes du fichier"
+                }
                 val updatedData = data.copy(durationMs = exactDuration)
 
                 _loadedWavData.value = updatedData
@@ -401,6 +408,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _showVideoSelectionDialog.value = false
         processingJob?.cancel()
         stopWavPlayback()
+        _analysisNotice.value = null
         _loadedYouTubeUrl.value = null
         _loadedVideoUri.value = uri
         _loadedVideoTitle.value = uri.lastPathSegment?.substringAfterLast("/") ?: "Vidéo locale"
@@ -415,7 +423,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (data != null) {
                 withContext(Dispatchers.Main) {
                     initMediaPlayer(uri = uri, context = context)
-                    val exactDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 } ?: data.durationMs
+                    val mediaDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 }
+                    // [C3] Analyzed PCM bounds the timeline; a longer container means the cap was hit.
+                    val exactDuration = minOf(mediaDuration ?: data.durationMs, data.durationMs)
+                    if (mediaDuration != null && mediaDuration > data.durationMs + 1500L) {
+                        _analysisNotice.value =
+                            "⏱️ Analyse limitée aux ${WavDataReader.MAX_DURATION_SEC / 60} premières minutes de la vidéo"
+                    }
                     val updatedData = data.copy(durationMs = exactDuration)
                     _loadedWavData.value = updatedData
                     _loadedWavFileName.value = _loadedVideoTitle.value
@@ -787,6 +801,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (_wavPlaybackPositionMs.value >= data.durationMs) {
                 _isWavPlaying.value = false
                 _wavPlaybackPositionMs.value = data.durationMs
+                // [C3] For cap-truncated files the media outlives the analyzed range —
+                // stop the player at the analyzed end instead of playing on unanalyzed audio.
+                try {
+                    if (mediaPlayer?.isPlaying == true) {
+                        mediaPlayer?.pause()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }
