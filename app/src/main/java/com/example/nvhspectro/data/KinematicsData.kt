@@ -30,10 +30,18 @@ data class KinematicsConfig(
      */
     fun parsedTargetOrders(): List<Double> {
         if (targetHarmonicsText.isBlank()) return emptyList()
-        return targetHarmonicsText
+        // [C11] "22,5" is a French decimal, not the two orders 22 and 5. Rule:
+        // if the text uses no '.' anywhere, a comma directly between digits is a
+        // decimal; otherwise commas are separators (dots carry the decimals).
+        val normalized = if (!targetHarmonicsText.contains('.')) {
+            targetHarmonicsText.replace(Regex("(?<=\\d),(?=\\d)"), ".")
+        } else {
+            targetHarmonicsText
+        }
+        return normalized
             .split(',', ';', ' ', '\n')
             .mapNotNull { token ->
-                val cleaned = token.trim().replace(',', '.').removePrefix("H").removePrefix("h")
+                val cleaned = token.trim().removePrefix("H").removePrefix("h")
                 cleaned.toDoubleOrNull()
             }
             .filter { it > 0.0 }

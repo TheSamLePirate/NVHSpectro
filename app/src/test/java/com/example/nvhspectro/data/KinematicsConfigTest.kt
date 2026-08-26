@@ -113,14 +113,32 @@ class KinematicsConfigTest {
     }
 
     /**
-     * [audit C11-adjacent, PINNED] The comma is a *separator* before the
-     * comma→dot replacement can see it, so a French decimal "22,5" parses as
-     * the two orders 22 and 5 — not 22.5. Pins current behavior; the Phase 1
-     * locale-parsing fix (plan 1.8) updates this test in the same commit.
+     * [C11, plan 1.8 — FIXED, formerly pinned] French decimal commas parse as
+     * decimals when the text contains no '.'; with dots present, commas stay
+     * separators (the historical list syntax).
      */
     @Test
-    fun pinned_frenchDecimalComma_splitsIntoTwoOrders() {
-        val c = KinematicsConfig(targetHarmonicsText = "22,5")
-        assertEquals(listOf(22.0, 5.0), c.parsedTargetOrders())
+    fun c11_frenchDecimalComma_parsesAsDecimal() {
+        assertEquals(listOf(22.5), KinematicsConfig(targetHarmonicsText = "22,5").parsedTargetOrders())
+        assertEquals(
+            listOf(7.4, 18.0, 22.2),
+            KinematicsConfig(targetHarmonicsText = "7,4 18 22,2").parsedTargetOrders()
+        )
+    }
+
+    @Test
+    fun c11_dotDecimals_keepCommaAsSeparator() {
+        assertEquals(
+            listOf(7.4, 18.0, 22.2, 36.0),
+            KinematicsConfig(targetHarmonicsText = "7.4, 18, 22.2, 36").parsedTargetOrders()
+        )
+    }
+
+    @Test
+    fun c11_flexibleDoubleParsing_acceptsBothDecimalMarks() {
+        assertEquals(9.5, "9,5".toFlexibleDoubleOrNull()!!, 1e-9)
+        assertEquals(9.5, " 9.5 ".toFlexibleDoubleOrNull()!!, 1e-9)
+        assertEquals(null, "abc".toFlexibleDoubleOrNull())
+        assertEquals(null, "".toFlexibleDoubleOrNull())
     }
 }

@@ -1135,12 +1135,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateSettings(newMinDb: Double, newMaxDb: Double, newFftSize: Int, newMinFreq: Int, newMaxFreq: Int, newTimeWindow: Double) {
-        _minDb.value = newMinDb
-        _maxDb.value = newMaxDb
+        // [C14] The dynamic range must stay valid (min at least 5 dB below max);
+        // an inverted range corrupted every normalization in canvas/export/PDF.
+        val safeMax = newMaxDb
+        val safeMin = minOf(newMinDb, safeMax - 5.0)
+        _minDb.value = safeMin
+        _maxDb.value = safeMax
         _minFreq.value = newMinFreq.coerceAtLeast(0)
         _maxFreq.value = newMaxFreq
         _timeWindowSec.value = newTimeWindow
         if (_fftSize.value != newFftSize) {
+            // [C13] FFT size is fixed at WAV_FFT_SIZE in analyzer/video mode; applying
+            // the live setting there wiped the loaded spectrogram with no re-render.
+            if (_audioSourceMode.value != AudioSourceMode.LIVE) return
             _fftSize.value = newFftSize
             fftProcessor = FFTProcessor(newFftSize, AudioConfig.LIVE_SAMPLE_RATE_HZ)
             _fftHistoryAbsolute.value = emptyList()

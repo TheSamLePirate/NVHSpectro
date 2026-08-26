@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.nvhspectro.data.KinematicsConfig
 import com.example.nvhspectro.data.KinematicsInputMode
+import com.example.nvhspectro.data.toFlexibleDoubleOrNull
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,21 +52,23 @@ fun KinematicsDialog(
         reductionRatioText, axleRatioText, tireWidthText, tireAspectRatioText, 
         rimDiameterText, wheelRadiusText, vehicleName, motorName, comments, holdTimeText, targetHarmonicsText
     ) {
+        // [C11] Flexible parsing accepts French comma decimals; invalid fields are
+        // flagged red below instead of silently reverting to defaults.
         KinematicsConfig(
             isEnabled = isEnabled,
             inputMode = selectedMode,
-            v1000Kmh = v1000Text.toDoubleOrNull() ?: 10.0,
-            globalGearRatio = globalRatioText.toDoubleOrNull() ?: 9.5,
-            gearReductionRatio = reductionRatioText.toDoubleOrNull() ?: 3.2,
-            axleRatio = axleRatioText.toDoubleOrNull() ?: 3.0,
-            tireWidthMm = tireWidthText.toIntOrNull() ?: 205,
-            tireAspectRatio = tireAspectRatioText.toIntOrNull() ?: 55,
-            rimDiameterInches = rimDiameterText.toIntOrNull() ?: 16,
-            wheelRadiusMeters = wheelRadiusText.toDoubleOrNull() ?: 0.31,
+            v1000Kmh = v1000Text.toFlexibleDoubleOrNull() ?: 10.0,
+            globalGearRatio = globalRatioText.toFlexibleDoubleOrNull() ?: 9.5,
+            gearReductionRatio = reductionRatioText.toFlexibleDoubleOrNull() ?: 3.2,
+            axleRatio = axleRatioText.toFlexibleDoubleOrNull() ?: 3.0,
+            tireWidthMm = tireWidthText.trim().toIntOrNull() ?: 205,
+            tireAspectRatio = tireAspectRatioText.trim().toIntOrNull() ?: 55,
+            rimDiameterInches = rimDiameterText.trim().toIntOrNull() ?: 16,
+            wheelRadiusMeters = wheelRadiusText.toFlexibleDoubleOrNull() ?: 0.31,
             vehicleName = vehicleName,
             motorName = motorName,
             comments = comments,
-            holdTimeSec = holdTimeText.toDoubleOrNull() ?: 3.0,
+            holdTimeSec = holdTimeText.toFlexibleDoubleOrNull() ?: 3.0,
             targetHarmonicsText = targetHarmonicsText
         )
     }
@@ -151,8 +154,14 @@ fun KinematicsDialog(
                             value = v1000Text,
                             onValueChange = { v1000Text = it },
                             label = { Text("V1000 (km/h pour 1000 RPM)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             singleLine = true,
+                            isError = v1000Text.toFlexibleDoubleOrNull() == null,
+                            supportingText = {
+                                if (v1000Text.toFlexibleDoubleOrNull() == null) {
+                                    Text("Nombre invalide (ex : 9.5 ou 9,5)")
+                                }
+                            },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -161,8 +170,9 @@ fun KinematicsDialog(
                             value = globalRatioText,
                             onValueChange = { globalRatioText = it },
                             label = { Text("Rapport Global de Démultiplication Total") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             singleLine = true,
+                            isError = globalRatioText.toFlexibleDoubleOrNull() == null,
                             modifier = Modifier.fillMaxWidth()
                         )
                         
@@ -214,16 +224,18 @@ fun KinematicsDialog(
                                 value = reductionRatioText,
                                 onValueChange = { reductionRatioText = it },
                                 label = { Text("Réducteur / Descente") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true,
+                                isError = reductionRatioText.toFlexibleDoubleOrNull() == null,
                                 modifier = Modifier.weight(1f)
                             )
                             OutlinedTextField(
                                 value = axleRatioText,
                                 onValueChange = { axleRatioText = it },
                                 label = { Text("Rapport Pont") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true,
+                                isError = axleRatioText.toFlexibleDoubleOrNull() == null,
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -328,8 +340,9 @@ fun KinematicsDialog(
                         value = holdTimeText,
                         onValueChange = { holdTimeText = it },
                         label = { Text("Rémanence Tags (sec)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
+                        isError = holdTimeText.toFlexibleDoubleOrNull() == null,
                         modifier = Modifier.weight(1f)
                     )
                 }
