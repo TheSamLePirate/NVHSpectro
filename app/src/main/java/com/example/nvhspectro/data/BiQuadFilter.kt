@@ -13,7 +13,7 @@ class BiQuadFilter(
     val type: FilterType,
     val minFreq: Double,
     val maxFreq: Double,
-    val sampleRate: Double = 44100.0,
+    val sampleRate: Double, // [C1] always the source's real rate — no default
     val q: Double = 0.707 // Butterworth Q factor
 ) {
     private var a0: Double = 0.0

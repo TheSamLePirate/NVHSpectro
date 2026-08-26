@@ -32,7 +32,7 @@ class FFTProcessorCharacterizationTest {
     fun fullScaleSine_atBinCenter_readsZeroDbfs() {
         val bin = 100 // ≈ 2153 Hz — well above the 30 Hz mask
         val freq = SynthSignals.binCenteredFreq(bin, fftSize, sampleRate)
-        val mags = FFTProcessor(fftSize).processFFT(
+        val mags = FFTProcessor(fftSize, sampleRate).processFFT(
             SynthSignals.sine(freq, sampleRate, fftSize, amplitude = 1.0)
         )
         // Hann coherent-gain normalization mag/(N/4): full-scale sine = 0 dBFS.
@@ -43,17 +43,44 @@ class FFTProcessorCharacterizationTest {
     fun minus20dbSine_reads_minus20Dbfs() {
         val bin = 300 // ≈ 6460 Hz
         val freq = SynthSignals.binCenteredFreq(bin, fftSize, sampleRate)
-        val mags = FFTProcessor(fftSize).processFFT(
+        val mags = FFTProcessor(fftSize, sampleRate).processFFT(
             SynthSignals.sine(freq, sampleRate, fftSize, amplitude = 0.1)
         )
         assertEquals(-20.0, mags[bin], 0.05)
+    }
+
+    /**
+     * [C1, plan 1.1] The sample rate is now threaded per instance: a tone in a
+     * 48 kHz stream must land on the 48 kHz bin grid, and the 30 Hz mask must
+     * follow the real bin width (Δf = 23.44 Hz), not an assumed 44.1 kHz grid.
+     */
+    @Test
+    fun c1_fortyEightKhzStream_usesItsOwnBinGrid() {
+        val sr48 = 48000
+        val bin = 171 // 171 × 48000/2048 = 4007.8125 Hz
+        val freq = SynthSignals.binCenteredFreq(bin, fftSize, sr48)
+        val mags = FFTProcessor(fftSize, sr48).processFFT(
+            SynthSignals.sine(freq, sr48, fftSize, amplitude = 1.0)
+        )
+        assertEquals(0.0, mags[bin], 0.05)
+        // Under the old hard-coded 44100, this tone would have been attributed
+        // to bin round(4007.8 × 2048/44100) = 186 — verify 186 is NOT the peak.
+        assertTrue("44.1k-grid bin must not carry the tone", mags[186] < -20.0)
+        // 30 Hz mask on the real grid: bin 1 = 23.4 Hz is masked to the floor...
+        assertEquals(-120.0, mags[1], 0.0)
+        // ...while a full-scale tone placed AT bin 2 (46.9 Hz) reads through,
+        // proving bin 2 is outside the mask on the 48 kHz grid.
+        val lowMags = FFTProcessor(fftSize, sr48).processFFT(
+            SynthSignals.sine(SynthSignals.binCenteredFreq(2, fftSize, sr48), sr48, fftSize, amplitude = 1.0)
+        )
+        assertEquals(0.0, lowMags[2], 0.3)
     }
 
     @Test
     fun amplitudeLinearity_minus60Dbfs() {
         val bin = 200
         val freq = SynthSignals.binCenteredFreq(bin, fftSize, sampleRate)
-        val mags = FFTProcessor(fftSize).processFFT(
+        val mags = FFTProcessor(fftSize, sampleRate).processFFT(
             SynthSignals.sine(freq, sampleRate, fftSize, amplitude = 0.001)
         )
         // 16-bit quantization noise dominates at low amplitude; wider tolerance.
@@ -67,7 +94,7 @@ class FFTProcessorCharacterizationTest {
     /** [audit D7] Bins below 30 Hz are hard-masked to -120 inside processFFT. */
     @Test
     fun pinned_binsBelow30Hz_forcedToMinus120() {
-        val mags = FFTProcessor(fftSize).processFFT(
+        val mags = FFTProcessor(fftSize, sampleRate).processFFT(
             SynthSignals.sine(21.5, sampleRate, fftSize, amplitude = 1.0)
         )
         assertEquals(-120.0, mags[0], 0.0)
@@ -83,7 +110,7 @@ class FFTProcessorCharacterizationTest {
     fun pinned_halfBinTone_showsHannScallopingLoss() {
         val bin = 150
         val freq = (bin + 0.5) * df
-        val mags = FFTProcessor(fftSize).processFFT(
+        val mags = FFTProcessor(fftSize, sampleRate).processFFT(
             SynthSignals.sine(freq, sampleRate, fftSize, amplitude = 1.0)
         )
         val peak = maxOf(mags[bin], mags[bin + 1])
@@ -97,8 +124,8 @@ class FFTProcessorCharacterizationTest {
      */
     @Test
     fun pinned_firstTtnrFrame_alwaysSquelchedAsShock() {
-        val p = FFTProcessor(fftSize)
-        val ttnr = p.computeTTNR(toneOverFloorSpectrum(), sampleRate)
+        val p = FFTProcessor(fftSize, sampleRate)
+        val ttnr = p.computeTTNR(toneOverFloorSpectrum())
         assertTrue(
             "first frame must report no emergence (all ≤ 0), got max ${ttnr.max()}",
             ttnr.max() <= 0.0
@@ -107,10 +134,10 @@ class FFTProcessorCharacterizationTest {
 
     @Test
     fun steadyTone_detectedAfterWarmup() {
-        val p = FFTProcessor(fftSize)
+        val p = FFTProcessor(fftSize, sampleRate)
         val spectrum = toneOverFloorSpectrum()
         var last = DoubleArray(0)
-        repeat(12) { last = p.computeTTNR(spectrum, sampleRate) }
+        repeat(12) { last = p.computeTTNR(spectrum) }
         assertTrue(
             "tone at bin 200 should exceed 10 dB TTNR after warmup, got ${last[200]}",
             last[200] > 10.0
@@ -119,10 +146,10 @@ class FFTProcessorCharacterizationTest {
 
     @Test
     fun noiseOnlyFloor_reportsNoEmergence() {
-        val p = FFTProcessor(fftSize)
+        val p = FFTProcessor(fftSize, sampleRate)
         val flat = DoubleArray(fftSize / 2) { -80.0 }
         var last = DoubleArray(0)
-        repeat(5) { last = p.computeTTNR(flat, sampleRate) }
+        repeat(5) { last = p.computeTTNR(flat) }
         assertTrue("flat floor must yield no emergence, got max ${last.max()}", last.max() <= 0.0)
     }
 
@@ -142,7 +169,7 @@ class FFTProcessorCharacterizationTest {
             SynthSignals.sine(2153.3, sampleRate, fftSize, amplitude = 0.3),
             SynthSignals.seededNoise(fftSize, seed = 42L, amplitude = 0.05)
         )
-        val mags = FFTProcessor(fftSize).processFFT(input)
+        val mags = FFTProcessor(fftSize, sampleRate).processFFT(input)
 
         val resource = javaClass.getResourceAsStream("/golden/fft_seed42.csv")
         if (resource == null) {

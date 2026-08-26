@@ -22,9 +22,8 @@ jobs:
 
       - name: Repo hygiene gates
         run: ./ci/checks.sh
-        # Phase 1 arms the sample-rate gate:
-        # env:
-        #   ARM_SAMPLE_RATE_GATE: "1"
+        env:
+          ARM_SAMPLE_RATE_GATE: "1"  # armed in Phase 1 (plan 1.1, audit C1)
 
       - uses: actions/setup-java@v4
         with:

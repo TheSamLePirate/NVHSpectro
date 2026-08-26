@@ -14,7 +14,7 @@ import kotlin.math.max
 
 class AudioRepository {
     private var audioRecord: AudioRecord? = null
-    private val sampleRate = 44100
+    private val sampleRate = AudioConfig.LIVE_SAMPLE_RATE_HZ
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
     private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
     private var isRecording = false

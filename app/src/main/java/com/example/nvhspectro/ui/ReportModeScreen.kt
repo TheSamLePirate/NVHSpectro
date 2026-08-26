@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.example.nvhspectro.AudioConfig
 import com.example.nvhspectro.DisplayMode
 import com.example.nvhspectro.MainViewModel
 import com.example.nvhspectro.R
@@ -57,7 +58,9 @@ fun ReportModeScreen(
     val currentUserPoints by viewModel.currentUserPoints.collectAsState()
     val currentSmartPath by viewModel.currentSmartPath.collectAsState()
     
-    val sampleRate = 44100
+    // [C1] Report mode can hold a snapshot from live capture or from a loaded file.
+    val loadedWavData by viewModel.loadedWavData.collectAsState()
+    val sampleRate = loadedWavData?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ
     val context = LocalContext.current
 
     var isDrawingMode by remember { mutableStateOf(false) }

@@ -1,14 +1,25 @@
 package com.example.nvhspectro
 
-import org.jtransforms.fft.DoubleFFT_1D
 import kotlin.math.log10
 import kotlin.math.sqrt
+import org.jtransforms.fft.DoubleFFT_1D
 
-class FFTProcessor(val fftSize: Int = 2048) {
+/**
+ * FFT + tonal-emergence processing for ONE audio stream.
+ *
+ * Stateful (EMA integration, shock detector): create one instance per stream
+ * and never share it between live capture and file analysis [audit D3].
+ * The sample rate is fixed per instance and threaded from the actual source
+ * [audit C1] — never assume a rate here.
+ */
+class FFTProcessor(val fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, private val sampleRateHz: Int) {
     private val fft = DoubleFFT_1D(fftSize.toLong())
     private var lastFrameEnergyDb: Double = -120.0
     private var integratedTtnr: DoubleArray? = null
-    
+
+    /** Bin width in Hz for this instance's stream. */
+    private val df = sampleRateHz.toDouble() / fftSize
+
     // Fenêtrage de Hanning pour réduire le "leakage"
     private val window = DoubleArray(fftSize) { i ->
         0.5 * (1.0 - Math.cos(2.0 * Math.PI * i / (fftSize - 1)))
@@ -34,9 +45,8 @@ class FFTProcessor(val fftSize: Int = 2048) {
 
         // Calcul des magnitudes (échelle dBFS)
         val magnitudes = DoubleArray(fftSize / 2)
-        val normFactor = fftSize / 4.0 
+        val normFactor = fftSize / 4.0
 
-        val df = 44100.0 / fftSize
         for (i in 0 until fftSize / 2) {
             val f = i * df
             if (f < 30.0) {
@@ -46,7 +56,7 @@ class FFTProcessor(val fftSize: Int = 2048) {
             val re = fftData[i * 2]
             val im = fftData[i * 2 + 1]
             val mag = sqrt(re * re + im * im)
-            
+
             val magNormalized = mag / normFactor
             magnitudes[i] = if (magNormalized > 1e-6) 20 * log10(magNormalized) else -120.0
         }
@@ -58,12 +68,10 @@ class FFTProcessor(val fftSize: Int = 2048) {
      * Calcule le spectre d'émergence TTNR (Tone-to-Noise Ratio) selon ECMA-74 / ISO 1996-2 Hybride NVH v7.0.0
      * Avec Intégration Temporelle Exponentielle (tau = 220 ms) et Anti-Shock Squelch.
      * @param magnitudesDbFS : Tableau de magnitudes en dBFS
-     * @param sampleRate : Fréquence d'échantillonnage (ex: 44100 Hz)
      * @return DoubleArray contenant les valeurs TTNR en dB d'émergence filtrées [0..30 dB]
      */
-    fun computeTTNR(magnitudesDbFS: DoubleArray, sampleRate: Int = 44100): DoubleArray {
+    fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray {
         val binCount = magnitudesDbFS.size
-        val df = sampleRate.toDouble() / fftSize
         val rawTtnr = DoubleArray(binCount)
 
         // Convertir dBFS en puissance linéaire P = 10^(dBFS / 10)
@@ -99,8 +107,8 @@ class FFTProcessor(val fftSize: Int = 2048) {
 
                 // Condition de Pic Local Strict : Seuls les vrais sommets de pics sont évalués
                 val isStrictLocalPeak = i > 0 && i < binCount - 1 &&
-                        magnitudesDbFS[i] > magnitudesDbFS[i - 1] &&
-                        magnitudesDbFS[i] > magnitudesDbFS[i + 1]
+                    magnitudesDbFS[i] > magnitudesDbFS[i - 1] &&
+                    magnitudesDbFS[i] > magnitudesDbFS[i + 1]
 
                 if (!isStrictLocalPeak) {
                     continue

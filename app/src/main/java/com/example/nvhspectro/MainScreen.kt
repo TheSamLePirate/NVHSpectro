@@ -132,6 +132,9 @@ fun AppScreen(viewModel: MainViewModel) {
 
     val isWavMode = (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER || audioSourceMode == com.example.nvhspectro.AudioSourceMode.VIDEO)
     val isVideoMode = (audioSourceMode == com.example.nvhspectro.AudioSourceMode.VIDEO)
+    // [C1] The rate every frequency axis/order computation must use: the loaded
+    // file's own rate in analyzer/video mode, the live capture rate otherwise.
+    val analysisSampleRate = if (isWavMode) (loadedWavData?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ) else AudioConfig.LIVE_SAMPLE_RATE_HZ
     val wavProgress = if (loadedWavData != null && (loadedWavData?.durationMs ?: 0L) > 0) (wavPlaybackPositionMs.toFloat() / loadedWavData!!.durationMs.toFloat()) else 0f
 
     var showInfoDialog by remember { mutableStateOf(false) }
@@ -414,8 +417,8 @@ fun AppScreen(viewModel: MainViewModel) {
                     maxDb = maxDb,
                     minFreq = minFreq,
                     maxFreq = maxFreq,
-                    fftSize = fftSize,
-                    sampleRate = 44100,
+                    fftSize = if (isWavMode) AudioConfig.WAV_FFT_SIZE else fftSize,
+                    sampleRate = analysisSampleRate,
                     historySize = if (isWavMode && fftHistoryAbsolute.isNotEmpty()) fftHistoryAbsolute.size else viewModel.historySize,
                     displayMode = displayMode,
                     isDetectorEnabled = isDetectorEnabled,
@@ -876,6 +879,7 @@ fun AppScreen(viewModel: MainViewModel) {
                                     ttnrSpectrum = latestTTNRSpectrum,
                                     minFreq = minFreq,
                                     maxFreq = maxFreq,
+                                    sampleRate = analysisSampleRate,
                                     isKinematicsEnabled = kinematicsConfig.isEnabled,
                                     selectedOrderName = ordLabel,
                                     isWavAnalyzerMode = isWavMode,
@@ -926,6 +930,7 @@ fun AppScreen(viewModel: MainViewModel) {
         if (showSettingsDialog) {
             com.example.nvhspectro.ui.SettingsDialog(
                 onDismiss = { showSettingsDialog = false },
+                sampleRateHz = analysisSampleRate,
                 activeFilters = activeFilters,
                 onAddFilter = { filter -> viewModel.addAudioFilter(filter) },
                 onRemoveFilter = { filterId -> viewModel.removeAudioFilter(filterId) },

@@ -35,7 +35,7 @@ fun TelemetryGraph(
     ttnrSpectrum: DoubleArray = DoubleArray(0),
     minFreq: Int = 0,
     maxFreq: Int = 10000,
-    sampleRate: Int = 44100,
+    sampleRate: Int,
     isKinematicsEnabled: Boolean = false,
     selectedOrderName: String = "H18",
     isWavAnalyzerMode: Boolean = false,

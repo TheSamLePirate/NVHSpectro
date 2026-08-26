@@ -7,9 +7,10 @@ import java.io.RandomAccessFile
 object WavAudioWriter {
 
     /**
-     * Écrit un tableau d'échantillons PCM 16-bit Mono dans un fichier WAV standard 44.1 kHz.
+     * Écrit un tableau d'échantillons PCM 16-bit Mono dans un fichier WAV standard,
+     * au sample rate fourni par l'appelant [audit C1 — jamais de valeur par défaut].
      */
-    fun writePcmToWav(pcmData: ShortArray, outputFile: File, sampleRate: Int = 44100) {
+    fun writePcmToWav(pcmData: ShortArray, outputFile: File, sampleRate: Int) {
         val totalAudioLen = pcmData.size * 2L // 2 bytes per 16-bit sample
         val totalDataLen = totalAudioLen + 36
         val channels = 1

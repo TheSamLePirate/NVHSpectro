@@ -12,7 +12,7 @@ import java.nio.ByteOrder
 
 data class LoadedWavData(
     val pcmSamples: ShortArray,
-    val sampleRate: Int = 44100,
+    val sampleRate: Int,
     val durationMs: Long,
     val telemetryList: List<TelemetryData> = emptyList()
 )

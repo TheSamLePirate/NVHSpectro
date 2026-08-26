@@ -3,6 +3,7 @@ package com.example.nvhspectro.utils
 import android.content.Context
 import android.graphics.*
 import android.graphics.pdf.PdfDocument
+import com.example.nvhspectro.AudioConfig
 import com.example.nvhspectro.R
 import com.example.nvhspectro.data.KinematicsConfig
 import com.example.nvhspectro.data.KinematicsInputMode
@@ -77,11 +78,12 @@ object PdfReportGenerator {
         maxDb: Double,
         trackedOrders: List<SmartTrackedOrder>,
         kinematicsConfig: KinematicsConfig,
-        globalMaxFreq: Float
+        globalMaxFreq: Float,
+        sampleRate: Int
     ) {
-        val sampleRate = 44100
         val nyquist = sampleRate / 2
-        val totalBinCount = historyAbs.firstOrNull()?.size ?: 1024
+        // hop size == fftSize/2 == bin count, so duration derives from the data itself.
+        val totalBinCount = historyAbs.firstOrNull()?.size ?: (AudioConfig.WAV_FFT_SIZE / 2)
 
         // Calcul de la freq max dynamique
         val maxTrackedFreq = trackedOrders.maxOfOrNull { it.maxFreqHz.toFloat() } ?: 0f
@@ -198,7 +200,7 @@ object PdfReportGenerator {
         
         currentY = infoBoxBottom + 25f
         
-        val totalDurationSeconds = (historyAbs.size * 1024f) / 44100f
+        val totalDurationSeconds = (historyAbs.size.toFloat() * totalBinCount) / sampleRate
         
         // Helper to draw a colormap
         fun drawColormapBox(canvas: Canvas, bitmap: Bitmap?, x: Float, y: Float, width: Float, height: Float, boxTitle: String, drawBrilliance: Boolean = false) {

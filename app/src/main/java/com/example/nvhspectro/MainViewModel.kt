@@ -46,7 +46,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private val audioRepository = AudioRepository()
     private val telemetryRepository = TelemetryRepository(application)
-    private var fftProcessor = FFTProcessor(2048)
+    private var fftProcessor = FFTProcessor(AudioConfig.DEFAULT_FFT_SIZE, AudioConfig.LIVE_SAMPLE_RATE_HZ)
     private var processingJob: kotlinx.coroutines.Job? = null
     
     // États Kinématiques GMPe & Rapport d'Émergence
@@ -91,8 +91,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // Cela Ǹvite que le filtre "bave" avant la frǸquence de coupure.
             val qFactors = listOf(0.509795579, 0.601344887, 0.899976223, 2.562915448)
             val biquads = filters.flatMap { filter ->
-                qFactors.map { q -> 
-                    BiQuadFilter(filter.type, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), 44100.0, q) 
+                qFactors.map { q ->
+                    BiQuadFilter(filter.type, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), originalData.sampleRate.toDouble(), q)
                 }
             }
             
@@ -105,7 +105,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             
             val tempFile = File(context.cacheDir, "filtered_playback.wav")
-            WavAudioWriter.writePcmToWav(filteredPcm, tempFile, 44100)
+            WavAudioWriter.writePcmToWav(filteredPcm, tempFile, originalData.sampleRate)
             
             withContext(kotlinx.coroutines.Dispatchers.Main) {
                 val currentPos = mediaPlayer?.currentPosition ?: 0
@@ -447,7 +447,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val absHistory = _fftHistoryAbsolute.value
         val ttnrHistory = _fftHistoryTTNR.value
         val telemHistory = _telemetryHistory.value
-        val sampleRate = _loadedWavData.value?.sampleRate ?: 44100
+        val sampleRate = _loadedWavData.value?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ
         
         if (absHistory.isEmpty() || telemHistory.isEmpty() || !config.isEnabled) return
         
@@ -495,7 +495,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val isWhitelistActive = targetOrders.isNotEmpty()
         val maxHoldMs = (config.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L)
 
-        val stepDurationMs = 1024.0 / sampleRate * 1000.0
+        val stepDurationMs = (AudioConfig.WAV_FFT_SIZE / 2).toDouble() / sampleRate * 1000.0
         
         var currentTags = listOf<TrackedHarmonicTag>()
         val currentReportList = mutableListOf<EmergenceReportEntry>()
@@ -504,7 +504,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val localEmaSpectrum = FloatArray(1000) { 0f }
         val alpha = 0.10f
         val binCount = if (absHistory.isNotEmpty()) absHistory[0].size else 1
-        val nyquist = 44100 / 2.0
+        // [C1] Was hard-coded to the live capture rate while the correct sampleRate was
+        // read above — the order sweep was wrong for any non-44.1k file.
+        val nyquist = sampleRate / 2.0
         val df = nyquist / binCount
 
         for (frameIdx in absHistory.indices) {
@@ -647,7 +649,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         processingJob?.cancel()
         processingJob = viewModelScope.launch(Dispatchers.Default) {
             val sampleRate = data.sampleRate
-            val fftN = if (_audioSourceMode.value == AudioSourceMode.VIDEO) 2048 else 2048 // Should use variable _fftSize if present
+            val fftN = AudioConfig.WAV_FFT_SIZE
             val stepSize = fftN / 2
             val totalSamples = data.pcmSamples.size
 
@@ -662,7 +664,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
 
-            val localFftProcessor = FFTProcessor(fftN)
+            val localFftProcessor = FFTProcessor(fftN, sampleRate)
             val frameCount = ((totalSamples - fftN) / stepSize).coerceAtLeast(1)
             val absList = ArrayList<DoubleArray>(frameCount)
             val ttnrList = ArrayList<DoubleArray>(frameCount)
@@ -680,7 +682,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val magnitudes = localFftProcessor.processFFT(frameBuffer)
                 
 
-                val rawTtnr = localFftProcessor.computeTTNR(magnitudes, sampleRate)
+                val rawTtnr = localFftProcessor.computeTTNR(magnitudes)
 
                 absList.add(magnitudes)
                 ttnrList.add(rawTtnr)
@@ -766,7 +768,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         wavPlaybackJob?.cancel()
         wavPlaybackJob = viewModelScope.launch {
             val sampleRate = data.sampleRate
-            val stepSize = _fftSize.value / 2
+            val stepSize = AudioConfig.WAV_FFT_SIZE / 2
             val stepMs = ((stepSize.toDouble() / sampleRate.toDouble()) * 1000.0).toLong().coerceAtLeast(15L)
 
             while (_isWavPlaying.value && _wavPlaybackPositionMs.value < data.durationMs) {
@@ -879,7 +881,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (kConfig.isEnabled && speedKmh > 1.0f && currentAbs.isNotEmpty() && currentTtnr.isNotEmpty()) {
             val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
             if (h1FreqHz >= 0.5) {
-                val sampleRate = _loadedWavData.value?.sampleRate ?: 44100
+                val sampleRate = _loadedWavData.value?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ
                 val nyquistFreq = sampleRate / 2.0
                 val totalBins = currentAbs.size
                 val df = nyquistFreq / totalBins
@@ -996,7 +998,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         val wavFile = File(exportFolder, "${folderName}.wav")
-        WavAudioWriter.writePcmToWav(fullPcm, wavFile, 44100)
+        WavAudioWriter.writePcmToWav(fullPcm, wavFile, AudioConfig.LIVE_SAMPLE_RATE_HZ)
 
         // 2. Fichier JSON Télémétrie
         val jsonFile = File(exportFolder, "${folderName}_telemetrie.json")
@@ -1004,7 +1006,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         jsonContent.append("{\n")
         jsonContent.append("  \"folderName\": \"$folderName\",\n")
         jsonContent.append("  \"durationSec\": ${_recordingElapsedSec.value},\n")
-        jsonContent.append("  \"sampleRate\": 44100,\n")
+        jsonContent.append("  \"sampleRate\": ${AudioConfig.LIVE_SAMPLE_RATE_HZ},\n")
         jsonContent.append("  \"telemetryCount\": ${recordedTelemetryList.size},\n")
         jsonContent.append("  \"telemetryData\": [\n")
         
@@ -1044,7 +1046,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val historySize: Int
         get() {
-            val dt = (_fftSize.value / 2.0) / 44100.0
+            val dt = (_fftSize.value / 2.0) / AudioConfig.LIVE_SAMPLE_RATE_HZ
             return (_timeWindowSec.value / dt).toInt().coerceAtLeast(10)
         }
 
@@ -1072,7 +1074,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _timeWindowSec.value = newTimeWindow
         if (_fftSize.value != newFftSize) {
             _fftSize.value = newFftSize
-            fftProcessor = FFTProcessor(newFftSize)
+            fftProcessor = FFTProcessor(newFftSize, AudioConfig.LIVE_SAMPLE_RATE_HZ)
             _fftHistoryAbsolute.value = emptyList()
             _fftHistoryTTNR.value = emptyList()
             _telemetryHistory.value = emptyList()
@@ -1219,7 +1221,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         // Traitement TTNR (Émergence tonale ECMA-74)
                     
 
-                        val rawTtnr = fftProcessor.computeTTNR(magnitudes, 44100)
+                        val rawTtnr = fftProcessor.computeTTNR(magnitudes)
 
                     
                         // Initialisation / Ajustement de la taille du tampon de persistance 150 ms
@@ -1305,7 +1307,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         if (kConfig.isEnabled && speedKmh > 1.0f) {
                             val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
                             if (h1FreqHz >= 0.5) {
-                                val nyquistFreq = 44100 / 2.0
+                                val nyquistFreq = AudioConfig.LIVE_SAMPLE_RATE_HZ / 2.0
                                 val totalBins = ttnrSpectrum.size
                                 val df = nyquistFreq / totalBins
                                 val targetFreqHz = kConfig.selectedTrackedOrder * h1FreqHz
@@ -1354,7 +1356,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             
                                 val reportList = _emergenceReportEntries.value.toMutableList()
                                 val newDetectedTags = mutableListOf<TrackedHarmonicTag>()
-                                val nyquistFreq = 44100 / 2.0
+                                val nyquistFreq = AudioConfig.LIVE_SAMPLE_RATE_HZ / 2.0
                                 val totalBins = ttnrSpectrum.size
                                 val df = nyquistFreq / totalBins
                             
@@ -1489,7 +1491,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val bitmapWidth = history.size
             val binCount = history.first().size
             val maxF = _maxFreq.value
-            val nyquistFreq = 44100 / 2
+            val nyquistFreq = (_loadedWavData.value?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ) / 2
             val displayedBinCount = min(binCount, (maxF * binCount) / nyquistFreq)
             val bitmapHeight = displayedBinCount
             
@@ -1904,7 +1906,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val reportHistory = _reportFftHistory.value
         val reportHistoryTTNR = _reportFftHistoryTTNR.value
         val telemHistory = _telemetryHistory.value
-        val sampleRate = _loadedWavData.value?.sampleRate ?: 44100
+        val sampleRate = _loadedWavData.value?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ
         val nyquist = sampleRate / 2.0
         val totalBins = if (reportHistory.isNotEmpty()) reportHistory[0].size else 2048
         val df = nyquist / totalBins
@@ -1992,7 +1994,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         maxDb = _maxDb.value,
                         trackedOrders = _manualTrackedOrders.value,
                         kinematicsConfig = _kinematicsConfig.value,
-                        globalMaxFreq = _maxFreq.value.toFloat()
+                        globalMaxFreq = _maxFreq.value.toFloat(),
+                        sampleRate = _loadedWavData.value?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ
                     )
                 }
             } catch (e: Exception) {
