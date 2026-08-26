@@ -4,7 +4,7 @@ Live log of the `V13.1-AAA-plan.md` execution. One section per phase: steps,
 commits, verification evidence, and every deviation from the written plan.
 Update this file **in the same session** as the work it describes.
 
-**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0 AND 1 COMPLETE — Gates 0 & 1 passed on emulator** (2026-08-26)
+**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0, 1 AND 2 COMPLETE — Gates 0, 1 & 2 passed on emulator** (2026-08-26)
 
 ---
 
@@ -94,4 +94,46 @@ Update this file **in the same session** as the work it describes.
 - `_analysisNotice` is now the single user-facing message channel — Phase 2's capture-engine errors should reuse it (until plan 4.7 builds the full error surface).
 - `AudioRepository` now takes a `Context`; the Phase 2 `CaptureEngine` refactor starts from a guarded, source-selected base.
 - Emulator reports VOICE_RECOGNITION (fallback path exercised); UNPROCESSED path needs a physical device to observe.
+
+---
+
+## Phase 2 — Concurrency, lifecycle & the speed chain
+
+### Steps executed (2026-08-26, same session)
+
+| Step | What was done | Commit |
+|---|---|---|
+| 2.4a | **[G1,G4]** `AlphaBetaSpeedEstimator` (pure Kotlin): monotonic-nanos intervals only, single-fix outlier coasting w/ two-consecutive acceptance, dropout re-seeding, capped prediction horizon, filtered acceleration by-product. Gains = critically-damped α/β pairing, provisional pending 0.8 drive-log tuning. 10 tests | `cd0261c` |
+| 2.1+2.2+2.4b | **[C5,C6,C7,G1–G4,L3,L5]** The live pipeline: `CaptureEngine` (flatMapLatest-owned mic, bounded 64-frame DROP_OLDEST buffer, integrity counters, retryable inner-catch errors), `LiveAnalysisEngine` (ALL DSP state extracted from the VM, synchronized, run on the dedicated `nvh-dsp` thread), `SpeedProvider` (GPS_PROVIDER-first with fused provenance-filtered fallback, monotonic nanos, speed-accuracy LED, per-frame PREDICTED speed). **Deleted:** the 1.2 s delay, gpsHistory cross-clock bracketing, `TelemetryRepository`, the UNLIMITED channel, the per-restart consumer leak. `TelemetryData`/`GpsStatus` moved to `Telemetry.kt` | `acfc331` |
+| 2.3 | **[L1,L2,L4,L6,L7]** `PlaybackController` (suspending prepareAsync, explicit original/filtered sources, idempotent release); cancellable filter job with position captured pre-render; stop keeps the player prepared; `resetAnalysisState()` on every source/kinematics/tracked-order transition; `onCleared` releases capture+GPS+player+DSP thread. `LiveAnalysisEngineTest` = the L7 matrix (reset restores first-frame squelch; order-EMA ghosts cleared) | `2d5bcfb` |
+| 2.5 | **[C10,D4,D5]** Filters now render ONE filtered PCM feeding BOTH playback and the spectrogram (`processFullWavSpectrogram(analysisData=…)`, `_loadedWavData` stays original); BAND_PASS rebuilt as true 8th-order Butterworth HP×LP cascades; dead wrong `BiQuadFilter.process()` + doubt-monologue deleted (3.8 item pulled forward); `magnitudeAt()` added. `d4_*` analytical response tests (−3.01 dB at cutoff, −48 dB/oct, band edges, notch, DC gain) | `9049ad0` |
+| 2.6 | Debug integrity log every 256 frames: produced/consumed/restarts + consumer thread name | `d6cf153` |
+
+Unit tests: **61** total, all green; lint 0 errors; minified release builds; all gates pass with `ARM_SAMPLE_RATE_GATE=1`.
+
+### Gate 2 verification (2026-08-26, emulator NVH_API_37_compact, debug build for logcat/counter evidence)
+
+- ✅ **Single consumer / zero loss**: `LivePipeline: produced=8448 consumed=8448 restarts=… thread=nvh-dsp` after a session including **6 rapid FFT-size changes** through the settings dialog — produced==consumed throughout, app alive, zero FATAL. (Restart count < change count = StateFlow conflation skipping obsolete configs mid-switch — desired semantics.)
+- ✅ **DSP off main**: every integrity line reports `thread=nvh-dsp`.
+- ✅ **[C7] Mic lifecycle**: appops shows `RECORD_AUDIO (running)` in LIVE; after switching to Analyseur WAV the grant shows a finalized `duration=…` with NO running flag (mic released); back to LIVE → `(running)` again within 4 s.
+- ✅ **[G2/G3] SpeedProvider**: pulled field log CSV shows `provider=gps` (raw GPS_PROVIDER subscription), monotonic `elapsedRealtimeNanos` at ~1.02 s intervals, `speedAccMs=0.500` populated — 211 fixes.
+- ✅ DSP-table values in settings derive from the threaded rate (43.1 trames/s, Δf 21.5 Hz).
+
+### Phase 2 deviations / pending
+
+| ID | Item | Status |
+|---|---|---|
+| DEV-15 | Plan steps 2.1/2.2/2.4 landed as ONE commit (`acfc331`) | Splitting would have rewritten the same 150 lines twice through a never-shippable intermediate |
+| DEV-16 | G5 (empty full-tracking GnssMeasurements registration) dropped during the 2.4 rewrite — decision D8's recommendation executed early | Trivially restorable; carrying dead battery cost through a rewrite made no sense. Flag to owner |
+| DEV-17 | Full `MeasurementSession` class extraction deferred to plan 3.1/3.3 (as the plan itself schedules) | The testable core (engine reset matrix) IS covered by `LiveAnalysisEngineTest` |
+| DEV-18 | Gate 2 run on the debug build (counters/logcat need it); release assembly verified by CI tasks + Phase 1 gate | — |
+| DEV-19 | LeakCanary not installed → leak check replaced by mode-switch stress + zero-crash + onCleared review | Consider adding LeakCanary (debug-only dep) in Phase 5.1 |
+| DEV-20 | No-lag drive verification of the estimator needs a real vehicle | **Field task**: drive with the debug build, compare Théo vs GPS speed response; tune α/β from the collected `field_logs` CSVs |
+| DEV-21 | FFT-size stress = 6 changes (not the plan's 10) — dialog automation flakiness under emulator launcher ANRs | Invariant proven (produced==consumed); repeat at will on hardware |
+
+### Notes for Phase 3
+
+- `LiveAnalysisEngine.blendOrderEma` is the seed of the unified `OrderTrackingEngine` (plan 3.2) — the WAV sweep still has its own copy of the detection loop.
+- `PlaybackController`, `SpeedProvider`, `CaptureEngine`, `LiveAnalysisEngine` are the extraction pattern Phase 3 continues (`:core` module split).
+- The live history lists are still newest-first — plan 3.4's canonical-chronology change is the U9/U10 root fix.
 
