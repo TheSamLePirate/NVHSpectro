@@ -330,20 +330,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // [C16] Guards against a stale load completing after a newer one started.
+    private var wavLoadGeneration = 0
+
     fun loadWavFile(wavFile: File, jsonFile: File?) {
-        prepareForWavLoad()
-        val result = WavDataReader.readWavFile(wavFile, jsonFile)
-        handleWavResult(result, wavFile.name) { initMediaPlayer(wavFile = wavFile) }
+        val gen = prepareForWavLoad()
+        // [C16] Full-file read + parse ran on the main thread (ANR on long files);
+        // now on IO with the existing progress overlay.
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = WavDataReader.readWavFile(wavFile, jsonFile)
+            withContext(Dispatchers.Main) {
+                if (gen != wavLoadGeneration) return@withContext
+                handleWavResult(result, wavFile.name) { initMediaPlayer(wavFile = wavFile) }
+            }
+        }
     }
 
     fun loadWavFromUri(context: android.content.Context, uri: android.net.Uri) {
-        prepareForWavLoad()
-        val result = WavDataReader.readWavFromUri(context, uri)
+        val gen = prepareForWavLoad()
         val name = uri.lastPathSegment?.substringAfterLast("/") ?: "fichier.wav"
-        handleWavResult(result, name) { initMediaPlayer(uri = uri, context = context) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = WavDataReader.readWavFromUri(context, uri)
+            withContext(Dispatchers.Main) {
+                if (gen != wavLoadGeneration) return@withContext
+                handleWavResult(result, name) { initMediaPlayer(uri = uri, context = context) }
+            }
+        }
     }
 
-    private fun prepareForWavLoad() {
+    private fun prepareForWavLoad(): Int {
         _showWavSelectionDialog.value = false
         processingJob?.cancel()
         stopWavPlayback()
@@ -354,6 +369,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _fftHistoryTTNR.value = emptyList()
         _telemetryHistory.value = emptyList()
         _telemetryState.value = TelemetryData()
+        _isProcessingVideo.value = true
+        _processingEstimateMessage.value = "⏳ Chargement du fichier audio..."
+        return ++wavLoadGeneration
     }
 
     /** [C2] Typed import result: success feeds the pipeline, rejection feeds the notice banner. */
@@ -378,8 +396,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 processFullWavSpectrogram(updatedData)
                 processWavFrameAt(0L)
             }
-            is WavReadResult.Unsupported -> _analysisNotice.value = "⚠️ ${result.message}"
-            is WavReadResult.Error -> _analysisNotice.value = "❌ ${result.message}"
+            is WavReadResult.Unsupported -> {
+                _isProcessingVideo.value = false
+                _processingEstimateMessage.value = null
+                _analysisNotice.value = "⚠️ ${result.message}"
+            }
+            is WavReadResult.Error -> {
+                _isProcessingVideo.value = false
+                _processingEstimateMessage.value = null
+                _analysisNotice.value = "❌ ${result.message}"
+            }
         }
     }
 
@@ -417,9 +443,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _fftHistoryTTNR.value = emptyList()
         _telemetryHistory.value = emptyList()
         _telemetryState.value = TelemetryData()
+        _isProcessingVideo.value = true
+        _processingEstimateMessage.value = "⏳ Extraction de l'audio de la vidéo..."
 
         viewModelScope.launch(Dispatchers.Default) {
             val data = com.example.nvhspectro.data.VideoAudioExtractor.extractAudioFromVideoUri(context, uri)
+            if (data == null) {
+                withContext(Dispatchers.Main) {
+                    _isProcessingVideo.value = false
+                    _processingEstimateMessage.value = null
+                    _analysisNotice.value = "❌ Extraction audio impossible depuis cette vidéo"
+                }
+            }
             if (data != null) {
                 withContext(Dispatchers.Main) {
                     initMediaPlayer(uri = uri, context = context)
