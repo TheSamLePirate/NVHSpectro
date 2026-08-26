@@ -1232,7 +1232,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val rawCopy = rawTtnr.clone()
                         recentRawTTNRBuffer.add(0, rawCopy)
                         if (recentRawTTNRBuffer.size > 6) {
-                            recentRawTTNRBuffer.removeLast()
+                            recentRawTTNRBuffer.removeAt(recentRawTTNRBuffer.lastIndex)
                         }
 
                         // Calcul de la persistance par bin et validation du tampon rétrospectif 150 ms
@@ -1271,7 +1271,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         // Mettre à jour l'historique Absolu
                         val curAbs = _fftHistoryAbsolute.value.toMutableList()
                         curAbs.add(0, magnitudes)
-                        if (curAbs.size > maxHist) curAbs.removeLast()
+                        if (curAbs.size > maxHist) curAbs.removeAt(curAbs.lastIndex)
                         _fftHistoryAbsolute.value = curAbs
 
                         // Mettre à jour l'historique TTNR avec déverrouillage rétroactif 150 ms (Zéro Amputation)
@@ -1292,7 +1292,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             }
                         }
 
-                        if (curTtnr.size > maxHist) curTtnr.removeLast()
+                        if (curTtnr.size > maxHist) curTtnr.removeAt(curTtnr.lastIndex)
                         _fftHistoryTTNR.value = curTtnr
 
                         // Traitement des Harmoniques & Détection de Cinématique NVH (Actif UNIQUEMENT si Vitesse > 1.0 km/h)
@@ -1341,7 +1341,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                         val curTelem = _telemetryHistory.value.toMutableList()
                         curTelem.add(0, telemWithTtnr)
-                        if (curTelem.size > maxHist) curTelem.removeLast()
+                        if (curTelem.size > maxHist) curTelem.removeAt(curTelem.lastIndex)
                         _telemetryHistory.value = curTelem
                         if (kConfig.isEnabled && speedKmh > 1.0f) {
                             val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
