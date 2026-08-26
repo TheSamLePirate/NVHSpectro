@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.nvhspectro.BuildConfig
 import com.example.nvhspectro.R
 
 @Composable
@@ -61,7 +62,7 @@ fun InfoDialog(
                         InfoDetailRow("👤 Auteur", "Louis BARTHELEMY")
                         InfoDetailRow("🏢 Société", "VIBRATEAM [Vibratec (Everenn Group)]")
                         InfoDetailRow("📱 Application", "NVH Spectro")
-                        InfoDetailRow("🏷️ Version", "v13.1 (Rapport)")
+                        InfoDetailRow("🏷️ Version", "v${BuildConfig.VERSION_NAME}")
                         InfoDetailRow("✉️ Contact", "louis.barthelemy@vibrateam.fr")
                         
                         // Site Web VIBRATEC (Lien cliquable)
