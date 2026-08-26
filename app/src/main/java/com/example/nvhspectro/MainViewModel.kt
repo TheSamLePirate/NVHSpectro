@@ -333,24 +333,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // [C16] Guards against a stale load completing after a newer one started.
     private var wavLoadGeneration = 0
 
-    fun loadWavFile(wavFile: File, jsonFile: File?) {
+    fun loadWavFromUri(context: android.content.Context, uri: android.net.Uri, jsonUri: android.net.Uri? = null) {
         val gen = prepareForWavLoad()
+        val name = uri.lastPathSegment?.substringAfterLast("/") ?: "fichier.wav"
         // [C16] Full-file read + parse ran on the main thread (ANR on long files);
         // now on IO with the existing progress overlay.
         viewModelScope.launch(Dispatchers.IO) {
-            val result = WavDataReader.readWavFile(wavFile, jsonFile)
-            withContext(Dispatchers.Main) {
-                if (gen != wavLoadGeneration) return@withContext
-                handleWavResult(result, wavFile.name) { initMediaPlayer(wavFile = wavFile) }
-            }
-        }
-    }
-
-    fun loadWavFromUri(context: android.content.Context, uri: android.net.Uri) {
-        val gen = prepareForWavLoad()
-        val name = uri.lastPathSegment?.substringAfterLast("/") ?: "fichier.wav"
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = WavDataReader.readWavFromUri(context, uri)
+            val jsonText = jsonUri?.let { RecordingStore.readText(context, it) }
+            val result = WavDataReader.readWavFromUri(context, uri, jsonText)
             withContext(Dispatchers.Main) {
                 if (gen != wavLoadGeneration) return@withContext
                 handleWavResult(result, name) { initMediaPlayer(uri = uri, context = context) }
@@ -1042,38 +1032,57 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun saveAudioRecording(userCustomName: String) {
         val rawName = userCustomName.trim()
         val cleanName = if (rawName.isEmpty()) "Essai" else rawName.take(20).replace("[^a-zA-Z0-9_\\-]".toRegex(), "_")
-        
-        val timeStamp = SimpleDateFormat("yyyy-MM-dd_HH'h'mm's'ss", Locale.getDefault()).format(Date())
-        val folderName = "${cleanName}_${timeStamp}"
-        
-        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        val exportFolder = File(downloadsDir, "NVH_Spectro_Exports/$folderName")
-        exportFolder.mkdirs()
+        // [S3] Millisecond suffix: two saves in the same second no longer collide.
+        val timeStamp = SimpleDateFormat("yyyy-MM-dd_HH'h'mm'm'ss's'SSS", Locale.US).format(Date())
+        val baseName = "${cleanName}_$timeStamp"
+        _showSaveRecordingDialog.value = false
 
-        // 1. Fichier WAV
-        val totalSamples = recordedPcmList.sumOf { it.size }
-        val fullPcm = ShortArray(totalSamples)
-        var offset = 0
-        synchronized(recordedPcmList) {
-            for (block in recordedPcmList) {
-                System.arraycopy(block, 0, fullPcm, offset, block.size)
-                offset += block.size
+        // [C4] Save via MediaStore on IO — the old direct-File write ran on the
+        // main thread and lost data silently under scoped storage.
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val fullPcm: ShortArray
+                synchronized(recordedPcmList) {
+                    val totalSamples = recordedPcmList.sumOf { it.size }
+                    fullPcm = ShortArray(totalSamples)
+                    var offset = 0
+                    for (block in recordedPcmList) {
+                        System.arraycopy(block, 0, fullPcm, offset, block.size)
+                        offset += block.size
+                    }
+                }
+                RecordingStore.saveRecording(
+                    context = getApplication(),
+                    baseName = baseName,
+                    pcm = fullPcm,
+                    sampleRate = AudioConfig.LIVE_SAMPLE_RATE_HZ,
+                    telemetryJson = buildTelemetryJson(baseName)
+                )
+                withContext(Dispatchers.Main) {
+                    recordedPcmList.clear()
+                    recordedTelemetryList.clear()
+                    _analysisNotice.value = "✅ Enregistrement sauvegardé : $baseName"
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    // PCM is kept so the user can retry the save.
+                    _showSaveRecordingDialog.value = true
+                    _analysisNotice.value = "❌ Sauvegarde impossible : ${e.message ?: e.javaClass.simpleName}"
+                }
             }
         }
-        val wavFile = File(exportFolder, "${folderName}.wav")
-        WavAudioWriter.writePcmToWav(fullPcm, wavFile, AudioConfig.LIVE_SAMPLE_RATE_HZ)
+    }
 
-        // 2. Fichier JSON Télémétrie
-        val jsonFile = File(exportFolder, "${folderName}_telemetrie.json")
+    private fun buildTelemetryJson(baseName: String): String {
         val jsonContent = StringBuilder()
         jsonContent.append("{\n")
-        jsonContent.append("  \"folderName\": \"$folderName\",\n")
+        jsonContent.append("  \"folderName\": \"$baseName\",\n")
         jsonContent.append("  \"durationSec\": ${_recordingElapsedSec.value},\n")
         jsonContent.append("  \"sampleRate\": ${AudioConfig.LIVE_SAMPLE_RATE_HZ},\n")
         jsonContent.append("  \"captureSource\": \"${audioRepository.captureSourceLabel}\",\n")
         jsonContent.append("  \"telemetryCount\": ${recordedTelemetryList.size},\n")
         jsonContent.append("  \"telemetryData\": [\n")
-        
+
         synchronized(recordedTelemetryList) {
             val items = recordedTelemetryList.mapIndexed { idx, item ->
                 "    {\"index\": $idx, \"speedKmh\": ${item.speedKmh}, \"accelerationG\": ${item.accelerationG}, \"lat\": ${item.latitude}, \"lng\": ${item.longitude}, \"gpsStatus\": \"${item.gpsStatus}\"}"
@@ -1081,12 +1090,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             jsonContent.append(items.joinToString(",\n"))
         }
         jsonContent.append("\n  ]\n}")
-        
-        jsonFile.writeText(jsonContent.toString())
-
-        recordedPcmList.clear()
-        recordedTelemetryList.clear()
-        _showSaveRecordingDialog.value = false
+        return jsonContent.toString()
     }
     
     // Paramètres réglables

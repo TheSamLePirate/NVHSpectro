@@ -11,14 +11,20 @@ object WavAudioWriter {
      * au sample rate fourni par l'appelant [audit C1 — jamais de valeur par défaut].
      */
     fun writePcmToWav(pcmData: ShortArray, outputFile: File, sampleRate: Int) {
+        outputFile.parentFile?.mkdirs()
+        FileOutputStream(outputFile).use { out ->
+            writePcmToStream(pcmData, out, sampleRate)
+        }
+    }
+
+    /** Stream variant for MediaStore targets [plan 1.7]. */
+    fun writePcmToStream(pcmData: ShortArray, out: java.io.OutputStream, sampleRate: Int) {
         val totalAudioLen = pcmData.size * 2L // 2 bytes per 16-bit sample
         val totalDataLen = totalAudioLen + 36
         val channels = 1
         val byteRate = sampleRate * channels * 2
 
-        outputFile.parentFile?.mkdirs()
-        
-        FileOutputStream(outputFile).use { out ->
+        run {
             val header = ByteArray(44)
 
             // RIFF/WAVE header

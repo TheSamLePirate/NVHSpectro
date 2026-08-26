@@ -51,7 +51,7 @@
     <ID>FunctionNaming:VideoPlayerView.kt$@Composable fun VideoPlayerView( videoUri: Uri?, youtubeUrl: String?, videoTitle: String, isPlaying: Boolean, positionMs: Long, durationMs: Long, onSeekTo: (Long) -&gt; Unit, onTogglePlayPause: () -&gt; Unit, onOpenVideoSelection: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
     <ID>FunctionNaming:VideoSelectionDialog.kt$@Composable fun VideoSelectionDialog( onDismiss: () -&gt; Unit, onSelectLocalVideo: () -&gt; Unit, onSelectYouTubeUrl: (String) -&gt; Unit )</ID>
     <ID>FunctionNaming:WavPlayerBar.kt$@Composable fun WavPlayerBar( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit )</ID>
-    <ID>FunctionNaming:WavSelectionDialog.kt$@Composable fun WavSelectionDialog( onDismiss: () -&gt; Unit, onSelectEntry: (File, File?) -&gt; Unit, onImportExternal: () -&gt; Unit )</ID>
+    <ID>FunctionNaming:WavSelectionDialog.kt$@Composable fun WavSelectionDialog( onDismiss: () -&gt; Unit, onSelectEntry: (wavUri: Uri, jsonUri: Uri?) -&gt; Unit, onImportExternal: () -&gt; Unit )</ID>
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$a0_t: Double</ID>
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$a1_t: Double</ID>
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$a2_t: Double</ID>
@@ -84,6 +84,7 @@
     <ID>ImplicitDefaultLocale:VideoPlayerView.kt$String.format("%02d:%02d", min, sec)</ID>
     <ID>ImplicitDefaultLocale:WavPlayerBar.kt$String.format("%02d:%02d", currentSec / 60, currentSec % 60)</ID>
     <ID>ImplicitDefaultLocale:WavPlayerBar.kt$String.format("%02d:%02d", totalSec / 60, totalSec % 60)</ID>
+    <ID>InstanceOfCheckForException:RecordingStore.kt$RecordingStore$e is IOException</ID>
     <ID>LargeClass:MainViewModel.kt$MainViewModel : AndroidViewModel</ID>
     <ID>LongMethod:BiQuadFilter.kt$BiQuadFilter$private fun calculateCoefficients()</ID>
     <ID>LongMethod:EmergenceReportDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EmergenceReportDialog( entries: List&lt;EmergenceReportEntry&gt;, kinematicsConfig: KinematicsConfig, onDismiss: () -&gt; Unit, onClearReport: () -&gt; Unit )</ID>
@@ -110,9 +111,9 @@
     <ID>LongMethod:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
     <ID>LongMethod:VideoPlayerView.kt$@Composable fun VideoPlayerView( videoUri: Uri?, youtubeUrl: String?, videoTitle: String, isPlaying: Boolean, positionMs: Long, durationMs: Long, onSeekTo: (Long) -&gt; Unit, onTogglePlayPause: () -&gt; Unit, onOpenVideoSelection: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:VideoSelectionDialog.kt$@Composable fun VideoSelectionDialog( onDismiss: () -&gt; Unit, onSelectLocalVideo: () -&gt; Unit, onSelectYouTubeUrl: (String) -&gt; Unit )</ID>
-    <ID>LongMethod:WavAudioWriter.kt$WavAudioWriter$fun writePcmToWav(pcmData: ShortArray, outputFile: File, sampleRate: Int)</ID>
+    <ID>LongMethod:WavAudioWriter.kt$WavAudioWriter$fun writePcmToStream(pcmData: ShortArray, out: java.io.OutputStream, sampleRate: Int)</ID>
     <ID>LongMethod:WavPlayerBar.kt$@Composable fun WavPlayerBar( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit )</ID>
-    <ID>LongMethod:WavSelectionDialog.kt$@Composable fun WavSelectionDialog( onDismiss: () -&gt; Unit, onSelectEntry: (File, File?) -&gt; Unit, onImportExternal: () -&gt; Unit )</ID>
+    <ID>LongMethod:WavSelectionDialog.kt$@Composable fun WavSelectionDialog( onDismiss: () -&gt; Unit, onSelectEntry: (wavUri: Uri, jsonUri: Uri?) -&gt; Unit, onImportExternal: () -&gt; Unit )</ID>
     <ID>LongParameterList:BiQuadFilter.kt$BiQuadFilter$(a0_t: Double, a1_t: Double, a2_t: Double, b0_t: Double, b1_t: Double, b2_t: Double)</ID>
     <ID>LongParameterList:MainViewModel.kt$MainViewModel$(newMinDb: Double, newMaxDb: Double, newFftSize: Int, newMinFreq: Int, newMaxFreq: Int, newTimeWindow: Double)</ID>
     <ID>LongParameterList:PdfReportGenerator.kt$PdfReportGenerator$( context: Context, outStream: OutputStream, historyAbs: List&lt;DoubleArray&gt;, historyTtnr: List&lt;DoubleArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
@@ -351,6 +352,8 @@
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$842</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$842f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$90f</ID>
+    <ID>MagicNumber:RecordingStore.kt$RecordingStore$1000L</ID>
+    <ID>MagicNumber:RecordingStore.kt$RecordingStore$29</ID>
     <ID>MagicNumber:ReportModeScreen.kt$0.20f</ID>
     <ID>MagicNumber:ReportModeScreen.kt$0.50f</ID>
     <ID>MagicNumber:ReportModeScreen.kt$0x66FFFFFF</ID>
@@ -587,7 +590,6 @@
     <ID>MagicNumber:WavSelectionDialog.kt$0xFF00E676</ID>
     <ID>MatchingDeclarationName:SpectrogramColormap.kt$EmergencePeak</ID>
     <ID>MatchingDeclarationName:TelemetryGraph.kt$TelemetryMetric</ID>
-    <ID>MatchingDeclarationName:WavSelectionDialog.kt$ExportedWavEntry</ID>
     <ID>MaxLineLength:EmergenceReportDialog.kt$"🚘 ${kinematicsConfig.vehicleName.ifBlank { "Véhicule" }} ${if (kinematicsConfig.motorName.isNotBlank()) "| ⚡ ${kinematicsConfig.motorName}" else ""}"</ID>
     <ID>MaxLineLength:EmergenceReportDialog.kt$Text("Fréq. (Hz)", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.weight(1.1f))</ID>
     <ID>MaxLineLength:EmergenceReportDialog.kt$Text("Régime (RPM)", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.weight(1.3f))</ID>
@@ -674,6 +676,7 @@
     <ID>MaxLineLength:PdfReportGenerator.kt$PdfReportGenerator$private</ID>
     <ID>MaxLineLength:PdfReportGenerator.kt$PdfReportGenerator$val dotPaint = Paint().apply { color = Color.HSVToColor(hsv); style = Paint.Style.FILL; isAntiAlias = true }</ID>
     <ID>MaxLineLength:PdfReportGenerator.kt$PdfReportGenerator$val logoRect = RectF(pageWidth - margin - logoWidth, currentY - 15f, pageWidth - margin, currentY - 15f + logoHeight)</ID>
+    <ID>MaxLineLength:RecordingStore.kt$RecordingStore$throw IOException("Dossier inaccessible : ${folder.absolutePath} (permission stockage requise sur cet Android)")</ID>
     <ID>MaxLineLength:ReportModeScreen.kt$AutoResizedText(text = gmpeText, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))</ID>
     <ID>MaxLineLength:ReportModeScreen.kt$AutoResizedText(text = v1000Text, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))</ID>
     <ID>MaxLineLength:ReportModeScreen.kt$AutoResizedText(text = vhText, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))</ID>
@@ -744,7 +747,7 @@
     <ID>MaxLineLength:VideoPlayerView.kt$mp.setVolume(0f, 0f)</ID>
     <ID>MaxLineLength:VideoPlayerView.kt$text = "Pas de données vidéo. Cliquez sur [Charger Vidéo] à côté de TTNR pour ouvrir un fichier local ou un lien YouTube (limité à 5 min max)."</ID>
     <ID>MaxLineLength:VideoSelectionDialog.kt$text = "Choisissez la provenance de l'enregistrement vidéo pour l'analyse spectrale synchronisée :"</ID>
-    <ID>MaxLineLength:WavSelectionDialog.kt$text = if (entry.jsonFile != null) "🎵 Audio + 📊 Télémétrie GPS" else "🎵 Audio Seul"</ID>
+    <ID>MaxLineLength:WavSelectionDialog.kt$text = if (entry.jsonUri != null) "🎵 Audio + 📊 Télémétrie GPS" else "🎵 Audio Seul"</ID>
     <ID>NestedBlockDepth:FFTProcessor.kt$FFTProcessor$fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</ID>
     <ID>NestedBlockDepth:MainViewModel.kt$MainViewModel$fun validateCurrentOrder(customName: String? = null)</ID>
     <ID>NestedBlockDepth:MainViewModel.kt$MainViewModel$private fun processWavFrameAt(posMs: Long)</ID>
@@ -767,12 +770,15 @@
     <ID>SwallowedException:AudioRepository.kt$AudioRepository$e: Exception</ID>
     <ID>SwallowedException:MainViewModel.kt$MainViewModel$e: Exception</ID>
     <ID>SwallowedException:PdfReportGenerator.kt$PdfReportGenerator$e: Exception</ID>
+    <ID>SwallowedException:RecordingStore.kt$RecordingStore$e: Exception</ID>
     <ID>SwallowedException:TelemetryRepository.kt$TelemetryRepository$e: Exception</ID>
     <ID>SwallowedException:WavDataReader.kt$WavDataReader$e: Exception</ID>
+    <ID>ThrowsCount:RecordingStore.kt$RecordingStore$fun insertAndWrite(displayName: String, mime: String, write: (java.io.OutputStream) -&gt; Unit): Uri</ID>
     <ID>TooGenericExceptionCaught:AudioRepository.kt$AudioRepository$e: Exception</ID>
     <ID>TooGenericExceptionCaught:FieldLocationLogger.kt$FieldLocationLogger$e: Exception</ID>
     <ID>TooGenericExceptionCaught:MainViewModel.kt$MainViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:PdfReportGenerator.kt$PdfReportGenerator$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:RecordingStore.kt$RecordingStore$e: Exception</ID>
     <ID>TooGenericExceptionCaught:TelemetryRepository.kt$TelemetryRepository$e: Exception</ID>
     <ID>TooGenericExceptionCaught:VideoAudioExtractor.kt$VideoAudioExtractor$e: Exception</ID>
     <ID>TooGenericExceptionCaught:WavDataReader.kt$WavDataReader$e: Exception</ID>

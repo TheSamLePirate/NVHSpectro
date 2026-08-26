@@ -1028,8 +1028,8 @@ fun AppScreen(viewModel: MainViewModel) {
         if (showWavSelectionDialog) {
             com.example.nvhspectro.ui.WavSelectionDialog(
                 onDismiss = { viewModel.closeWavSelectionDialog() },
-                onSelectEntry = { wavFile, jsonFile ->
-                    viewModel.loadWavFile(wavFile, jsonFile)
+                onSelectEntry = { wavUri, jsonUri ->
+                    viewModel.loadWavFromUri(context, wavUri, jsonUri)
                 },
                 onImportExternal = {
                     viewModel.closeWavSelectionDialog()
