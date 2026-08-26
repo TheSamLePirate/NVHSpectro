@@ -246,6 +246,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _loadedWavData = MutableStateFlow<LoadedWavData?>(null)
     val loadedWavData: StateFlow<LoadedWavData?> = _loadedWavData.asStateFlow()
 
+    // Bandeau d'information analyse [C2/C3]: rejets de fichiers non supportés,
+    // erreurs de lecture, troncature 5 min. Effacé au chargement suivant.
+    private val _analysisNotice = MutableStateFlow<String?>(null)
+    val analysisNotice: StateFlow<String?> = _analysisNotice.asStateFlow()
+
+    fun dismissAnalysisNotice() {
+        _analysisNotice.value = null
+    }
+
     private val _loadedWavFileName = MutableStateFlow<String?>(null)
     val loadedWavFileName: StateFlow<String?> = _loadedWavFileName.asStateFlow()
 
@@ -268,6 +277,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         processingJob?.cancel()
 
         stopWavPlayback()
+        _analysisNotice.value = null
         _loadedWavData.value = null
         _loadedWavFileName.value = null
         _loadedVideoUri.value = null
@@ -321,52 +331,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadWavFile(wavFile: File, jsonFile: File?) {
-        _showWavSelectionDialog.value = false
-        processingJob?.cancel()
-        stopWavPlayback()
-        _loadedVideoUri.value = null
-        _loadedYouTubeUrl.value = null
-        _fftHistoryAbsolute.value = emptyList()
-        _fftHistoryTTNR.value = emptyList()
-        _telemetryHistory.value = emptyList()
-        _telemetryState.value = TelemetryData()
-        
-        val data = WavDataReader.readWavFile(wavFile, jsonFile)
-        if (data != null) {
-            initMediaPlayer(wavFile = wavFile)
-            val exactDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 } ?: data.durationMs
-            val updatedData = data.copy(durationMs = exactDuration)
-
-            _loadedWavData.value = updatedData
-            _loadedWavFileName.value = wavFile.name
-            _wavPlaybackPositionMs.value = 0L
-            processFullWavSpectrogram(updatedData)
-            processWavFrameAt(0L)
-        }
+        prepareForWavLoad()
+        val result = WavDataReader.readWavFile(wavFile, jsonFile)
+        handleWavResult(result, wavFile.name) { initMediaPlayer(wavFile = wavFile) }
     }
 
     fun loadWavFromUri(context: android.content.Context, uri: android.net.Uri) {
+        prepareForWavLoad()
+        val result = WavDataReader.readWavFromUri(context, uri)
+        val name = uri.lastPathSegment?.substringAfterLast("/") ?: "fichier.wav"
+        handleWavResult(result, name) { initMediaPlayer(uri = uri, context = context) }
+    }
+
+    private fun prepareForWavLoad() {
         _showWavSelectionDialog.value = false
         processingJob?.cancel()
         stopWavPlayback()
+        _analysisNotice.value = null
         _loadedVideoUri.value = null
         _loadedYouTubeUrl.value = null
         _fftHistoryAbsolute.value = emptyList()
         _fftHistoryTTNR.value = emptyList()
         _telemetryHistory.value = emptyList()
         _telemetryState.value = TelemetryData()
-        
-        val data = WavDataReader.readWavFromUri(context, uri)
-        if (data != null) {
-            initMediaPlayer(uri = uri, context = context)
-            val exactDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 } ?: data.durationMs
-            val updatedData = data.copy(durationMs = exactDuration)
+    }
 
-            _loadedWavData.value = updatedData
-            _loadedWavFileName.value = uri.lastPathSegment?.substringAfterLast("/") ?: "fichier.wav"
-            _wavPlaybackPositionMs.value = 0L
-            processFullWavSpectrogram(updatedData)
-            processWavFrameAt(0L)
+    /** [C2] Typed import result: success feeds the pipeline, rejection feeds the notice banner. */
+    private fun handleWavResult(result: WavReadResult, fileName: String, initPlayer: () -> Unit) {
+        when (result) {
+            is WavReadResult.Success -> {
+                val data = result.data
+                initPlayer()
+                val exactDuration = mediaPlayer?.duration?.toLong()?.takeIf { it > 0 } ?: data.durationMs
+                val updatedData = data.copy(durationMs = exactDuration)
+
+                _loadedWavData.value = updatedData
+                _loadedWavFileName.value = fileName
+                _wavPlaybackPositionMs.value = 0L
+                processFullWavSpectrogram(updatedData)
+                processWavFrameAt(0L)
+            }
+            is WavReadResult.Unsupported -> _analysisNotice.value = "⚠️ ${result.message}"
+            is WavReadResult.Error -> _analysisNotice.value = "❌ ${result.message}"
         }
     }
 

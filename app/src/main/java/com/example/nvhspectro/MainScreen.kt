@@ -99,6 +99,7 @@ fun AppScreen(viewModel: MainViewModel) {
     val showAudioModeMenu by viewModel.showAudioModeMenu.collectAsState()
     val showWavSelectionDialog by viewModel.showWavSelectionDialog.collectAsState()
     val loadedWavData by viewModel.loadedWavData.collectAsState()
+    val analysisNotice by viewModel.analysisNotice.collectAsState()
     val loadedWavFileName by viewModel.loadedWavFileName.collectAsState()
     val wavPlaybackPositionMs by viewModel.wavPlaybackPositionMs.collectAsState()
     val isWavPlaying by viewModel.isWavPlaying.collectAsState()
@@ -641,8 +642,26 @@ fun AppScreen(viewModel: MainViewModel) {
                             }
                         }
                     }
+
+                    // Bandeau analyse [C2/C3] : rejets de fichiers, troncature. Tap = fermer.
+                    analysisNotice?.let { notice ->
+                        Surface(
+                            color = Color(0xE6301B0F),
+                            shape = RoundedCornerShape(4.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B)),
+                            modifier = Modifier.clickable { viewModel.dismissAnalysisNotice() }
+                        ) {
+                            Text(
+                                text = "$notice   ✕",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFFE0B2),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
                 }
-                
+
                 if (!processingEstimateMessage.isNullOrEmpty()) {
                     Surface(
                         color = Color(0xF00F172A),

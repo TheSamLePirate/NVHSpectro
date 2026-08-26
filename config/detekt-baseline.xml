@@ -22,7 +22,6 @@
     <ID>CyclomaticComplexMethod:SpectrogramColormap.kt$@Composable fun SpectrogramCanvas( history: List&lt;DoubleArray&gt;, absHistory: List&lt;DoubleArray&gt; = emptyList(), ttnrHistory: List&lt;DoubleArray&gt; = emptyList(), modifier: Modifier = Modifier, minDb: Double = -120.0, maxDb: Double = 0.0, minFreq: Int = 0, maxFreq: Int = 10000, fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, sampleRate: Int, historySize: Int = 150, displayMode: DisplayMode = DisplayMode.ABSOLUTE, isDetectorEnabled: Boolean = true, emergenceThresholdDb: Double = 2.5, magnitudeGateDbFS: Double = -90.0, trackedHarmonicTags: List&lt;TrackedHarmonicTag&gt; = emptyList(), kinematicsConfig: KinematicsConfig = KinematicsConfig(), isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, showH1Overlay: Boolean = false, projectedOrder: Double = 1.0, telemetryHistory: List&lt;TelemetryData&gt; = emptyList(), activeFilters: List&lt;AudioFilter&gt; = emptyList(), isReportModeActive: Boolean = false, isDrawingMode: Boolean = false, currentUserPoints: List&lt;ManualOrderAnchor&gt; = emptyList(), currentSmartPath: List&lt;ManualOrderAnchor&gt; = emptyList(), manualTrackedOrders: List&lt;SmartTrackedOrder&gt; = emptyList(), selectedManualOrder: SmartTrackedOrder? = null, isBrillanceModeEnabled: Boolean = false, onAddManualPoint: (Int, Int) -&gt; Unit = { _, _ -&gt; } )</ID>
     <ID>CyclomaticComplexMethod:TelemetryGraph.kt$@Composable fun TelemetryGraph( history: List&lt;TelemetryData&gt;, metric: TelemetryMetric, timeWindowSec: Double, historySize: Int = 150, ttnrSpectrum: DoubleArray = DoubleArray(0), minFreq: Int = 0, maxFreq: Int = 10000, sampleRate: Int, isKinematicsEnabled: Boolean = false, selectedOrderName: String = "H18", isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, modifier: Modifier = Modifier )</ID>
     <ID>CyclomaticComplexMethod:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
-    <ID>CyclomaticComplexMethod:WavDataReader.kt$WavDataReader$private fun parseWavStream(stream: InputStream, fileLen: Long, jsonText: String?): LoadedWavData?</ID>
     <ID>EmptyCatchBlock:MainViewModel.kt$MainViewModel${ }</ID>
     <ID>EmptyCatchBlock:TelemetryRepository.kt$TelemetryRepository${}</ID>
     <ID>FunctionNaming:EmergenceReportDialog.kt$@Composable fun EmergenceReportRow(entry: EmergenceReportEntry)</ID>
@@ -50,7 +49,6 @@
     <ID>FunctionNaming:Theme.kt$@Composable fun NVHSpectroTheme( darkTheme: Boolean = isSystemInDarkTheme(), // Dynamic color is available on Android 12+ dynamicColor: Boolean = true, content: @Composable () -&gt; Unit, )</ID>
     <ID>FunctionNaming:VideoPlayerView.kt$@Composable fun VideoPlayerView( videoUri: Uri?, youtubeUrl: String?, videoTitle: String, isPlaying: Boolean, positionMs: Long, durationMs: Long, onSeekTo: (Long) -&gt; Unit, onTogglePlayPause: () -&gt; Unit, onOpenVideoSelection: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
     <ID>FunctionNaming:VideoSelectionDialog.kt$@Composable fun VideoSelectionDialog( onDismiss: () -&gt; Unit, onSelectLocalVideo: () -&gt; Unit, onSelectYouTubeUrl: (String) -&gt; Unit )</ID>
-    <ID>FunctionNaming:WavDataReader.kt$WavDataReader$private fun String?.isNull_or_blank(): Boolean</ID>
     <ID>FunctionNaming:WavPlayerBar.kt$@Composable fun WavPlayerBar( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit )</ID>
     <ID>FunctionNaming:WavSelectionDialog.kt$@Composable fun WavSelectionDialog( onDismiss: () -&gt; Unit, onSelectEntry: (File, File?) -&gt; Unit, onImportExternal: () -&gt; Unit )</ID>
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$a0_t: Double</ID>
@@ -112,7 +110,6 @@
     <ID>LongMethod:VideoPlayerView.kt$@Composable fun VideoPlayerView( videoUri: Uri?, youtubeUrl: String?, videoTitle: String, isPlaying: Boolean, positionMs: Long, durationMs: Long, onSeekTo: (Long) -&gt; Unit, onTogglePlayPause: () -&gt; Unit, onOpenVideoSelection: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:VideoSelectionDialog.kt$@Composable fun VideoSelectionDialog( onDismiss: () -&gt; Unit, onSelectLocalVideo: () -&gt; Unit, onSelectYouTubeUrl: (String) -&gt; Unit )</ID>
     <ID>LongMethod:WavAudioWriter.kt$WavAudioWriter$fun writePcmToWav(pcmData: ShortArray, outputFile: File, sampleRate: Int)</ID>
-    <ID>LongMethod:WavDataReader.kt$WavDataReader$private fun parseWavStream(stream: InputStream, fileLen: Long, jsonText: String?): LoadedWavData?</ID>
     <ID>LongMethod:WavPlayerBar.kt$@Composable fun WavPlayerBar( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit )</ID>
     <ID>LongMethod:WavSelectionDialog.kt$@Composable fun WavSelectionDialog( onDismiss: () -&gt; Unit, onSelectEntry: (File, File?) -&gt; Unit, onImportExternal: () -&gt; Unit )</ID>
     <ID>LongParameterList:BiQuadFilter.kt$BiQuadFilter$(a0_t: Double, a1_t: Double, a2_t: Double, b0_t: Double, b1_t: Double, b2_t: Double)</ID>
@@ -124,6 +121,7 @@
     <ID>LongParameterList:TelemetryGraph.kt$( history: List&lt;TelemetryData&gt;, metric: TelemetryMetric, timeWindowSec: Double, historySize: Int = 150, ttnrSpectrum: DoubleArray = DoubleArray(0), minFreq: Int = 0, maxFreq: Int = 10000, sampleRate: Int, isKinematicsEnabled: Boolean = false, selectedOrderName: String = "H18", isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, modifier: Modifier = Modifier )</ID>
     <ID>LongParameterList:VideoPlayerView.kt$( videoUri: Uri?, youtubeUrl: String?, videoTitle: String, isPlaying: Boolean, positionMs: Long, durationMs: Long, onSeekTo: (Long) -&gt; Unit, onTogglePlayPause: () -&gt; Unit, onOpenVideoSelection: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
     <ID>LongParameterList:WavPlayerBar.kt$( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit )</ID>
+    <ID>LongParameterList:WavRoundTripTest.kt$WavRoundTripTest$( sampleRate: Int, channels: Int, bits: Int, pcmBytes: ByteArray, extraChunkBeforeData: Boolean = false, audioFormat: Int = 1 )</ID>
     <ID>LoopWithTooManyJumpStatements:FFTProcessor.kt$FFTProcessor$for</ID>
     <ID>LoopWithTooManyJumpStatements:MainViewModel.kt$MainViewModel$for</ID>
     <ID>LoopWithTooManyJumpStatements:SpectrogramColormap.kt$for</ID>
@@ -197,6 +195,7 @@
     <ID>MagicNumber:MainScreen.kt$0xAA121212</ID>
     <ID>MagicNumber:MainScreen.kt$0xCC121212</ID>
     <ID>MagicNumber:MainScreen.kt$0xDD1E2430</ID>
+    <ID>MagicNumber:MainScreen.kt$0xE6301B0F</ID>
     <ID>MagicNumber:MainScreen.kt$0xEE121212</ID>
     <ID>MagicNumber:MainScreen.kt$0xF00F172A</ID>
     <ID>MagicNumber:MainScreen.kt$0xFF00E5FF</ID>
@@ -220,6 +219,7 @@
     <ID>MagicNumber:MainScreen.kt$0xFFFF5252</ID>
     <ID>MagicNumber:MainScreen.kt$0xFFFF9100</ID>
     <ID>MagicNumber:MainScreen.kt$0xFFFFCDD2</ID>
+    <ID>MagicNumber:MainScreen.kt$0xFFFFE0B2</ID>
     <ID>MagicNumber:MainScreen.kt$100</ID>
     <ID>MagicNumber:MainScreen.kt$120.0</ID>
     <ID>MagicNumber:MainScreen.kt$14</ID>
@@ -560,14 +560,20 @@
     <ID>MagicNumber:WavAudioWriter.kt$WavAudioWriter$7</ID>
     <ID>MagicNumber:WavAudioWriter.kt$WavAudioWriter$8</ID>
     <ID>MagicNumber:WavAudioWriter.kt$WavAudioWriter$9</ID>
+    <ID>MagicNumber:WavDataReader.kt$WavDataReader$0xFFFE</ID>
+    <ID>MagicNumber:WavDataReader.kt$WavDataReader$0xFFFF</ID>
+    <ID>MagicNumber:WavDataReader.kt$WavDataReader$0xFFFFFFFFL</ID>
     <ID>MagicNumber:WavDataReader.kt$WavDataReader$1000L</ID>
-    <ID>MagicNumber:WavDataReader.kt$WavDataReader$22</ID>
+    <ID>MagicNumber:WavDataReader.kt$WavDataReader$1024</ID>
+    <ID>MagicNumber:WavDataReader.kt$WavDataReader$12</ID>
+    <ID>MagicNumber:WavDataReader.kt$WavDataReader$14</ID>
+    <ID>MagicNumber:WavDataReader.kt$WavDataReader$16</ID>
+    <ID>MagicNumber:WavDataReader.kt$WavDataReader$192000</ID>
     <ID>MagicNumber:WavDataReader.kt$WavDataReader$24</ID>
-    <ID>MagicNumber:WavDataReader.kt$WavDataReader$34</ID>
+    <ID>MagicNumber:WavDataReader.kt$WavDataReader$26</ID>
     <ID>MagicNumber:WavDataReader.kt$WavDataReader$4</ID>
-    <ID>MagicNumber:WavDataReader.kt$WavDataReader$44</ID>
-    <ID>MagicNumber:WavDataReader.kt$WavDataReader$5</ID>
-    <ID>MagicNumber:WavDataReader.kt$WavDataReader$60</ID>
+    <ID>MagicNumber:WavDataReader.kt$WavDataReader$64</ID>
+    <ID>MagicNumber:WavDataReader.kt$WavDataReader$64L</ID>
     <ID>MagicNumber:WavDataReader.kt$WavDataReader$8</ID>
     <ID>MagicNumber:WavDataReader.kt$WavDataReader$8000</ID>
     <ID>MagicNumber:WavPlayerBar.kt$0xFF141A24</ID>
@@ -746,19 +752,19 @@
     <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$fun generateReport( context: Context, outStream: OutputStream, historyAbs: List&lt;DoubleArray&gt;, historyTtnr: List&lt;DoubleArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
     <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;DoubleArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap?</ID>
     <ID>NestedBlockDepth:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
-    <ID>NestedBlockDepth:WavDataReader.kt$WavDataReader$private fun parseWavStream(stream: InputStream, fileLen: Long, jsonText: String?): LoadedWavData?</ID>
     <ID>PrintStackTrace:MainViewModel.kt$MainViewModel$e</ID>
     <ID>PrintStackTrace:VideoAudioExtractor.kt$VideoAudioExtractor$e</ID>
-    <ID>PrintStackTrace:WavDataReader.kt$WavDataReader$e</ID>
     <ID>ReturnCount:MainViewModel.kt$MainViewModel$fun getExpectedBinF(globalFrame: Int): Float</ID>
     <ID>ReturnCount:MainViewModel.kt$MainViewModel$private fun recalculateSmartPath()</ID>
     <ID>ReturnCount:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;DoubleArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap?</ID>
     <ID>ReturnCount:SpectrogramColormap.kt$fun getFreqY(freqHz: Float): Float</ID>
     <ID>ReturnCount:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
-    <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun parseWavStream(stream: InputStream, fileLen: Long, jsonText: String?): LoadedWavData?</ID>
+    <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun ByteArray.startsWith(ascii: String): Boolean</ID>
+    <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun parseWavStream(stream: InputStream, jsonText: String?): WavReadResult</ID>
     <ID>SwallowedException:MainViewModel.kt$MainViewModel$e: Exception</ID>
     <ID>SwallowedException:PdfReportGenerator.kt$PdfReportGenerator$e: Exception</ID>
     <ID>SwallowedException:TelemetryRepository.kt$TelemetryRepository$e: Exception</ID>
+    <ID>SwallowedException:WavDataReader.kt$WavDataReader$e: Exception</ID>
     <ID>TooGenericExceptionCaught:FieldLocationLogger.kt$FieldLocationLogger$e: Exception</ID>
     <ID>TooGenericExceptionCaught:MainViewModel.kt$MainViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:PdfReportGenerator.kt$PdfReportGenerator$e: Exception</ID>
@@ -768,7 +774,6 @@
     <ID>TooManyFunctions:MainViewModel.kt$MainViewModel : AndroidViewModel</ID>
     <ID>UnusedParameter:TelemetryGraph.kt$selectedOrderName: String = "H18"</ID>
     <ID>UnusedParameter:TelemetryGraph.kt$timeWindowSec: Double</ID>
-    <ID>UnusedParameter:WavDataReader.kt$WavDataReader$fileLen: Long</ID>
     <ID>UnusedPrivateProperty:BiQuadFilter.kt$BiQuadFilter$val bandwidth = maxFreq - minFreq</ID>
     <ID>UnusedPrivateProperty:MainViewModel.kt$MainViewModel$val validMags = magnitudes.copyOfRange(0, magnitudes.size / 2)</ID>
     <ID>UnusedPrivateProperty:SpectrogramColormap.kt$val beaconBadgeBgPaint = remember { Paint().apply { color = AndroidColor.parseColor("#EE1A1A2E") // Sombre translucide style = Paint.Style.FILL isAntiAlias = true } }</ID>

@@ -1,29 +1,39 @@
 package com.example.nvhspectro.data
 
 import com.example.nvhspectro.testutil.SynthSignals
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
 /**
- * WavAudioWriter → WavDataReader round-trip — Phase 0.6 of the AAA plan.
- *
- * Scope note: the writer emits canonical 44-byte-header mono 16-bit PCM, which
- * is exactly the only layout the current reader parses correctly [audit C2].
- * These tests pin the canonical path so the Phase 1 chunk-walking rewrite
- * (plan 1.2) has a regression net; non-canonical/stereo cases get their own
- * tests in that phase.
+ * WavAudioWriter → WavDataReader round-trip plus the C2 chunk-walking codec
+ * tests [plan 1.2]: non-canonical chunk layouts, stereo downmix, and typed
+ * rejection of formats the app cannot decode honestly.
  */
 class WavRoundTripTest {
 
     @get:Rule
     val tmp = TemporaryFolder()
+
+    private fun readAsSuccess(f: File): LoadedWavData {
+        val result = WavDataReader.readWavFile(f, null)
+        assertTrue("expected Success, got $result", result is WavReadResult.Success)
+        val success = result as WavReadResult.Success
+        assertFalse("short files must not report truncation", success.truncatedToCap)
+        return success.data
+    }
+
+    // ------------------------------------------------------------------
+    // Round trip (canonical writer output)
+    // ------------------------------------------------------------------
 
     @Test
     fun roundTrip_44100_oneSecondSine() {
@@ -31,11 +41,9 @@ class WavRoundTripTest {
         val f = tmp.newFile("rt44100.wav")
         WavAudioWriter.writePcmToWav(pcm, f, 44100)
 
-        val data = WavDataReader.readWavFile(f, null)
-        assertNotNull(data)
-        assertEquals(44100, data!!.sampleRate)
+        val data = readAsSuccess(f)
+        assertEquals(44100, data.sampleRate)
         assertEquals(1000L, data.durationMs)
-        assertEquals(pcm.size, data.pcmSamples.size)
         assertArrayEquals(pcm, data.pcmSamples)
     }
 
@@ -45,9 +53,8 @@ class WavRoundTripTest {
         val f = tmp.newFile("rt8000.wav")
         WavAudioWriter.writePcmToWav(pcm, f, 8000)
 
-        val data = WavDataReader.readWavFile(f, null)
-        assertNotNull(data)
-        assertEquals(8000, data!!.sampleRate)
+        val data = readAsSuccess(f)
+        assertEquals(8000, data.sampleRate)
         assertEquals(1000L, data.durationMs)
         assertArrayEquals(pcm, data.pcmSamples)
     }
@@ -69,21 +76,147 @@ class WavRoundTripTest {
         fun le32(off: Int) = ByteBuffer.wrap(bytes, off, 4).order(ByteOrder.LITTLE_ENDIAN).int
         fun le16(off: Int) = ByteBuffer.wrap(bytes, off, 2).order(ByteOrder.LITTLE_ENDIAN).short.toInt()
 
-        assertEquals(1, le16(20))            // PCM format
-        assertEquals(1, le16(22))            // mono
-        assertEquals(44100, le32(24))        // sample rate
-        assertEquals(44100 * 2, le32(28))    // byte rate
-        assertEquals(2, le16(32))            // block align
-        assertEquals(16, le16(34))           // bits per sample
-        assertEquals(2000, le32(40))         // data chunk length
-        assertEquals(2000 + 36, le32(4))     // RIFF length
+        assertEquals(1, le16(20))
+        assertEquals(1, le16(22))
+        assertEquals(44100, le32(24))
+        assertEquals(44100 * 2, le32(28))
+        assertEquals(2, le16(32))
+        assertEquals(16, le16(34))
+        assertEquals(2000, le32(40))
+        assertEquals(2000 + 36, le32(4))
+    }
+
+    // ------------------------------------------------------------------
+    // C2 — chunk walking, stereo, typed rejection
+    // ------------------------------------------------------------------
+
+    @Test
+    fun c2_listChunkBeforeData_isSkippedCorrectly() {
+        val pcm = ShortArray(500) { (it * 3).toShort() }
+        val f = tmp.newFile("list.wav")
+        f.writeBytes(
+            buildWav(48000, channels = 1, bits = 16, pcmBytes = pcmToBytes(pcm), extraChunkBeforeData = true)
+        )
+        val data = readAsSuccess(f)
+        assertEquals(48000, data.sampleRate)
+        assertArrayEquals(pcm, data.pcmSamples)
     }
 
     @Test
-    fun reader_returnsNull_forNonWavFile() {
+    fun c2_stereo_downmixesToMono() {
+        // L = 1000, R = 3000 → mono (1000+3000)/2 = 2000
+        val frames = 300
+        val bytes = ByteBuffer.allocate(frames * 4).order(ByteOrder.LITTLE_ENDIAN)
+        repeat(frames) {
+            bytes.putShort(1000)
+            bytes.putShort(3000)
+        }
+        val f = tmp.newFile("stereo.wav")
+        f.writeBytes(buildWav(44100, channels = 2, bits = 16, pcmBytes = bytes.array()))
+
+        val data = readAsSuccess(f)
+        assertEquals(frames, data.pcmSamples.size)
+        assertTrue(data.pcmSamples.all { it == 2000.toShort() })
+        // Duration counts FRAMES, not interleaved samples (the old parser doubled it).
+        assertEquals(frames * 1000L / 44100L, data.durationMs)
+    }
+
+    @Test
+    fun c2_24bit_rejectedAsUnsupported() {
+        val f = tmp.newFile("24bit.wav")
+        f.writeBytes(buildWav(44100, channels = 1, bits = 24, pcmBytes = ByteArray(300)))
+        val result = WavDataReader.readWavFile(f, null)
+        assertTrue("expected Unsupported, got $result", result is WavReadResult.Unsupported)
+        assertTrue((result as WavReadResult.Unsupported).message.contains("24"))
+    }
+
+    @Test
+    fun c2_floatFormat_rejectedAsUnsupported() {
+        val f = tmp.newFile("float.wav")
+        f.writeBytes(
+            buildWav(44100, channels = 1, bits = 32, pcmBytes = ByteArray(400), audioFormat = 3)
+        )
+        val result = WavDataReader.readWavFile(f, null)
+        assertTrue("expected Unsupported, got $result", result is WavReadResult.Unsupported)
+    }
+
+    @Test
+    fun c2_trailingChunkAfterData_isNotDecodedAsAudio() {
+        val pcm = ShortArray(200) { 42 }
+        val f = tmp.newFile("trailing.wav")
+        val out = ByteArrayOutputStream()
+        out.write(buildWav(44100, channels = 1, bits = 16, pcmBytes = pcmToBytes(pcm)))
+        // Append a bogus trailing chunk — the old parser would have read it as samples.
+        out.write("junk".toByteArray(Charsets.US_ASCII))
+        out.write(byteArrayOf(8, 0, 0, 0))
+        out.write(ByteArray(8) { 0x7F })
+        f.writeBytes(out.toByteArray())
+
+        val data = readAsSuccess(f)
+        assertEquals(200, data.pcmSamples.size)
+    }
+
+    @Test
+    fun c2_garbageFile_returnsError() {
         val f = tmp.newFile("not_a_wav.wav")
         f.writeBytes(ByteArray(100) { 0x41 })
-        val data = WavDataReader.readWavFile(f, null)
-        assertEquals(null, data)
+        assertTrue(WavDataReader.readWavFile(f, null) is WavReadResult.Error)
     }
+
+    @Test
+    fun c2_missingFile_returnsError() {
+        assertTrue(
+            WavDataReader.readWavFile(File(tmp.root, "absent.wav"), null) is WavReadResult.Error
+        )
+    }
+
+    // ------------------------------------------------------------------
+
+    private fun pcmToBytes(pcm: ShortArray): ByteArray {
+        val bb = ByteBuffer.allocate(pcm.size * 2).order(ByteOrder.LITTLE_ENDIAN)
+        pcm.forEach { bb.putShort(it) }
+        return bb.array()
+    }
+
+    /** Builds a WAV byte stream with configurable format and optional pre-data LIST chunk. */
+    private fun buildWav(
+        sampleRate: Int,
+        channels: Int,
+        bits: Int,
+        pcmBytes: ByteArray,
+        extraChunkBeforeData: Boolean = false,
+        audioFormat: Int = 1
+    ): ByteArray {
+        val fmt = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)
+        fmt.putShort(audioFormat.toShort())
+        fmt.putShort(channels.toShort())
+        fmt.putInt(sampleRate)
+        fmt.putInt(sampleRate * channels * bits / 8)
+        fmt.putShort((channels * bits / 8).toShort())
+        fmt.putShort(bits.toShort())
+
+        val body = ByteArrayOutputStream()
+        writeChunk(body, "fmt ", fmt.array())
+        if (extraChunkBeforeData) {
+            writeChunk(body, "LIST", "INFOIART".toByteArray(Charsets.US_ASCII) + ByteArray(9))
+        }
+        writeChunk(body, "data", pcmBytes)
+
+        val riff = ByteArrayOutputStream()
+        riff.write("RIFF".toByteArray(Charsets.US_ASCII))
+        riff.write(le32(4 + body.size()))
+        riff.write("WAVE".toByteArray(Charsets.US_ASCII))
+        riff.write(body.toByteArray())
+        return riff.toByteArray()
+    }
+
+    private fun writeChunk(out: ByteArrayOutputStream, id: String, payload: ByteArray) {
+        out.write(id.toByteArray(Charsets.US_ASCII))
+        out.write(le32(payload.size))
+        out.write(payload)
+        if (payload.size % 2 == 1) out.write(0) // RIFF pad byte
+    }
+
+    private fun le32(v: Int): ByteArray =
+        ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(v).array()
 }
