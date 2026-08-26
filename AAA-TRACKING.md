@@ -4,7 +4,7 @@ Live log of the `V13.1-AAA-plan.md` execution. One section per phase: steps,
 commits, verification evidence, and every deviation from the written plan.
 Update this file **in the same session** as the work it describes.
 
-**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phase 0 COMPLETE — Gate 0 passed** (2026-08-26)
+**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0 AND 1 COMPLETE — Gates 0 & 1 passed on emulator** (2026-08-26)
 
 ---
 
@@ -58,4 +58,40 @@ Update this file **in the same session** as the work it describes.
 
 ## Phase 1 — Measurement correctness
 
-*Not started.*
+### Steps executed (2026-08-26, same session as Phase 0)
+
+| Step | What was done | Commit |
+|---|---|---|
+| 1.1 | **[C1]** `AudioConfig` created (the only file allowed a literal sample rate); `FFTProcessor(fftSize, sampleRateHz)` per instance; `computeTTNR` uses the instance rate; required (defaultless) `sampleRate` params on `SpectrogramCanvas`/`TelemetryGraph`; `MainScreen.analysisSampleRate` feeds every surface; SettingsDialog DSP table, PDF (duration derived from bin count), ReportModeScreen, biquads + filtered-WAV header, exportData, WAV sweep nyquist (the 6-lines-below bug), `validateCurrentOrder` all consume the source rate; WAV stepping uses `WAV_FFT_SIZE`. **CI sample-rate gate ARMED** (0 literals outside AudioConfig). Test `c1_fortyEightKhzStream_usesItsOwnBinGrid` | `c06b83f` |
+| 1.2 | **[C2]** `WavDataReader` rewritten as a real RIFF chunk walker: LIST/fact/bext tolerated, fmt parsed (incl. extensible GUID), stereo downmixed with frame-counted duration, 24-bit/float/non-PCM rejected via typed `WavReadResult` with French messages; exact-size streamed buffers (53 MB blind alloc gone); new dismissable analysis-notice banner in MainScreen. Tests `c2_*` (7) | `57b6472` |
+| 1.3 | **[C3]** `durationMs = min(mediaDuration, analyzedDuration)`; video extractor reports extracted (not container) duration; truncation banner ("Analyse limitée aux 5 premières minutes"); playback pauses at the analyzed end | `681ce77` |
+| 1.4 | **[C17]** Pure `TimelineMapper` (mapIndex + timeToIndex, exact identity for the live 1:1 case) adopted by `validateCurrentOrder` (the PDF-corrupting bug), both WAV-sweep mappings, and `processWavFrameAt`. Tests `c17_*` | `d08fb49` |
+| 1.5 | **[C16]** WAV/URI loads parse on `Dispatchers.IO` behind the progress overlay, with a load-generation guard; load and video-extraction failures surface in the banner; extraction progress message added | `384a7aa` |
+| 1.6 | **[C8/C9]** Capture source UNPROCESSED (device-advertised) else VOICE_RECOGNITION, recorded into export metadata (`captureSource` field); `AudioRecord` init/busy fully guarded → typed `AudioCaptureException` → banner (was an app crash); short-read fill loop (stale-tail fix); read-error backoff then clean stop; dead fields removed | `f069c26` |
+| 1.7 | **[C4/S3]** `RecordingStore`: MediaStore.Downloads writes (IS_PENDING pattern) on IO with legacy pre-29 fallback; save success/error banners, failed saves keep PCM + reopen dialog; millisecond-suffixed names; `WavSelectionDialog` lists via MediaStore+legacy merge off-main (was filesystem-in-composition); selection loads by URI incl. telemetry sidecar; `WavAudioWriter.writePcmToStream` added; dead `loadWavFile(File)` deleted | `09a1ac5` |
+| 1.8 | **[C14]** min/max dB clamped ≥5 dB apart; **[C13]** FFT-size changes ignored outside LIVE (no more wiped WAV spectrogram); **[C11]** `toFlexibleDoubleOrNull` (comma decimals), Decimal keyboards + red invalid state on kinematics fields, digit-comma-digit decimal rule in `parsedTargetOrders`; pinned C11 test replaced by `c11_*` fixed-behavior tests in the same commit | `3a64bca` |
+
+### Gate 1 verification (2026-08-26, emulator NVH_API_37_compact, minified release v13.2.0)
+
+- ✅ **48 kHz reference** (4 kHz tone, 10 s): axis renders the 48 kHz grid (7987/5990/3993/1996 labels), the tone line sits exactly ON the 3993/4 kHz gridline (old code would have drawn it ~8 % low at 3675 Hz), frequency cursor on the tone reads **3991.0 Hz** — within Δf/2 = 11.7 Hz. Duration 00:10, playhead synced.
+- ✅ **Stereo import** (440 Hz L=R, 6 s, 44.1 kHz): duration reads **00:06** (old parser: 12 s), tone at the correct 440 Hz height, playback clean — downmix + frame-counted duration verified.
+- ✅ **Record → save → list → reload round trip**: 6 s live recording saved via MediaStore (`Essai_…_21h36m23s001.wav` + `_telemetrie.json` visible in `content://media/external/downloads`, millisecond suffix ✓), ✅ success banner shown, picker lists the entry with "Audio + Télémétrie GPS", reload restores audio + telemetry speed curve.
+- ✅ Zero FATAL/ANR across the whole session (record, mode switches, 3 file loads, playback).
+- ✅ All local gates green throughout: 40 unit tests, lint 0 errors, ktlint/detekt vs regenerated baselines, `ARM_SAMPLE_RATE_GATE=1 ci/checks.sh`, minified release assembly.
+
+### Deviations / pending items from the Gate 1 checklist
+
+| ID | Item | Status |
+|---|---|---|
+| DEV-10 | PDF frequency-axis surface not exercised on device (report-mode UI flow not automated) | Covered by code path (sampleRate parameter) + c1 unit tests; verify visually during the next real report export |
+| DEV-11 | Android 10 (API 29) save/reload check | No API-29 AVD on this machine; MediaStore path is the API-29+ codepath and was verified on API 37. **Run once on an Android 10 device when available** |
+| DEV-12 | 10-min video playhead check | No long-video asset on the emulator; C3 min-clamp is unit-logic + code-reviewed. **Check with a real >5-min video on next field use** |
+| DEV-13 | Mic-busy-during-phone-call check | Not simulatable on this emulator; the C9 guard path is code-complete (typed exception → banner). **Verify on a physical phone** |
+| DEV-14 | Observed during Gate 1: WAV spectrogram appears black until the first interaction/playback tick after load | Pre-existing U2 render-lag quirk (bitmap painted in LaunchedEffect, no invalidation) — NOT a Phase 1 regression; fixed properly by plan 3.5 (`SpectrogramImageProducer`) |
+
+### Notes for Phase 2
+
+- `_analysisNotice` is now the single user-facing message channel — Phase 2's capture-engine errors should reuse it (until plan 4.7 builds the full error surface).
+- `AudioRepository` now takes a `Context`; the Phase 2 `CaptureEngine` refactor starts from a guarded, source-selected base.
+- Emulator reports VOICE_RECOGNITION (fallback path exercised); UNPROCESSED path needs a physical device to observe.
+
