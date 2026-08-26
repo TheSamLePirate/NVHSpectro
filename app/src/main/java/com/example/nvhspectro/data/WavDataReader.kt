@@ -10,26 +10,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import org.json.JSONObject
 
-data class LoadedWavData(
-    val pcmSamples: ShortArray,
-    val sampleRate: Int,
-    val durationMs: Long,
-    val telemetryList: List<TelemetryData> = emptyList()
-)
-
-/** Typed outcome of a WAV import [audit C2, plan 1.2] — failures carry a user-visible message. */
-sealed class WavReadResult {
-    data class Success(
-        val data: LoadedWavData,
-        /** True when the file is longer than the analysis cap and was cut at [WavDataReader.MAX_DURATION_SEC]. */
-        val truncatedToCap: Boolean
-    ) : WavReadResult()
-
-    data class Unsupported(val message: String) : WavReadResult()
-
-    data class Error(val message: String) : WavReadResult()
-}
-
 /**
  * Real RIFF parser [audit C2]: walks chunks (tolerates LIST/fact/bext/JUNK…),
  * takes the audio format from the `fmt ` chunk instead of assuming a canonical

@@ -1,0 +1,350 @@
+package com.example.nvhspectro
+
+import android.app.Application
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.Executors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/**
+ * [plan 3.3] The live-capture third of the historical MainViewModel:
+ * microphone pipeline (one consumer, DSP on the "nvh-dsp" thread [C5, C6]),
+ * GPS speed, the 30 s field recorder, and live display settings. All shared
+ * measurement state lives in [session].
+ */
+class LiveViewModel(application: Application, val session: MeasurementSession) : AndroidViewModel(application) {
+
+    private val audioRepository = AudioRepository(application)
+    private val speedProvider = SpeedProvider(application)
+    private val captureEngine = CaptureEngine(audioRepository) { msg -> session.postNotice(msg) }
+
+    // [C6, L3] All live-DSP state lives in the engines, confined to nvh-dsp.
+    @Volatile
+    private var liveEngine = LiveAnalysisEngine(AudioConfig.DEFAULT_FFT_SIZE, AudioConfig.LIVE_SAMPLE_RATE_HZ)
+    private val orderEngine = OrderTrackingEngine()
+
+    private val analysisDispatcher =
+        Executors.newSingleThreadExecutor { r -> Thread(r, "nvh-dsp") }.asCoroutineDispatcher()
+
+    private val unregisterHook: () -> Unit
+    private val unregisterResettable: () -> Unit
+
+    init {
+        // [C7] Mic and GPS run only in LIVE mode; [L7] engines reset on transitions.
+        unregisterHook = session.registerModeTransitionHook { mode ->
+            captureEngine.setEnabled(mode == AudioSourceMode.LIVE)
+            if (mode == AudioSourceMode.LIVE) speedProvider.start() else speedProvider.stop()
+        }
+        unregisterResettable = session.registerAnalysisResettable {
+            liveEngine.reset()
+            orderEngine.reset()
+        }
+        startLivePipeline()
+        speedProvider.start()
+    }
+
+    /** ONE consumer for the app's lifetime; enable/fftSize changes flow through CaptureEngine. */
+    private fun startLivePipeline() {
+        viewModelScope.launch(analysisDispatcher) {
+            var frameCount = 0L
+            captureEngine.frames().collect { audioBuffer ->
+                // [plan 2.6] Debug integrity log (~every 6 s): produced==consumed
+                // proves the single consumer loses nothing; the thread name
+                // proves DSP is off main.
+                if (BuildConfig.DEBUG && ++frameCount % 256 == 0L) {
+                    Log.d(
+                        "LivePipeline",
+                        "produced=${captureEngine.framesProduced.get()} " +
+                            "consumed=${captureEngine.framesConsumed.get()} " +
+                            "restarts=${captureEngine.captureRestarts.get()} " +
+                            "thread=${Thread.currentThread().name}"
+                    )
+                }
+                if (session.audioSourceMode.value == AudioSourceMode.LIVE) {
+                    processLiveFrame(audioBuffer)
+                }
+            }
+        }
+        // ~1 Hz GPS-card refresh; per-frame values come from currentTelemetry().
+        viewModelScope.launch {
+            speedProvider.telemetry.collect { data ->
+                if (session.audioSourceMode.value == AudioSourceMode.LIVE) {
+                    val current = session.telemetryState.value
+                    session.setTelemetryState(
+                        data.copy(
+                            ttnrDb = current.ttnrDb,
+                            trackedOrderDbFS = current.trackedOrderDbFS,
+                            trackedOrderEmergenceDb = current.trackedOrderEmergenceDb
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    /** Runs on the dedicated DSP thread [C6]. */
+    private fun processLiveFrame(audioBuffer: ShortArray) {
+        val kConfig = session.kinematicsConfig.value
+        // [L5 removed] Speed is PREDICTED at the frame instant by SpeedProvider.
+        val telemetryNow = speedProvider.currentTelemetry()
+        val telemetryForCalc = if (kConfig.isEnabled) {
+            telemetryNow
+        } else {
+            telemetryNow.copy(theoreticalSpeedKmh = telemetryNow.speedKmh)
+        }
+
+        if (_isAudioRecording.value) {
+            val stepSize = audioBuffer.size / 2
+            recordedPcmList.add(audioBuffer.copyOfRange(audioBuffer.size - stepSize, audioBuffer.size))
+            recordedTelemetryList.add(telemetryForCalc)
+        }
+        if (session.isFrozen.value) return
+
+        val maxHist = session.historySize
+        val result = liveEngine.processFrame(audioBuffer)
+        val magnitudes = result.magnitudes
+        val ttnrSpectrum = result.ttnrSpectrum
+        session.appendLiveFrame(magnitudes, ttnrSpectrum, result.retroUnmaskBins, result.retroRawRows, maxHist)
+
+        // Selected-order tracking (active only above 1 km/h).
+        val speedKmh = if (kConfig.isEnabled) telemetryForCalc.theoreticalSpeedKmh else telemetryForCalc.speedKmh
+        var trackedDbFS = -120.0
+        var trackedEmergence = 0.0
+        val liveDf = (AudioConfig.LIVE_SAMPLE_RATE_HZ / 2.0) / ttnrSpectrum.size
+        if (kConfig.isEnabled && speedKmh > 1.0f) {
+            val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
+            if (h1FreqHz >= 0.5) {
+                val levels = OrderTrackingEngine.searchTrackedOrder(
+                    magnitudes, ttnrSpectrum, kConfig.selectedTrackedOrder * h1FreqHz, liveDf,
+                    OrderTrackingEngine.TRACKED_SEARCH_RADIUS_FRAME_BINS
+                )
+                trackedDbFS = levels.dbFS
+                trackedEmergence = levels.emergenceDb
+            }
+        }
+
+        // Telemetry stays 1-to-1 with the audio display.
+        val telemWithTtnr = telemetryForCalc.copy(
+            ttnrDb = (ttnrSpectrum.maxOrNull() ?: 0.0).toFloat(),
+            trackedOrderDbFS = trackedDbFS,
+            trackedOrderEmergenceDb = trackedEmergence
+        )
+        session.appendLiveTelemetry(telemWithTtnr, maxHist)
+
+        // Harmonic detection / emergence report [A2, plan 3.2] — the same
+        // engine code as the WAV sweep, on the live-owned instance.
+        if (kConfig.isEnabled && speedKmh > 1.0f) {
+            val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
+            if (h1FreqHz >= 0.5) {
+                val reportList = session.emergenceReportEntries.value.toMutableList()
+                session.setTrackedHarmonicTags(
+                    orderEngine.step(
+                        OrderTrackingEngine.Frame(
+                            ttnrRow = ttnrSpectrum,
+                            absRow = magnitudes,
+                            df = liveDf,
+                            speedKmh = speedKmh,
+                            rpm = kConfig.calculateRpm(speedKmh),
+                            h1FreqHz = h1FreqHz
+                        ),
+                        nowMs = System.currentTimeMillis(),
+                        holdMs = (kConfig.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L),
+                        targetOrders = kConfig.parsedTargetOrders(),
+                        activeTags = session.trackedHarmonicTags.value,
+                        report = reportList
+                    )
+                )
+                session.setEmergenceReportEntries(reportList)
+            }
+        }
+    }
+
+    // ------------------------------------------------------ display settings
+
+    fun updateSettings(newMinDb: Double, newMaxDb: Double, newFftSize: Int, newMinFreq: Int, newMaxFreq: Int, newTimeWindow: Double) {
+        session.updateDisplaySettings(newMinDb, newMaxDb, newMinFreq, newMaxFreq, newTimeWindow)
+        if (session.fftSize.value != newFftSize) {
+            // [C13] FFT size is fixed at WAV_FFT_SIZE outside LIVE; applying the
+            // live setting there wiped the loaded spectrogram with no re-render.
+            if (session.audioSourceMode.value != AudioSourceMode.LIVE) return
+            session.setFftSize(newFftSize)
+            // [C5] flatMapLatest restarts the capture cleanly.
+            liveEngine = LiveAnalysisEngine(newFftSize, AudioConfig.LIVE_SAMPLE_RATE_HZ)
+            captureEngine.setFftSize(newFftSize)
+            session.clearStreams()
+        }
+    }
+
+    fun updateDetectorSettings(enabled: Boolean, thresholdDb: Double, magnitudeGateDb: Double) =
+        session.updateDetectorSettings(enabled, thresholdDb, magnitudeGateDb)
+
+    // ---------------------------------------------------- display preferences
+
+    private val _selectedMetric = MutableStateFlow(com.example.nvhspectro.ui.TelemetryMetric.SPEED)
+    val selectedMetric: StateFlow<com.example.nvhspectro.ui.TelemetryMetric> = _selectedMetric.asStateFlow()
+
+    fun selectMetric(metric: com.example.nvhspectro.ui.TelemetryMetric) {
+        _selectedMetric.value = metric
+    }
+
+    private val _showH1Overlay = MutableStateFlow(false)
+    val showH1Overlay: StateFlow<Boolean> = _showH1Overlay.asStateFlow()
+
+    fun toggleH1Overlay() {
+        _showH1Overlay.value = !_showH1Overlay.value
+    }
+
+    private val _projectedOrder = MutableStateFlow(1.0)
+    val projectedOrder: StateFlow<Double> = _projectedOrder.asStateFlow()
+
+    fun setProjectedOrder(order: Double) {
+        _projectedOrder.value = order
+    }
+
+    // ------------------------------------------- field recorder (max 30 s)
+
+    private val _isAudioRecording = MutableStateFlow(false)
+    val isAudioRecording: StateFlow<Boolean> = _isAudioRecording.asStateFlow()
+
+    private val _recordingElapsedSec = MutableStateFlow(0)
+    val recordingElapsedSec: StateFlow<Int> = _recordingElapsedSec.asStateFlow()
+
+    private val _showSaveRecordingDialog = MutableStateFlow(false)
+    val showSaveRecordingDialog: StateFlow<Boolean> = _showSaveRecordingDialog.asStateFlow()
+
+    private val recordedPcmList = java.util.Collections.synchronizedList(mutableListOf<ShortArray>())
+    private val recordedTelemetryList = java.util.Collections.synchronizedList(mutableListOf<TelemetryData>())
+    private var audioRecordingTimerJob: Job? = null
+
+    fun toggleAudioRecording() {
+        if (_isAudioRecording.value) stopAudioRecording() else startAudioRecording()
+    }
+
+    private fun startAudioRecording() {
+        if (_isAudioRecording.value) return
+        recordedPcmList.clear()
+        recordedTelemetryList.clear()
+        _recordingElapsedSec.value = 0
+        _isAudioRecording.value = true
+
+        audioRecordingTimerJob?.cancel()
+        audioRecordingTimerJob = viewModelScope.launch {
+            while (_isAudioRecording.value && _recordingElapsedSec.value < MAX_RECORDING_SEC) {
+                delay(1000L)
+                if (_isAudioRecording.value) {
+                    _recordingElapsedSec.value += 1
+                }
+            }
+            if (_isAudioRecording.value && _recordingElapsedSec.value >= MAX_RECORDING_SEC) {
+                stopAudioRecording()
+            }
+        }
+    }
+
+    private fun stopAudioRecording() {
+        if (!_isAudioRecording.value) return
+        _isAudioRecording.value = false
+        audioRecordingTimerJob?.cancel()
+        audioRecordingTimerJob = null
+        if (recordedPcmList.isNotEmpty()) {
+            _showSaveRecordingDialog.value = true
+        }
+    }
+
+    fun cancelSaveAudioRecording() {
+        recordedPcmList.clear()
+        recordedTelemetryList.clear()
+        _showSaveRecordingDialog.value = false
+    }
+
+    fun saveAudioRecording(userCustomName: String) {
+        val rawName = userCustomName.trim()
+        val cleanName = if (rawName.isEmpty()) "Essai" else rawName.take(20).replace("[^a-zA-Z0-9_\\-]".toRegex(), "_")
+        // [S3] Millisecond suffix: two saves in the same second no longer collide.
+        val timeStamp = SimpleDateFormat("yyyy-MM-dd_HH'h'mm'm'ss's'SSS", Locale.US).format(Date())
+        val baseName = "${cleanName}_$timeStamp"
+        _showSaveRecordingDialog.value = false
+
+        // [C4] MediaStore on IO — the old direct write ran on main and lost
+        // data silently under scoped storage.
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val fullPcm: ShortArray
+                synchronized(recordedPcmList) {
+                    val totalSamples = recordedPcmList.sumOf { it.size }
+                    fullPcm = ShortArray(totalSamples)
+                    var offset = 0
+                    for (block in recordedPcmList) {
+                        System.arraycopy(block, 0, fullPcm, offset, block.size)
+                        offset += block.size
+                    }
+                }
+                com.example.nvhspectro.data.RecordingStore.saveRecording(
+                    context = getApplication(),
+                    baseName = baseName,
+                    pcm = fullPcm,
+                    sampleRate = AudioConfig.LIVE_SAMPLE_RATE_HZ,
+                    telemetryJson = buildTelemetryJson(baseName)
+                )
+                withContext(Dispatchers.Main) {
+                    recordedPcmList.clear()
+                    recordedTelemetryList.clear()
+                    session.postNotice("✅ Enregistrement sauvegardé : $baseName")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    // PCM is kept so the user can retry the save.
+                    _showSaveRecordingDialog.value = true
+                    session.postNotice("❌ Sauvegarde impossible : ${e.message ?: e.javaClass.simpleName}")
+                }
+            }
+        }
+    }
+
+    private fun buildTelemetryJson(baseName: String): String {
+        val jsonContent = StringBuilder()
+        jsonContent.append("{\n")
+        jsonContent.append("  \"folderName\": \"$baseName\",\n")
+        jsonContent.append("  \"durationSec\": ${_recordingElapsedSec.value},\n")
+        jsonContent.append("  \"sampleRate\": ${AudioConfig.LIVE_SAMPLE_RATE_HZ},\n")
+        jsonContent.append("  \"captureSource\": \"${audioRepository.captureSourceLabel}\",\n")
+        jsonContent.append("  \"telemetryCount\": ${recordedTelemetryList.size},\n")
+        jsonContent.append("  \"telemetryData\": [\n")
+        synchronized(recordedTelemetryList) {
+            val items = recordedTelemetryList.mapIndexed { idx, item ->
+                "    {\"index\": $idx, \"speedKmh\": ${item.speedKmh}, \"accelerationG\": ${item.accelerationG}, " +
+                    "\"lat\": ${item.latitude}, \"lng\": ${item.longitude}, \"gpsStatus\": \"${item.gpsStatus}\"}"
+            }
+            jsonContent.append(items.joinToString(",\n"))
+        }
+        jsonContent.append("\n  ]\n}")
+        return jsonContent.toString()
+    }
+
+    /** [L1] Every owned resource has a release path on ViewModel death. */
+    override fun onCleared() {
+        unregisterHook()
+        unregisterResettable()
+        captureEngine.setEnabled(false)
+        speedProvider.stop()
+        audioRepository.stopAudioCapture()
+        analysisDispatcher.close()
+        super.onCleared()
+    }
+
+    companion object {
+        const val MAX_RECORDING_SEC = 30
+    }
+}

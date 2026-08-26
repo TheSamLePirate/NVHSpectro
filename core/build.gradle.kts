@@ -26,6 +26,9 @@ kover {
 
 dependencies {
   implementation(libs.jtransforms)
+  // StateFlow-based MeasurementSession [plan 3.3] — pure JVM artifact.
+  api(libs.kotlinx.coroutines.core)
 
   testImplementation(libs.junit)
+  testImplementation(libs.kotlinx.coroutines.test)
 }

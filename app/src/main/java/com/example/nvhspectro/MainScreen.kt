@@ -52,8 +52,14 @@ fun AppNavigation() {
     if (showSplash) {
         SplashScreen(onSplashFinished = { showSplash = false })
     } else if (permissionsGranted) {
-        val viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-        AppScreen(viewModel)
+        // [plan 3.3] Three session-sharing ViewModels replace the monolith.
+        // LiveViewModel first: it registers its transition hooks before the others.
+        val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as android.app.Application
+        val factory = remember { NvhViewModelFactory(app) }
+        val liveVm: LiveViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
+        val analyzerVm: AnalyzerViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
+        val reportVm: ReportViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
+        AppScreen(liveVm, analyzerVm, reportVm)
     } else {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("En attente des permissions (Microphone, GPS)...")
@@ -63,63 +69,61 @@ fun AppNavigation() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppScreen(viewModel: MainViewModel) {
-    val telemetry by viewModel.telemetryState.collectAsState()
-    val telemetryHistory by viewModel.telemetryHistory.collectAsState()
-    val selectedMetric by viewModel.selectedMetric.collectAsState()
+fun AppScreen(liveVm: LiveViewModel, analyzerVm: AnalyzerViewModel, reportVm: ReportViewModel) {
+    val session = liveVm.session
 
-    val fftHistory by viewModel.fftHistory.collectAsState()
-    val fftHistoryAbsolute by viewModel.fftHistoryAbsolute.collectAsState()
-    val fftHistoryTTNR by viewModel.fftHistoryTTNR.collectAsState()
-    val isDetectorEnabled by viewModel.isDetectorEnabled.collectAsState()
-    val emergenceThresholdDb by viewModel.emergenceThresholdDb.collectAsState()
-    val magnitudeGateDbFS by viewModel.magnitudeGateDbFS.collectAsState()
-    val latestTTNRSpectrum by viewModel.latestTTNRSpectrum.collectAsState()
-    val isRecording by viewModel.isRecording.collectAsState()
-    
-    val minDb by viewModel.minDb.collectAsState()
-    val maxDb by viewModel.maxDb.collectAsState()
-    val fftSize by viewModel.fftSize.collectAsState()
-    val minFreq by viewModel.minFreq.collectAsState()
-    val maxFreq by viewModel.maxFreq.collectAsState()
-    val timeWindowSec by viewModel.timeWindowSec.collectAsState()
-    val displayMode by viewModel.displayMode.collectAsState()
-    val isFrozen by viewModel.isFrozen.collectAsState()
+    val telemetry by session.telemetryState.collectAsState()
+    val telemetryHistory by session.telemetryHistory.collectAsState()
+    val selectedMetric by liveVm.selectedMetric.collectAsState()
 
-    val kinematicsConfig by viewModel.kinematicsConfig.collectAsState()
-    val activeFilters by viewModel.activeFilters.collectAsState()
-    val trackedHarmonicTags by viewModel.trackedHarmonicTags.collectAsState()
-    val emergenceReportEntries by viewModel.emergenceReportEntries.collectAsState()
-    
-    val isAudioRecording by viewModel.isAudioRecording.collectAsState()
-    val recordingElapsedSec by viewModel.recordingElapsedSec.collectAsState()
-    val showSaveRecordingDialog by viewModel.showSaveRecordingDialog.collectAsState()
+    val fftHistory by session.fftHistory.collectAsState()
+    val fftHistoryAbsolute by session.fftHistoryAbsolute.collectAsState()
+    val fftHistoryTTNR by session.fftHistoryTTNR.collectAsState()
+    val isDetectorEnabled by session.isDetectorEnabled.collectAsState()
+    val emergenceThresholdDb by session.emergenceThresholdDb.collectAsState()
+    val magnitudeGateDbFS by session.magnitudeGateDbFS.collectAsState()
+    val latestTTNRSpectrum by session.latestTTNRSpectrum.collectAsState()
 
-    val audioSourceMode by viewModel.audioSourceMode.collectAsState()
-    val showAudioModeMenu by viewModel.showAudioModeMenu.collectAsState()
-    val showWavSelectionDialog by viewModel.showWavSelectionDialog.collectAsState()
-    val loadedWavData by viewModel.loadedWavData.collectAsState()
-    val analysisNotice by viewModel.analysisNotice.collectAsState()
-    val loadedWavFileName by viewModel.loadedWavFileName.collectAsState()
-    val wavPlaybackPositionMs by viewModel.wavPlaybackPositionMs.collectAsState()
-    val isWavPlaying by viewModel.isWavPlaying.collectAsState()
-    val isReportModeActive by viewModel.isReportModeActive.collectAsState()
-    val currentSmartPath by viewModel.currentSmartPath.collectAsState()
-    val currentUserPoints by viewModel.currentUserPoints.collectAsState()
-    val manualTrackedOrders by viewModel.manualTrackedOrders.collectAsState()
+    val minDb by session.minDb.collectAsState()
+    val maxDb by session.maxDb.collectAsState()
+    val fftSize by session.fftSize.collectAsState()
+    val minFreq by session.minFreq.collectAsState()
+    val maxFreq by session.maxFreq.collectAsState()
+    val timeWindowSec by session.timeWindowSec.collectAsState()
+    val displayMode by session.displayMode.collectAsState()
+    val isFrozen by session.isFrozen.collectAsState()
 
-    val showVideoSelectionDialog by viewModel.showVideoSelectionDialog.collectAsState()
-    val loadedVideoUri by viewModel.loadedVideoUri.collectAsState()
-    val loadedYouTubeUrl by viewModel.loadedYouTubeUrl.collectAsState()
-    val loadedVideoTitle by viewModel.loadedVideoTitle.collectAsState()
-    val processingEstimateMessage by viewModel.processingEstimateMessage.collectAsState()
+    val kinematicsConfig by session.kinematicsConfig.collectAsState()
+    val activeFilters by analyzerVm.activeFilters.collectAsState()
+    val trackedHarmonicTags by session.trackedHarmonicTags.collectAsState()
+    val emergenceReportEntries by session.emergenceReportEntries.collectAsState()
+
+    val isAudioRecording by liveVm.isAudioRecording.collectAsState()
+    val recordingElapsedSec by liveVm.recordingElapsedSec.collectAsState()
+    val showSaveRecordingDialog by liveVm.showSaveRecordingDialog.collectAsState()
+
+    val audioSourceMode by session.audioSourceMode.collectAsState()
+    var showAudioModeMenu by remember { mutableStateOf(false) }
+    var showWavSelectionDialog by remember { mutableStateOf(false) }
+    val loadedWavData by session.loadedWavData.collectAsState()
+    val analysisNotice by session.analysisNotice.collectAsState()
+    val loadedWavFileName by analyzerVm.loadedWavFileName.collectAsState()
+    val wavPlaybackPositionMs by analyzerVm.player.positionMs.collectAsState()
+    val isWavPlaying by analyzerVm.player.isPlaying.collectAsState()
+    val isReportModeActive by reportVm.isReportModeActive.collectAsState()
+
+    var showVideoSelectionDialog by remember { mutableStateOf(false) }
+    val loadedVideoUri by analyzerVm.loadedVideoUri.collectAsState()
+    val loadedYouTubeUrl by analyzerVm.loadedYouTubeUrl.collectAsState()
+    val loadedVideoTitle by analyzerVm.loadedVideoTitle.collectAsState()
+    val processingEstimateMessage by analyzerVm.processingEstimateMessage.collectAsState()
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val wavPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            viewModel.loadWavFromUri(context, uri)
+            analyzerVm.loadWavFromUri(context, uri)
         }
     }
 
@@ -127,7 +131,7 @@ fun AppScreen(viewModel: MainViewModel) {
         ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            viewModel.loadVideoFromUri(context, uri)
+            analyzerVm.loadVideoFromUri(context, uri)
         }
     }
 
@@ -147,7 +151,7 @@ fun AppScreen(viewModel: MainViewModel) {
     var showProjectedOrderDialog by remember { mutableStateOf(false) }
 
     if (isReportModeActive) {
-        com.example.nvhspectro.ui.ReportModeScreen(viewModel = viewModel, onBack = { viewModel.toggleReportMode() })
+        com.example.nvhspectro.ui.ReportModeScreen(viewModel = reportVm, onBack = { reportVm.toggleReportMode() })
     } else {
         Scaffold(
         topBar = {
@@ -206,7 +210,7 @@ fun AppScreen(viewModel: MainViewModel) {
 
                     // 2. Bouton Rapport d'Emergence
                     Button(
-                        onClick = { viewModel.toggleReportMode() },
+                        onClick = { reportVm.toggleReportMode() },
                         enabled = !isVideoMode,
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
@@ -257,7 +261,7 @@ fun AppScreen(viewModel: MainViewModel) {
                         }
 
                         Button(
-                            onClick = { viewModel.toggleFreeze() },
+                            onClick = { session.toggleFreeze() },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(38.dp),
@@ -286,7 +290,7 @@ fun AppScreen(viewModel: MainViewModel) {
                             Popup(
                                 alignment = Alignment.TopCenter,
                                 offset = androidx.compose.ui.unit.IntOffset(0, -250),
-                                onDismissRequest = { viewModel.toggleAudioModeMenu() }
+                                onDismissRequest = { showAudioModeMenu = false }
                             ) {
                                 Column(
                                     modifier = Modifier.width(115.dp),
@@ -295,8 +299,8 @@ fun AppScreen(viewModel: MainViewModel) {
                                 ) {
                                     Button(
                                         onClick = {
-                                            viewModel.setAudioSourceMode(com.example.nvhspectro.AudioSourceMode.LIVE)
-                                            viewModel.toggleAudioModeMenu()
+                                            session.setAudioSourceMode(com.example.nvhspectro.AudioSourceMode.LIVE)
+                                            showAudioModeMenu = false
                                         },
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -318,8 +322,8 @@ fun AppScreen(viewModel: MainViewModel) {
 
                                     Button(
                                         onClick = {
-                                            viewModel.setAudioSourceMode(com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER)
-                                            viewModel.toggleAudioModeMenu()
+                                            session.setAudioSourceMode(com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER)
+                                            showAudioModeMenu = false
                                         },
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -341,8 +345,8 @@ fun AppScreen(viewModel: MainViewModel) {
 
                                     Button(
                                         onClick = {
-                                            viewModel.setAudioSourceMode(com.example.nvhspectro.AudioSourceMode.VIDEO)
-                                            viewModel.toggleAudioModeMenu()
+                                            session.setAudioSourceMode(com.example.nvhspectro.AudioSourceMode.VIDEO)
+                                            showAudioModeMenu = false
                                         },
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -366,7 +370,7 @@ fun AppScreen(viewModel: MainViewModel) {
                         }
 
                         Button(
-                            onClick = { viewModel.toggleAudioModeMenu() },
+                            onClick = { showAudioModeMenu = !showAudioModeMenu },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(38.dp),
@@ -420,7 +424,7 @@ fun AppScreen(viewModel: MainViewModel) {
                     maxFreq = maxFreq,
                     fftSize = if (isWavMode) AudioConfig.WAV_FFT_SIZE else fftSize,
                     sampleRate = analysisSampleRate,
-                    historySize = if (isWavMode && fftHistoryAbsolute.isNotEmpty()) fftHistoryAbsolute.size else viewModel.historySize,
+                    historySize = if (isWavMode && fftHistoryAbsolute.isNotEmpty()) fftHistoryAbsolute.size else session.historySize,
                     displayMode = displayMode,
                     isDetectorEnabled = isDetectorEnabled,
                     emergenceThresholdDb = emergenceThresholdDb,
@@ -430,9 +434,9 @@ fun AppScreen(viewModel: MainViewModel) {
                     kinematicsConfig = kinematicsConfig,
                     isWavAnalyzerMode = isWavMode,
                     wavPlaybackProgress = wavProgress,
-                    showH1Overlay = viewModel.showH1Overlay.collectAsState().value,
-                    projectedOrder = viewModel.projectedOrder.collectAsState().value,
-                    telemetryHistory = viewModel.telemetryHistory.collectAsState().value
+                    showH1Overlay = liveVm.showH1Overlay.collectAsState().value,
+                    projectedOrder = liveVm.projectedOrder.collectAsState().value,
+                    telemetryHistory = telemetryHistory
                 )
 
                 // Superposition d'éléments en haut à gauche (Sélecteur de Mode + Bannière Cinématique GMPe en dessous)
@@ -449,7 +453,7 @@ fun AppScreen(viewModel: MainViewModel) {
                         DisplayMode.values().forEach { mode ->
                             FilterChip(
                                 selected = (displayMode == mode),
-                                onClick = { viewModel.setDisplayMode(mode) },
+                                onClick = { session.setDisplayMode(mode) },
                                 label = { Text(mode.label, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -470,7 +474,7 @@ fun AppScreen(viewModel: MainViewModel) {
                         if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.VIDEO) {
                             FilterChip(
                                 selected = (loadedVideoUri != null || !loadedYouTubeUrl.isNullOrBlank()),
-                                onClick = { viewModel.openVideoSelectionDialog() },
+                                onClick = { showVideoSelectionDialog = true },
                                 label = {
                                     Text(
                                         text = if (loadedVideoTitle.isNotBlank()) "🎬 ${loadedVideoTitle.take(14)}" else "🎬 Charger Vidéo",
@@ -495,7 +499,7 @@ fun AppScreen(viewModel: MainViewModel) {
                         } else if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER) {
                             FilterChip(
                                 selected = (loadedWavFileName != null),
-                                onClick = { viewModel.openWavSelectionDialog() },
+                                onClick = { showWavSelectionDialog = true },
                                 label = {
                                     Text(
                                         text = if (loadedWavFileName != null) "📂 ${loadedWavFileName!!.take(14)}" else "📂 Charger WAV",
@@ -520,7 +524,7 @@ fun AppScreen(viewModel: MainViewModel) {
                         } else {
                             FilterChip(
                                 selected = isAudioRecording,
-                                onClick = { viewModel.toggleAudioRecording() },
+                                onClick = { liveVm.toggleAudioRecording() },
                                 label = {
                                     if (isAudioRecording) {
                                         val secStr = String.format("%02d:%02d", recordingElapsedSec / 60, recordingElapsedSec % 60)
@@ -649,7 +653,7 @@ fun AppScreen(viewModel: MainViewModel) {
                             color = Color(0xE6301B0F),
                             shape = RoundedCornerShape(4.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B)),
-                            modifier = Modifier.clickable { viewModel.dismissAnalysisNotice() }
+                            modifier = Modifier.clickable { session.dismissNotice() }
                         ) {
                             Text(
                                 text = "$notice   ✕",
@@ -716,9 +720,9 @@ fun AppScreen(viewModel: MainViewModel) {
                         currentPosMs = wavPlaybackPositionMs,
                         totalDurationMs = loadedWavData?.durationMs ?: 0L,
                         isPlaying = isWavPlaying,
-                        onPlayToggle = { viewModel.toggleWavPlayPause() },
-                        onSeekTo = { pos -> viewModel.seekWavTo(pos) },
-                        onStepSeconds = { sec -> viewModel.stepWavSeconds(sec) }
+                        onPlayToggle = { analyzerVm.player.togglePlayPause() },
+                        onSeekTo = { pos -> analyzerVm.player.seekTo(pos) },
+                        onStepSeconds = { sec -> analyzerVm.player.stepSeconds(sec) }
                     )
                 }
 
@@ -731,9 +735,9 @@ fun AppScreen(viewModel: MainViewModel) {
                         isPlaying = isWavPlaying,
                         positionMs = wavPlaybackPositionMs,
                         durationMs = loadedWavData?.durationMs ?: 0L,
-                        onSeekTo = { pos -> viewModel.seekWavTo(pos) },
-                        onTogglePlayPause = { viewModel.toggleWavPlayPause() },
-                        onOpenVideoSelection = { viewModel.openVideoSelectionDialog() },
+                        onSeekTo = { pos -> analyzerVm.player.seekTo(pos) },
+                        onTogglePlayPause = { analyzerVm.player.togglePlayPause() },
+                        onOpenVideoSelection = { showVideoSelectionDialog = true },
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(0.45f)
@@ -768,13 +772,13 @@ fun AppScreen(viewModel: MainViewModel) {
 
                                 // Bouton 👁️ Hx intégré à l'en-tête (Si GMPe activé)
                                 if (kinematicsConfig.isEnabled) {
-                                    val showH1Overlay by viewModel.showH1Overlay.collectAsState()
-                                    val projectedOrder by viewModel.projectedOrder.collectAsState()
+                                    val showH1Overlay by liveVm.showH1Overlay.collectAsState()
+                                    val projectedOrder by liveVm.projectedOrder.collectAsState()
                                     val ordLabel = if (projectedOrder % 1.0 == 0.0) "H${projectedOrder.toInt()}" else "H%.1f".format(projectedOrder)
-                                
+
                                     FilterChip(
                                         selected = showH1Overlay,
-                                        onClick = { viewModel.toggleH1Overlay() },
+                                        onClick = { liveVm.toggleH1Overlay() },
                                         label = { Text("👁️ $ordLabel", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
                                         trailingIcon = {
                                             Text(
@@ -869,7 +873,7 @@ fun AppScreen(viewModel: MainViewModel) {
                                             if (isOrderMetric && isSelected && kinematicsConfig.isEnabled) {
                                                 showOrderSelectionDialog = true
                                             } else {
-                                                viewModel.selectMetric(metric)
+                                                liveVm.selectMetric(metric)
                                             }
                                         },
                                         label = {
@@ -894,7 +898,7 @@ fun AppScreen(viewModel: MainViewModel) {
                                     history = telemetryHistory,
                                     metric = selectedMetric,
                                     timeWindowSec = if (isWavMode && loadedWavData != null) ((loadedWavData?.durationMs ?: 0L) / 1000.0) else timeWindowSec,
-                                    historySize = if (isWavMode && fftHistoryAbsolute.isNotEmpty()) fftHistoryAbsolute.size else viewModel.historySize,
+                                    historySize = if (isWavMode && fftHistoryAbsolute.isNotEmpty()) fftHistoryAbsolute.size else session.historySize,
                                     ttnrSpectrum = latestTTNRSpectrum,
                                     minFreq = minFreq,
                                     maxFreq = maxFreq,
@@ -913,9 +917,15 @@ fun AppScreen(viewModel: MainViewModel) {
 
         if (showVideoSelectionDialog) {
             com.example.nvhspectro.ui.VideoSelectionDialog(
-                onDismiss = { viewModel.dismissVideoSelectionDialog() },
-                onSelectLocalVideo = { videoPickerLauncher.launch("video/*") },
-                onSelectYouTubeUrl = { url -> viewModel.loadVideoFromYouTube(url) }
+                onDismiss = { showVideoSelectionDialog = false },
+                onSelectLocalVideo = {
+                    showVideoSelectionDialog = false
+                    videoPickerLauncher.launch("video/*")
+                },
+                onSelectYouTubeUrl = { url ->
+                    showVideoSelectionDialog = false
+                    analyzerVm.loadVideoFromYouTube(url)
+                }
             )
         }
         
@@ -929,18 +939,18 @@ fun AppScreen(viewModel: MainViewModel) {
             OrderSelectionDialog(
                 currentOrder = kinematicsConfig.selectedTrackedOrder,
                 onOrderSelected = { newOrd ->
-                    viewModel.updateSelectedTrackedOrder(newOrd)
+                    analyzerVm.updateSelectedTrackedOrder(newOrd)
                 },
                 onDismiss = { showOrderSelectionDialog = false }
             )
         }
 
         if (showProjectedOrderDialog) {
-            val projectedOrder by viewModel.projectedOrder.collectAsState()
+            val projectedOrder by liveVm.projectedOrder.collectAsState()
             OrderSelectionDialog(
                 currentOrder = projectedOrder,
                 onOrderSelected = { newOrd ->
-                    viewModel.setProjectedOrder(newOrd)
+                    liveVm.setProjectedOrder(newOrd)
                 },
                 onDismiss = { showProjectedOrderDialog = false }
             )
@@ -951,31 +961,31 @@ fun AppScreen(viewModel: MainViewModel) {
                 onDismiss = { showSettingsDialog = false },
                 sampleRateHz = analysisSampleRate,
                 activeFilters = activeFilters,
-                onAddFilter = { filter -> viewModel.addAudioFilter(filter) },
-                onRemoveFilter = { filterId -> viewModel.removeAudioFilter(filterId) },
+                onAddFilter = { filter -> analyzerVm.addAudioFilter(filter) },
+                onRemoveFilter = { filterId -> analyzerVm.removeAudioFilter(filterId) },
                 minDb = minDb,
                 maxDb = maxDb,
-                onMinDbChange = { viewModel.updateSettings(it, maxDb, fftSize, minFreq, maxFreq, timeWindowSec) },
-                onMaxDbChange = { viewModel.updateSettings(minDb, it, fftSize, minFreq, maxFreq, timeWindowSec) },
+                onMinDbChange = { liveVm.updateSettings(it, maxDb, fftSize, minFreq, maxFreq, timeWindowSec) },
+                onMaxDbChange = { liveVm.updateSettings(minDb, it, fftSize, minFreq, maxFreq, timeWindowSec) },
                 fftSize = fftSize,
-                onFftSizeChange = { viewModel.updateSettings(minDb, maxDb, it, minFreq, maxFreq, timeWindowSec) },
+                onFftSizeChange = { liveVm.updateSettings(minDb, maxDb, it, minFreq, maxFreq, timeWindowSec) },
                 minFreq = minFreq,
-                onMinFreqChange = { viewModel.updateSettings(minDb, maxDb, fftSize, it, maxFreq, timeWindowSec) },
+                onMinFreqChange = { liveVm.updateSettings(minDb, maxDb, fftSize, it, maxFreq, timeWindowSec) },
                 maxFreq = maxFreq,
-                onMaxFreqChange = { viewModel.updateSettings(minDb, maxDb, fftSize, minFreq, it, timeWindowSec) },
+                onMaxFreqChange = { liveVm.updateSettings(minDb, maxDb, fftSize, minFreq, it, timeWindowSec) },
                 timeWindowSec = timeWindowSec,
-                onTimeWindowChange = { viewModel.updateSettings(minDb, maxDb, fftSize, minFreq, maxFreq, it) },
+                onTimeWindowChange = { liveVm.updateSettings(minDb, maxDb, fftSize, minFreq, maxFreq, it) },
                 isDetectorEnabled = isDetectorEnabled,
                 onDetectorEnabledChange = { enabled ->
-                    viewModel.updateDetectorSettings(enabled, emergenceThresholdDb, magnitudeGateDbFS)
+                    liveVm.updateDetectorSettings(enabled, emergenceThresholdDb, magnitudeGateDbFS)
                 },
                 emergenceThresholdDb = emergenceThresholdDb,
                 onEmergenceThresholdChange = { threshold ->
-                    viewModel.updateDetectorSettings(isDetectorEnabled, threshold, magnitudeGateDbFS)
+                    liveVm.updateDetectorSettings(isDetectorEnabled, threshold, magnitudeGateDbFS)
                 },
                 magnitudeGateDbFS = magnitudeGateDbFS,
                 onMagnitudeGateChange = { gate ->
-                    viewModel.updateDetectorSettings(isDetectorEnabled, emergenceThresholdDb, gate)
+                    liveVm.updateDetectorSettings(isDetectorEnabled, emergenceThresholdDb, gate)
                 },
                 isWavAnalyzerMode = isWavMode,
                 wavDurationSec = (loadedWavData?.durationMs ?: 0L) / 1000.0
@@ -988,7 +998,7 @@ fun AppScreen(viewModel: MainViewModel) {
                 telemetry = telemetry,
                 onExport = { pedalPercent, comments ->
                     showExportDialog = false
-                    viewModel.exportData(pedalPercent, comments)
+                    reportVm.exportData(pedalPercent, comments)
                 }
             )
         }
@@ -999,7 +1009,7 @@ fun AppScreen(viewModel: MainViewModel) {
                 onDismiss = { showKinematicsDialog = false },
                 onSave = { newConfig ->
                     showKinematicsDialog = false
-                    viewModel.updateKinematicsConfig(newConfig)
+                    analyzerVm.updateKinematicsConfig(newConfig)
                 }
             )
         }
@@ -1009,7 +1019,7 @@ fun AppScreen(viewModel: MainViewModel) {
                 entries = emergenceReportEntries,
                 kinematicsConfig = kinematicsConfig,
                 onDismiss = { showEmergenceReportDialog = false },
-                onClearReport = { viewModel.clearEmergenceReport() }
+                onClearReport = { session.clearEmergenceReport() }
             )
         }
 
@@ -1017,22 +1027,23 @@ fun AppScreen(viewModel: MainViewModel) {
             com.example.nvhspectro.ui.SaveRecordingDialog(
                 durationSec = recordingElapsedSec,
                 onSave = { customName ->
-                    viewModel.saveAudioRecording(customName)
+                    liveVm.saveAudioRecording(customName)
                 },
                 onDismiss = {
-                    viewModel.cancelSaveAudioRecording()
+                    liveVm.cancelSaveAudioRecording()
                 }
             )
         }
 
         if (showWavSelectionDialog) {
             com.example.nvhspectro.ui.WavSelectionDialog(
-                onDismiss = { viewModel.closeWavSelectionDialog() },
+                onDismiss = { showWavSelectionDialog = false },
                 onSelectEntry = { wavUri, jsonUri ->
-                    viewModel.loadWavFromUri(context, wavUri, jsonUri)
+                    showWavSelectionDialog = false
+                    analyzerVm.loadWavFromUri(context, wavUri, jsonUri)
                 },
                 onImportExternal = {
-                    viewModel.closeWavSelectionDialog()
+                    showWavSelectionDialog = false
                     wavPickerLauncher.launch("audio/*")
                 }
             )

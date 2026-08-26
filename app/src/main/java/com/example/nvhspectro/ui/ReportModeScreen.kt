@@ -31,35 +31,35 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.example.nvhspectro.AudioConfig
 import com.example.nvhspectro.DisplayMode
-import com.example.nvhspectro.MainViewModel
+import com.example.nvhspectro.ReportViewModel
 import com.example.nvhspectro.R
 import com.example.nvhspectro.SpectrogramCanvas
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportModeScreen(
-    viewModel: MainViewModel,
+    viewModel: ReportViewModel,
     onBack: () -> Unit
 ) {
     val reportFftHistory by viewModel.reportFftHistory.collectAsState()
     val reportAbsHistory by viewModel.reportFftHistoryAbsolute.collectAsState()
     val reportTtnrHistory by viewModel.reportFftHistoryTTNR.collectAsState()
 
-    val displayMode by viewModel.displayMode.collectAsState()
-    val minFreq by viewModel.minFreq.collectAsState()
-    val maxFreq by viewModel.maxFreq.collectAsState()
-    val minDb by viewModel.minDb.collectAsState()
-    val maxDb by viewModel.maxDb.collectAsState()
+    val displayMode by viewModel.session.displayMode.collectAsState()
+    val minFreq by viewModel.session.minFreq.collectAsState()
+    val maxFreq by viewModel.session.maxFreq.collectAsState()
+    val minDb by viewModel.session.minDb.collectAsState()
+    val maxDb by viewModel.session.maxDb.collectAsState()
     
     val manualTrackedOrders by viewModel.manualTrackedOrders.collectAsState()
     val selectedValidatedOrder by viewModel.selectedValidatedOrder.collectAsState()
     val isBrillanceModeEnabled by viewModel.isBrillanceModeEnabled.collectAsState()
-    val kinematicsConfig by viewModel.kinematicsConfig.collectAsState()
+    val kinematicsConfig by viewModel.session.kinematicsConfig.collectAsState()
     val currentUserPoints by viewModel.currentUserPoints.collectAsState()
     val currentSmartPath by viewModel.currentSmartPath.collectAsState()
     
     // [C1] Report mode can hold a snapshot from live capture or from a loaded file.
-    val loadedWavData by viewModel.loadedWavData.collectAsState()
+    val loadedWavData by viewModel.session.loadedWavData.collectAsState()
     val sampleRate = loadedWavData?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ
     val context = LocalContext.current
 
@@ -158,7 +158,7 @@ fun ReportModeScreen(
                         options = listOf("Absolue", "TTNR"),
                         selectedIndex = if (displayMode == DisplayMode.TTNR) 1 else 0,
                         onOptionSelected = { index -> 
-                            viewModel.setDisplayMode(if (index == 1) DisplayMode.TTNR else DisplayMode.ABSOLUTE)
+                            viewModel.session.setDisplayMode(if (index == 1) DisplayMode.TTNR else DisplayMode.ABSOLUTE)
                         },
                         modifier = Modifier.weight(1f)
                     )
