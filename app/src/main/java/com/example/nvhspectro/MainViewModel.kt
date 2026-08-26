@@ -475,7 +475,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         
         val updatedHistory = telemHistory.mapIndexed { i, telem ->
             val theoSpeed = telem.theoreticalSpeedKmh
-            val absIdx = (i.toFloat() / telemHistory.size * absHistory.size).toInt().coerceIn(0, absHistory.size - 1)
+            val absIdx = TimelineMapper.mapIndex(i, telemHistory.size, absHistory.size)
             val absArr = absHistory[absIdx]
             val ttnrArr = ttnrHistory[absIdx]
             
@@ -531,8 +531,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         for (frameIdx in absHistory.indices) {
             val nowMs = (frameIdx * stepDurationMs).toLong()
-            val sweepRatio = if (absHistory.size > 1) frameIdx.toDouble() / (absHistory.size - 1) else 0.0
-            val telemIdx = (sweepRatio * (updatedHistory.size - 1)).toInt().coerceIn(0, updatedHistory.size - 1)
+            val telemIdx = TimelineMapper.mapIndex(frameIdx, absHistory.size, updatedHistory.size)
             val speedKmh = updatedHistory[telemIdx].theoreticalSpeedKmh
             val currentRpm = config.calculateRpm(speedKmh)
             
@@ -871,7 +870,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         var frameIdx = 0
         if (absList.isNotEmpty()) {
-            frameIdx = (ratio * (absList.size - 1)).toInt().coerceIn(0, absList.size - 1)
+            frameIdx = TimelineMapper.timeToIndex(posMs, totalMs, absList.size)
             if (frameIdx in absList.indices) {
                 currentAbs = absList[frameIdx]
             }
@@ -1960,8 +1959,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (emergence > maxEmergence) maxEmergence = emergence
             }
             
-            if (f in telemHistory.indices) {
-                val telem = telemHistory[f]
+            if (telemHistory.isNotEmpty() && f in reportHistory.indices) {
+                // [C17] Frame indices are NOT telemetry indices in WAV mode (12,900 frames
+                // vs ~30 samples) — the old direct telemHistory[f] read speeds/RPM from the
+                // wrong instants on the customer PDF. Map by time ratio instead.
+                val telem = telemHistory[TimelineMapper.mapIndex(f, reportHistory.size, telemHistory.size)]
                 val speed = if (_kinematicsConfig.value.isEnabled) telem.theoreticalSpeedKmh else telem.speedKmh
                 if (speed > 1.0f) {
                     if (minSpeed == null || speed < minSpeed) minSpeed = speed

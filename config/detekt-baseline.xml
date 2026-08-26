@@ -758,6 +758,8 @@
     <ID>ReturnCount:MainViewModel.kt$MainViewModel$private fun recalculateSmartPath()</ID>
     <ID>ReturnCount:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;DoubleArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap?</ID>
     <ID>ReturnCount:SpectrogramColormap.kt$fun getFreqY(freqHz: Float): Float</ID>
+    <ID>ReturnCount:TimelineMapper.kt$TimelineMapper$fun mapIndex(index: Int, fromSize: Int, toSize: Int): Int</ID>
+    <ID>ReturnCount:TimelineMapper.kt$TimelineMapper$fun timeToIndex(posMs: Long, durationMs: Long, size: Int): Int</ID>
     <ID>ReturnCount:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
     <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun ByteArray.startsWith(ascii: String): Boolean</ID>
     <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun parseWavStream(stream: InputStream, jsonText: String?): WavReadResult</ID>
