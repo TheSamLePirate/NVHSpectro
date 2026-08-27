@@ -198,7 +198,16 @@ fun AppScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(stringResource(R.string.app_title), fontWeight = FontWeight.Bold) },
+                    title = {
+                        // [§12, plan 4.4] At font scale 1.3 an unconstrained title wrapped to
+                        // three lines and ran under the logo; it truncates instead.
+                        Text(
+                            text = stringResource(R.string.app_title),
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                    },
                     actions = {
                         Image(
                             painter = painterResource(id = R.drawable.logo_vibratec),

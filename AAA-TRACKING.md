@@ -4,7 +4,7 @@ Live log of the `V13.1-AAA-plan.md` execution. One section per phase: steps,
 commits, verification evidence, and every deviation from the written plan.
 Update this file **in the same session** as the work it describes.
 
-**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0–3 COMPLETE; GPS-0 → GPS-4 COMPLETE — Gates 0–3 and GPS-0–GPS-4 passed on emulator (hardware follow-ups listed per phase)** (2026-08-27)
+**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0–4 COMPLETE; GPS-0 → GPS-4 COMPLETE — Gates 0–4 and GPS-0–GPS-4 passed on emulator (hardware follow-ups listed per phase)** (2026-08-27)
 
 ---
 
@@ -196,6 +196,92 @@ Unit tests: **61** total, all green; lint 0 errors; minified release builds; all
 - Emergence Report dialog is still unreachable (D6 restore is plan 4.6) — `session.clearEmergenceReport()` is already wired for it.
 - The 30 s recording cap constant now lives in `LiveViewModel.MAX_RECORDING_SEC` (S5 single-sourcing partially done; dialog text still hard-codes "00:30").
 - PngExporter/PdfReportGenerator share `AudioConfig.DISPLAY_MIN_FREQ_HZ`; 4.5's PDF stamps (date/version/capture source) have `TelemetryCodec`'s appVersion pattern to follow.
+
+---
+
+## Phase 4 — UX, reporting & trust surfaces (COMPLETE)
+
+### Steps executed (2026-08-27)
+
+| Step | What was done | Commit |
+|---|---|---|
+| 4.3 | **[U5, D4]** Fixed dark instrument theme. `theme/Color.kt` becomes the ONE colour source (M3 scheme + instrument semantics: GNSS status, source modes, emergence severity, canvas scrims, order traces); ~150 scattered hex literals across 17 UI files map onto it; `themes.xml` gets a dark parent + `windowBackground` (kills the white launch flash). Dynamic colour and the system light theme are deliberately dropped. Every semantic hue is split **container** (dark, carries a light label) / **accent** (light, for text on dark) — one value could not do both. Order-trace palette shared with the PDF as ARGB ints [U7 prep]. `PaletteContrastTest` computes WCAG ratios and **found five real defects while being written** (activeContainer 4.34:1, disabledContent 4.19:1, modeLive 4.41:1, recording 4.21:1, amber-on-white-page 1.41:1) — all fixed by changing colours, none by relaxing a bar. New armed gate: no `Color(0x…)` outside theme/Color.kt | `7c42e74` |
+| 4.1 | **[U1]** Per-permission degradation. Mic denial is no longer fatal: rationale + "Autoriser" → "Ouvrir les réglages" once Android will not re-ask + a third way through ("Continuer sans micro"), so a recorded session stays analysable. LIVE entry visibly disabled and *says why* when tapped. Without precise location the GNSS LED is replaced by an explicit chip + banner (a red "Signal Perdu" would blame the sky for a permission); coarse-only stays non-metrological [GPS-12]. `LiveViewModel.applyResourcePolicy(mode)` is the single place deciding whether mic/GNSS may run: LIVE mode AND the grant, re-applied on every resume | `4f30344` |
+| 4.8 | **[U6, V2, C12, D7]** YouTube deleted — it loaded user URLs into a JS-enabled WebView and analysed nothing; with it went the app's only script surface and (single-option) VideoSelectionDialog. Extractor rewritten: output drained past the input EOS (the tail of every video was being dropped), growable ShortArray instead of ~13 M boxed Shorts, `INFO_OUTPUT_FORMAT_CHANGED` honoured (a resampling decoder was putting the analysis on the wrong frequency grid — C1 through another door), float PCM handled, typed failures. Real extraction progress. Picture re-seeks on drift > 250 ms, not only on play/pause [U6] | `1761e08` |
+| 4.5 / 4.6 | **[U7, D1, A4, D5, D6]** Report traceability block: date/time, build, source (with the mic route actually granted [C8]), analysis parameters, and the speed line — causal vs "lissée (RTS)" with the order-confidence k — closing **DEV-43**. Metric renamed everywhere a human reads it to "Indice d'émergence NVH" with an on-page footnote stating it is NOT ECMA-74 conformant [D1/D5]. Order colours unified screen↔PDF. Comment line breaks preserved [A4]. Report header shows `getEffectiveV1000()` [U7]. Emergence Report entry point restored in the GMPe banner with its entry count [D6] | `526b9b1` |
+| 4.2 | **[U3, U4]** `PlotDimens` (dp/sp, per density+fontScale) + `:core PlotGeometry` (pure, tested). Both `pointerInput` blocks and the draw pass read the same geometry, so touch and paint cannot drift. Every overlay — playhead, beacons, harmonic tags, H1 — now places itself through the same data→pixel transform the bitmap crop implies, and is clipped when scrolled out of the viewport instead of being pinned to an edge where it labelled the wrong frequency | `a0a9d53` |
+| 4.7 / 4.9 | **[V3, U2, U8, P3, P4]** `DiagnosticLog`: local, rotating (2 × 256 kB), own writer thread, disables itself after one failure; every notice is written to it; shared ONLY through an explicit user action via a non-exported FileProvider whose single exposed path is the log directory. KPI throttle moved out of composition into the ViewModel (`displayedOrderDbFS`, sampled) [U2]. Platform SplashScreen replaces the fixed `delay(2000)` [U8]. `windowSoftInputMode` moved onto the activity; orientation lock dropped **and** the layout made to adapt (panes stacked in portrait, side by side in landscape) so removing it is honest. `collectAsState()` → `collectAsStateWithLifecycle()` at all 55 sites [P4] | `daf17fa` |
+| 4.4 | **[§12]** ~290 strings externalised (French default), including the notices produced in the ViewModels and data layer; `WavReadResult` refactored to typed reasons so the RIFF walker holds no user text and the test asserts `BITS_UNSUPPORTED` + "24" instead of a French sentence. lint promotes `HardcodedText`/`ContentDescription`/`SetTextI18n`/`StringFormatMatches` to errors; **the new ci/checks.sh Compose-text gate found nine strings the manual sweep missed**. TalkBack labels on every emoji-as-icon control and a spoken summary for the spectrogram canvas (which had no semantics at all). 48 dp targets. GNSS LED and criticality badge gain a SHAPE (●/▲/✕) so colour is never the only channel | `d4ce71e` |
+
+Unit tests: **:app 46 + :core 158**, all green; `:core` coverage ≥ 90 %
+(`koverVerify` in CI); lint 0 errors with the four promoted checks and still
+**no baseline**; minified release builds. Baselines: ktlint 3,081 → **497**,
+detekt 845 → **500**.
+
+### Gate 4 verification (2026-08-27, emulator NVH_Pixel_7_API_37, debug)
+
+- ✅ **[U1] Permission-denial matrix.** Mic revoked + denied twice (USER_FIXED):
+  the rationale screen appears with the privacy statement, the primary button
+  becomes **"Ouvrir les réglages"**, and **"Continuer sans micro (analyse de
+  fichiers)"** enters analyzer-only mode — screenshots. In that mode the mic
+  appops entry shows `duration=0` (**not running**), speed reads `--`, and the
+  source menu's LIVE entry is greyed **and explains itself** when tapped
+  ("🎙️ Mesure en direct indisponible : autorisation micro refusée…").
+  Location denied → GNSS chip + banner instead of a red "Signal Perdu".
+- ✅ **[U5/D4] Fixed dark theme** end to end: no white launch flash, no
+  wallpaper tint, instrument palette on every surface.
+- ✅ **[U8] Platform splash** (icon on the dark window) replaces the 2 s wait;
+  screenshot captured mid-launch.
+- ✅ **[U8] Landscape**: the two panes render **side by side**, the
+  spectrogram keeping full height; rotation with no crash.
+- ✅ **[§12] Font scale 1.3**: canvas axis text **grows** (proving the sp
+  conversion — raw pixels would not have), buttons grow, nothing clips, zero
+  FATAL. Two defects it exposed were fixed on the spot: the top-bar title
+  wrapped under the logo (now truncates) and the graph's two axis labels could
+  overlap in a short pane (floor label dropped below a clearance threshold).
+- ✅ **[D5] Metric renamed on screen**: "Émergence NVH" / "Émergence" chips,
+  "Dynamique : Min 0 | Max +20 dB (émergence NVH)" — no "TTNR" anywhere a user
+  reads.
+- ✅ **[§12] Colour is not the only channel**: the GNSS LED shows ● / ✕ with
+  its words in both states (screenshots).
+- ✅ **[V3] Diagnostics**: the Info dialog reports "480 o" and the on-device
+  file contains the session lines **and the exact mic-denial notice triggered
+  during the test** — a field failure now leaves a sendable trace.
+- ✅ **Phase 1–3 / GPS invariants intact after the rewrite**:
+  `LivePipeline produced=6656 consumed=6656 restarts=1 thread=nvh-dsp`, mic
+  `(running)` in LIVE, GNSS `ProviderRequest[@0, HIGH_ACCURACY, WorkSource
+  com.example.nvhspectro]`, zero FATAL/ANR across the whole session.
+- ⏳ **Hardware follow-ups**: a real TalkBack walkthrough (the emulator has no
+  screen reader configured — semantics are set and lint's ContentDescription
+  is armed, but "TalkBack pass on every screen" needs a device); PDF export
+  visually checked on device (closes DEV-10 as well); tablet/large-screen
+  layout (landscape phone verified, a real tablet is a different width class);
+  small-screen check.
+
+### Phase-4 deviations
+
+| ID | Deviation | Rationale |
+|---|---|---|
+| DEV-46 | 4.3 also carries a `ktlint --format` reflow of every file it touched | The palette edits reached nearly all UI files and AGENTS.md requires style checks to run last, after any format. Splitting would have meant reformatting the same lines twice. Baselines regenerated in the same commit; ktlint 3,081 → 747 there |
+| DEV-47 | `Timber` was NOT added (plan 4.7 names it); `DiagnosticLog` is ~110 lines with no new dependency | A Timber `Tree` would still need the same file-writing code; the finding [V3] is "no logging framework, no user-facing error surface", both closed. Consistent with DEV-39's dependency minimalism |
+| DEV-48 | The notice **banner** was kept as the error surface; no SnackbarHost (plan 4.7 names one) | A Snackbar auto-dismisses. For a field instrument a persistent, dismissible banner is strictly better, and Phase 1 already made `analysisNotice` the single message channel. Every notice now also reaches the diagnostic log |
+| DEV-49 | lint's `HardcodedText` is armed but proves nothing here | It only inspects XML layouts; this app is Compose-only. The equivalent gate is the new ci/checks.sh Compose-text check — which is what actually caught nine misses |
+| DEV-50 | `WavReadResult` changed from carrying `message: String` to `reason: WavReadError + detail` | Required to externalise the import errors; it also makes the test assert a typed reason instead of matching French prose that localisation would break |
+| DEV-51 | Emergence-report badge kept its binary ≥ 6 dB rule rather than adopting the 5-step severity ramp used by the 2D graph | A theme/a11y commit must not move a threshold an operator reads as "critical". Unifying the ramp is a measurement decision for the owner |
+| DEV-52 | Gate 4 run on emulator API 37 only | Same constraint as DEV-7/11/38. TalkBack, tablet and small-screen checks flagged above |
+
+### Notes for Phase 5
+
+- `doc/ARCHITECTURE_AND_DSP_METHODS.md` is still v10-stale and the README still
+  claims accelerometer-derived acceleration — both are plan 5.4's step, now the
+  last documentation debt.
+- Decision **D9** (`applicationId` still `com.example.nvhspectro`) and **D1**
+  (git-history purge) remain open; both are plan 5.5/0.1 items.
+- LeakCanary is still not installed (DEV-19/DEV-31) — plan 5.1.
+- The 5-min WAV load-time budget and the macrobenchmark need real hardware.
+- `ci/checks.sh` now carries eight armed gates (binaries, patch scripts,
+  gradlew bit, version single-sourcing, sample rate, `:core` purity, colour
+  literals, Compose text, WebView/INTERNET, dead-code resurrection).
 
 ---
 

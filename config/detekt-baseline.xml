@@ -31,8 +31,6 @@
     <ID>ImplicitDefaultLocale:PngExporter.kt$PngExporter$String.format("%.1fs", tSec)</ID>
     <ID>ImplicitDefaultLocale:PngExporter.kt$PngExporter$String.format("%.2f", telemetry.accelerationG)</ID>
     <ID>ImplicitDefaultLocale:SpectrogramColormap.kt$String.format("%.1fs", tSec)</ID>
-    <ID>ImplicitDefaultLocale:TelemetryGraph.kt$String.format("%.1f %s", maxVal, metric.unit)</ID>
-    <ID>ImplicitDefaultLocale:TelemetryGraph.kt$String.format("%.1f %s", minVal, metric.unit)</ID>
     <ID>InstanceOfCheckForException:RecordingStore.kt$RecordingStore$e is IOException</ID>
     <ID>LongMethod:BiQuadFilter.kt$BiQuadFilter$private fun calculateCoefficients()</ID>
     <ID>LongMethod:EmergenceReportDialog.kt$@Composable fun EmergenceReportRow(entry: EmergenceReportEntry)</ID>

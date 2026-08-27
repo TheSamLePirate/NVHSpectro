@@ -356,10 +356,15 @@ fun TelemetryGraph(
                 native.drawLine(marginLeft, marginTop, marginLeft, marginTop + plotHeight, axisPaint)
                 native.drawLine(marginLeft, marginTop + plotHeight, marginLeft + plotWidth, marginTop + plotHeight, axisPaint)
 
-                val maxStr = String.format("%.1f %s", maxVal, metric.unit)
-                val minStr = String.format("%.1f %s", minVal, metric.unit)
+                val maxStr = String.format(java.util.Locale.getDefault(), "%.1f %s", maxVal, metric.unit)
+                val minStr = String.format(java.util.Locale.getDefault(), "%.1f %s", minVal, metric.unit)
                 native.drawText(maxStr, dimens.markerRadius, marginTop + dimens.labelTextSize, textPaint)
-                native.drawText(minStr, dimens.markerRadius, marginTop + plotHeight - dimens.hairline * 2f, textPaint)
+                // [§12, plan 4.4] In landscape (or at a large font scale) the pane can be
+                // shorter than two stacked labels — drawing both then struck one through the
+                // other. The floor label is dropped rather than overlapping the ceiling one.
+                if (plotHeight > dimens.labelTextSize * MIN_LABEL_CLEARANCE) {
+                    native.drawText(minStr, dimens.markerRadius, marginTop + plotHeight - dimens.hairline * 2f, textPaint)
+                }
             }
 
             if (values.size > 1) {
@@ -457,3 +462,6 @@ fun TelemetryGraph(
         }
     }
 }
+
+/** Vertical room (in label heights) needed before both axis extremes are drawn. */
+private const val MIN_LABEL_CLEARANCE = 3f
