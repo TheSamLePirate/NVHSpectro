@@ -1,6 +1,8 @@
 package com.example.nvhspectro
 
+import android.Manifest
 import android.app.Application
+import android.content.pm.PackageManager
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -51,11 +53,9 @@ class LiveViewModel(
 
     init {
         // [C7] Mic and GPS run only in LIVE mode; [L7] engines reset on transitions.
+        // [U1, plan 4.1] …and only while their permission is actually held.
         unregisterHook =
-            session.registerModeTransitionHook { mode ->
-                captureEngine.setEnabled(mode == AudioSourceMode.LIVE)
-                if (mode == AudioSourceMode.LIVE) speedProvider.start() else speedProvider.stop()
-            }
+            session.registerModeTransitionHook { mode -> applyResourcePolicy(mode) }
         unregisterResettable =
             session.registerAnalysisResettable {
                 liveEngine.reset()
@@ -72,8 +72,35 @@ class LiveViewModel(
             }
         }
         startLivePipeline()
-        speedProvider.start()
+        applyResourcePolicy(session.audioSourceMode.value)
     }
+
+    private fun hasPermission(name: String): Boolean =
+        getApplication<Application>().checkSelfPermission(name) == PackageManager.PERMISSION_GRANTED
+
+    /** Live capture is possible only with RECORD_AUDIO [U1]. */
+    private fun microphoneGranted(): Boolean = hasPermission(Manifest.permission.RECORD_AUDIO)
+
+    /**
+     * Only precise location may drive the metrological chain [GPS-12, GPS-3.2]; without it
+     * there is nothing for [SpeedProvider] to subscribe to but a SecurityException.
+     */
+    private fun preciseLocationGranted(): Boolean = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+
+    /**
+     * The single place that decides whether the mic and the GNSS receiver may run: LIVE mode
+     * AND the corresponding grant. Called on every mode transition and whenever the UI
+     * observes a permission change (including one made in the system settings while the app
+     * was backgrounded) [C7, U1].
+     */
+    private fun applyResourcePolicy(mode: AudioSourceMode) {
+        val live = mode == AudioSourceMode.LIVE
+        captureEngine.setEnabled(live && microphoneGranted())
+        if (live && preciseLocationGranted()) speedProvider.start() else speedProvider.stop()
+    }
+
+    /** Re-applies the policy after a grant/revocation [U1, plan 4.1]. */
+    fun onPermissionsChanged() = applyResourcePolicy(session.audioSourceMode.value)
 
     /** ONE consumer for the app's lifetime; enable/fftSize changes flow through CaptureEngine. */
     private fun startLivePipeline() {

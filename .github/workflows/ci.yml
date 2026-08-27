@@ -47,6 +47,7 @@ jobs:
           unzip -qo /tmp/detekt.zip -d /tmp/detekt
           /tmp/detekt/detekt-cli-${DETEKT_VERSION}/bin/detekt-cli \
             --input app/src,core/src --build-upon-default-config \
+            --config config/detekt/detekt.yml \
             --baseline config/detekt-baseline.xml
 
       - name: Unit tests (characterization suite, :core + :app)

@@ -1,6 +1,5 @@
 package com.example.nvhspectro
 
-import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -49,7 +48,10 @@ import com.example.nvhspectro.theme.NvhStatusGood
 import com.example.nvhspectro.theme.NvhStatusWarn
 import com.example.nvhspectro.theme.NvhTheoretical
 import com.example.nvhspectro.ui.InfoDialog
+import com.example.nvhspectro.ui.NvhPermissions
 import com.example.nvhspectro.ui.OrderSelectionDialog
+import com.example.nvhspectro.ui.PermissionGate
+import com.example.nvhspectro.ui.openAppSettings
 import com.example.nvhspectro.ui.SplashScreen
 import com.example.nvhspectro.ui.TelemetryGraph
 import com.example.nvhspectro.ui.TelemetryMetric
@@ -58,46 +60,35 @@ import com.example.nvhspectro.ui.TelemetryMetric
 @Composable
 fun AppNavigation() {
     var showSplash by remember { mutableStateOf(true) }
-    var permissionsGranted by remember { mutableStateOf(false) }
-
-    val permissionLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestMultiplePermissions(),
-        ) { permissions ->
-            permissionsGranted = permissions.values.all { it }
-        }
-
-    LaunchedEffect(Unit) {
-        permissionLauncher.launch(
-            arrayOf(
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-            ),
-        )
-    }
 
     if (showSplash) {
         SplashScreen(onSplashFinished = { showSplash = false })
-    } else if (permissionsGranted) {
-        // [plan 3.3] Three session-sharing ViewModels replace the monolith.
-        // LiveViewModel first: it registers its transition hooks before the others.
-        val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as android.app.Application
-        val factory = remember { NvhViewModelFactory(app) }
-        val liveVm: LiveViewModel =
-            androidx.lifecycle.viewmodel.compose
-                .viewModel(factory = factory)
-        val analyzerVm: AnalyzerViewModel =
-            androidx.lifecycle.viewmodel.compose
-                .viewModel(factory = factory)
-        val reportVm: ReportViewModel =
-            androidx.lifecycle.viewmodel.compose
-                .viewModel(factory = factory)
-        AppScreen(liveVm, analyzerVm, reportVm)
-    } else {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("En attente des permissions (Microphone, GPS)...")
-        }
+        return
+    }
+
+    // [plan 3.3] Three session-sharing ViewModels replace the monolith.
+    // LiveViewModel first: it registers its transition hooks before the others.
+    val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as android.app.Application
+    val factory = remember { NvhViewModelFactory(app) }
+    val liveVm: LiveViewModel =
+        androidx.lifecycle.viewmodel.compose
+            .viewModel(factory = factory)
+    val analyzerVm: AnalyzerViewModel =
+        androidx.lifecycle.viewmodel.compose
+            .viewModel(factory = factory)
+    val reportVm: ReportViewModel =
+        androidx.lifecycle.viewmodel.compose
+            .viewModel(factory = factory)
+
+    // [U1, plan 4.1] Each permission degrades on its own; only "no microphone AND the user
+    // has not chosen analyzer-only" blocks the UI, and even that offers a way through.
+    PermissionGate(
+        onMicrophoneUnavailable = { liveVm.session.setAudioSourceMode(AudioSourceMode.WAV_ANALYZER) },
+    ) { permissions ->
+        // Capture and GNSS must follow the *actual* grants, not the last-known ones: a
+        // permission revoked from the system settings takes effect on the next resume.
+        LaunchedEffect(permissions) { liveVm.onPermissionsChanged() }
+        AppScreen(liveVm, analyzerVm, reportVm, permissions)
     }
 }
 
@@ -107,6 +98,7 @@ fun AppScreen(
     liveVm: LiveViewModel,
     analyzerVm: AnalyzerViewModel,
     reportVm: ReportViewModel,
+    permissions: NvhPermissions,
 ) {
     val session = liveVm.session
 
@@ -363,7 +355,15 @@ fun AppScreen(
                                     ) {
                                         Button(
                                             onClick = {
-                                                session.setAudioSourceMode(com.example.nvhspectro.AudioSourceMode.LIVE)
+                                                if (permissions.liveCapture) {
+                                                    session.setAudioSourceMode(com.example.nvhspectro.AudioSourceMode.LIVE)
+                                                } else {
+                                                    // [U1] Never a silently dead control: say why, and how to fix it.
+                                                    session.postNotice(
+                                                        "🎙️ Mesure en direct indisponible : autorisation micro refusée. " +
+                                                            "Activez « Micro » dans les réglages Android.",
+                                                    )
+                                                }
                                                 showAudioModeMenu = false
                                             },
                                             modifier =
@@ -374,18 +374,21 @@ fun AppScreen(
                                             colors =
                                                 ButtonDefaults.buttonColors(
                                                     containerColor =
-                                                        if (audioSourceMode ==
+                                                        if (!permissions.liveCapture) {
+                                                            NvhDisabledContainer
+                                                        } else if (audioSourceMode ==
                                                             com.example.nvhspectro.AudioSourceMode.LIVE
                                                         ) {
                                                             NvhActiveContainer
                                                         } else {
                                                             NvhInactiveContainer
                                                         },
-                                                    contentColor = NvhOnSurface,
+                                                    contentColor =
+                                                        if (permissions.liveCapture) NvhOnSurface else NvhDisabledContent,
                                                 ),
                                         ) {
                                             Text(
-                                                text = "🔴 En direct",
+                                                text = if (permissions.liveCapture) "🔴 En direct" else "🚫 En direct",
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
@@ -954,8 +957,46 @@ fun AppScreen(
                                         )
                                     }
 
-                                    // LED GPS
-                                    GpsLedIndicator(status = telemetry.gpsStatus)
+                                    // LED GPS — ou l'état d'autorisation quand il n'y en a pas [U1]
+                                    if (isWavMode || permissions.metrologicalLocation) {
+                                        GpsLedIndicator(status = telemetry.gpsStatus)
+                                    } else {
+                                        LocationPermissionChip(
+                                            coarseOnly = permissions.anyLocation,
+                                            onClick = { context.openAppSettings() },
+                                        )
+                                    }
+                                }
+
+                                // [U1, plan 4.1] Live speed needs precise location. Say so where
+                                // the speed would be, with the one action that fixes it — the
+                                // old build simply showed "--" for ever with no explanation.
+                                if (!isWavMode && !permissions.metrologicalLocation) {
+                                    Surface(
+                                        color = NvhNoticeContainer,
+                                        shape = RoundedCornerShape(4.dp),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, NvhNoticeBorder),
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .clickable { context.openAppSettings() },
+                                    ) {
+                                        Text(
+                                            text =
+                                                if (permissions.anyLocation) {
+                                                    "📍 Localisation approximative seulement — vitesse GNSS, RPM et " +
+                                                        "suivi d'ordre indisponibles. Toucher pour ouvrir les réglages."
+                                                } else {
+                                                    "📍 Localisation non autorisée — vitesse GNSS, RPM et suivi " +
+                                                        "d'ordre indisponibles. Toucher pour ouvrir les réglages."
+                                                },
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = NvhOnNotice,
+                                            lineHeight = 15.sp,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                        )
+                                    }
                                 }
 
                                 // Encart des valeurs instantanées (Vitesse, Accélération, Ordre Traqué)
@@ -1275,6 +1316,33 @@ fun GpsLedIndicator(status: GpsStatus) {
                     .background(color = ledColor, shape = CircleShape),
         )
         Text(text = textLabel, style = MaterialTheme.typography.labelSmall, color = NvhOnSurfaceVariant)
+    }
+}
+
+/**
+ * Replaces the GNSS LED when the app has no precise-location grant [U1, plan 4.1].
+ *
+ * A red LED would claim "signal lost" for something that is not a signal problem at all; the
+ * operator needs to know it is a permission, and be able to act on it from here.
+ */
+@Composable
+fun LocationPermissionChip(
+    coarseOnly: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.clickable(onClick = onClick),
+    ) {
+        Text(text = "Signal GPS", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+        Text(text = "⛔", fontSize = 12.sp)
+        Text(
+            text = if (coarseOnly) "Précision refusée" else "Non autorisé",
+            style = MaterialTheme.typography.labelSmall,
+            color = NvhStatusWarn,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 

@@ -37,8 +37,8 @@ export PATH="$JAVA_HOME/bin:/opt/homebrew/share/android-commandlinetools/platfor
 
 # Style (pinned CLIs; CI downloads the same versions — see .github/workflows/ci.yml):
 .tools/ktlint --baseline=config/ktlint-baseline.xml "app/src/main/**/*.kt" "app/src/test/**/*.kt"
-.tools/detekt-cli-1.23.8/bin/detekt-cli --input app/src --build-upon-default-config \
-  --baseline config/detekt-baseline.xml
+.tools/detekt-cli-1.23.8/bin/detekt-cli --input app/src,core/src --build-upon-default-config \
+  --config config/detekt/detekt.yml --baseline config/detekt-baseline.xml
 ```
 
 Emulator (`NVH_API_37_compact`) regularly half-boots — `sys.boot_completed`=1

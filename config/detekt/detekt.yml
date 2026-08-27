@@ -1,0 +1,15 @@
+# detekt overrides, applied on top of the default config (`--build-upon-default-config`).
+#
+# Two rules were producing baseline noise rather than signal, so every new Compose file grew
+# the baseline instead of being clean [plan 4.1/4.4, AGENTS.md "no baseline growth"].
+naming:
+  FunctionNaming:
+    # @Composable functions are PascalCase by Compose convention — that is the correct name,
+    # not a violation. Non-composable functions keep the standard rule.
+    ignoreAnnotated: ["Composable"]
+
+style:
+  MaxLineLength:
+    # Match ktlint's limit exactly: two tools disagreeing about line length means every file
+    # is guaranteed to violate one of them.
+    maxLineLength: 140
