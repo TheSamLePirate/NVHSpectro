@@ -4,7 +4,7 @@ Live log of the `V13.1-AAA-plan.md` execution. One section per phase: steps,
 commits, verification evidence, and every deviation from the written plan.
 Update this file **in the same session** as the work it describes.
 
-**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0–3 COMPLETE — Gates 0–3 passed on emulator (hardware follow-ups listed per phase)** (2026-08-27)
+**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0–3 COMPLETE; GPS-0 & GPS-1 COMPLETE — Gates 0–3, GPS-0, GPS-1 passed on emulator (hardware follow-ups listed per phase)** (2026-08-27)
 
 ---
 
@@ -199,14 +199,77 @@ Unit tests: **61** total, all green; lint 0 errors; minified release builds; all
 
 ---
 
-## Supplemental GNSS/GPS quality audit — planning only (2026-08-26)
+## Supplemental GNSS/GPS quality audit (2026-08-26) → execution (2026-08-27)
 
 - `audit-gps.md` records a focused measurement-quality audit of the current
   internal-GNSS speed chain, with findings `GPS-01` through `GPS-15`.
 - `plan-gps.md` defines corrective phases `GPS-0` through `GPS-5`, plus the
   optional raw-GNSS R&D phase `GPS-6`, with traceability, tests and field gates.
-- **No application code changed and no GPS finding is closed by these documents.**
-- The emulator evidence for Phase 2 remains valid, but strict Gate 2 acceptance
-  must remain conditional until the three P0 findings are resolved: stale speed
-  invalidation (`GPS-01`), uncertainty-aware estimation (`GPS-02`) and
-  GNSS/audio capture-time alignment (`GPS-03`).
+
+### Phase GPS-0 — Characterization & contracts (COMPLETE, 2026-08-27)
+
+| Step | What was done | Commit |
+|---|---|---|
+| GPS-0.1 | Pure contracts in `:core/data`: `GnssSpeedSample` (fix + callback BOOTTIME, σv nullable — never 0-as-unknown), `SpeedEstimate` (age, validity, nullable sigmas), `EstimateValidity`, `SampleRejection`, `SpeedSampleSource` | `2b911d3` |
+| GPS-0.2 | `SpeedEstimator` interface (`update(sample)`/`estimateAt(time)`/`reset`); `AlphaBetaSpeedEstimator` implements it with **unchanged numerics** (equivalence test); `estimateAt` adds DESCRIPTIVE validity nothing consumed yet — Gate GPS-0's "zero LIVE output change" | `2b911d3` |
+| GPS-0.3 | Pinned defect tests `pinned_gps01/02/04/06/08` froze the frozen-stale-speed, unweighted-σ, no-covariance, incoherent-second-outlier and no-reset-on-transition behaviors | `2b911d3` |
+| GPS-0.4 | `FieldTraceV2` codec (pure, round-trip-tested, empty-field absence — no NaN sentinels) + `FieldLocationLogger` schema v2: callback delivery time, estimator state/validity/rejection per fix, anonymized install UUID + device model in the header | `2b911d3` (+ header-spacing fix) |
+| GPS-0.5 | Units/time bases documented in every touched class header | `2b911d3` |
+
+Gate GPS-0: ✅ all tests green (incl. round-trip), ✅ LIVE outputs unchanged
+(equivalence test `gps0_sampleUpdate_matchesLegacyNumericBehavior`), ✅ no
+numeric sentinel in the new contracts. (`TelemetryData`'s legacy 0-as-unknown
+fields remain until the GPS-4.3 schema work.)
+
+### Phase GPS-1 — P0 integrity & audio time (COMPLETE, 2026-08-27)
+
+| Step | What was done | Commit |
+|---|---|---|
+| GPS-1.1 | **[GPS-01, GPS-08, GPS-09]** `GnssSpeedSession` (:core, pure): `kinematicSpeedMps()` is the ONLY speed the kinematic chain may consume — null once INVALID (no fix / beyond the 2 s horizon), never a frozen number. Explicit rule: PREDICTED allowed in horizon; DEGRADED allowed until GPS-2 (pre-API-26 has no σv). `SpeedProvider.start()/stop()` reset the session — LIVE re-entry serves nothing before the first fresh fix. `LiveViewModel` suspends tracked-order search + harmonic detection on INVALID. KPI card: GPS/Théo show "--" on NONE/INVALID | `6985bb2` |
+| GPS-1.3 | **[GPS-12]** Qualification before the estimator: non-finite/negative speeds, mock fixes (rejected by default, config-allowed for test builds), cached/backlogged fixes (delivery age > 2 s) → typed `SampleRejection`s; σv retained, never substituted by horizontal accuracy | `6985bb2` |
+| GPS-1.2 | **[GPS-03]** `CapturedAudioFrame` + pure `AudioFrameClock` (:core): every window carries first/center BOOTTIME; `AudioRepository` anchors on `AudioRecord.getTimestamp(TIMEBASE_BOOTTIME)` (refreshed ~0.7 s, never downgraded), falls back to read-completion clock marked ESTIMATED (logged once); `LiveViewModel` evaluates speed at `frame.centerTimeNanos` via `SpeedProvider.telemetryAt()` | `8219d31` |
+
+Tests: plan §Tests GPS-1 names implemented (`gps01_*`, `gps03_*`, `gps08_*`,
+`gps09_*`, `gps12_mockFix_*`, `gps13_*`); pinned_gps01/08 replaced by
+fixed-behavior tests in the fixing commits; GPS-02/04/06 pins remain for
+GPS-2. :core coverage stayed ≥ 90 % (94.1 % at GPS-0).
+
+### Gate GPS-1 verification (2026-08-27, emulator NVH_Pixel_7_API_37, debug)
+
+- ✅ **Simulated GNSS loss** (location off mid-session): LED → red "Signal
+  Perdu", speed → **"-- km/h"** (screenshots); no frozen number anywhere.
+- ✅ **LIVE exit → re-entry** (WAV mode round trip): immediately after
+  re-entry the card shows "Signal Perdu" + "--" — **no old speed before the
+  first fresh fix** [GPS-08]; first new fix restores green "Signal OK" +
+  numeric speed within ~5 s. `dumpsys location`: gps `ProviderRequest[OFF]`
+  in WAV mode, `[@0, HIGH_ACCURACY, WorkSource com.example.nvhspectro]` in
+  LIVE; mic appops finalized in WAV, `(running)` in LIVE [C7 intact].
+- ✅ **Zero vs unavailable distinguished**: numeric "0.0 km/h" with a fix
+  present vs "--" without (Gate GPS-1 UI item).
+- ✅ **Pipeline health**: `LivePipeline produced==consumed thread=nvh-dsp`
+  throughout; **zero FATAL**; no "AudioTimestamp unavailable" warning — the
+  HARDWARE timestamp path is active on this AVD.
+- ✅ **v2 drive trace on device**: header `# nvh-field-trace v2 install=<uuid>
+  model=sdk_gphone64_arm64`; rows carry σv=0.5, validity=VALID, empty (null)
+  estimator-σ and rejection columns; fixes at sub-second cadence with
+  callback−fix delivery latency ~10–25 ms.
+- ⏳ **Hardware follow-ups**: API 24 and API 31 device runs (no such AVDs
+  here); artificial DSP-backlog pairing check and ESTIMATED-fallback path need
+  a physical phone; strict Gate GPS-1 device matrix per plan §5.
+
+### GPS deviations
+
+| ID | Deviation | Rationale |
+|---|---|---|
+| DEV-33 | `SampleRejection.NAN_SPEED` renamed `NON_FINITE_SPEED` in GPS-1 (covers ±Inf) | Introduced only one commit earlier; never in any shipped trace |
+| DEV-34 | Validity thresholds (2 s horizon, 350 ms VALID freshness, 2 s delivery age) are named PROVISIONAL constants | Plan §2: thresholds calibrated on data at Gate GPS-5; GPS-2 replaces freshness with covariance |
+| DEV-35 | `TelemetryData.speedValidity` added in-memory only; sidecar export deferred to GPS-4.3 (schema v3) | Changing the sidecar schema piecemeal would burn a version number per phase |
+| DEV-36 | TelemetryGraph still plots the diagnostic theoretical speed during INVALID stretches | Full surface alignment (screen/telemetry/PDF same value+status) is GPS-4.3's step by design |
+| DEV-37 | `gps12_coarsePermission_disablesMetrologicalSpeed` not implemented as a unit test | Permission state is Android-side; coarse-only permission already yields no GPS_PROVIDER fixes → INVALID (fail-safe). Full provider/permission state handling is GPS-3.2 |
+| DEV-38 | Gate GPS-1 run on emulator API 37 only | Same constraint as DEV-7/DEV-11; physical-device matrix flagged above |
+
+**Still open (next: GPS-2):** Kalman filter with σv-weighted updates and
+covariance [GPS-02, GPS-04, GPS-05], NIS-based outlier coherence [GPS-06] —
+their `pinned_*` tests are armed in `SpeedEstimatorContractTest`. Then GPS-3
+(acquisition/diagnostics), GPS-4 (uncertainty → orders, schema v3), GPS-5
+(field validation).
