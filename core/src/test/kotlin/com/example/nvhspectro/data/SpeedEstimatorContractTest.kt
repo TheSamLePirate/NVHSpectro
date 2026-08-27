@@ -7,10 +7,11 @@ import org.junit.Test
 
 /**
  * [plan-gps GPS-0.2, GPS-0.3] The [SpeedEstimator] contract on the α-β
- * implementation, plus pinned characterizations of the defects the GPS plan
- * fixes (GPS-01/02/04/06/08). Pinned tests freeze CURRENT (defective)
- * behavior — update each in the same commit as its fix, never delete one to
- * make a build pass.
+ * implementation. GPS-01/GPS-08 were fixed by GPS-1.1 — their pins became the
+ * gps01_* test here and the gps08_* tests in GnssSpeedSessionTest. The
+ * remaining pinned_* tests freeze the σ-weighting, covariance and
+ * outlier-coherence defects (GPS-02/04/06) until GPS-2 fixes them — update
+ * each in the same commit as its fix, never delete one to make a build pass.
  */
 class SpeedEstimatorContractTest {
     private fun nanos(sec: Double) = (sec * 1e9).toLong()
@@ -81,7 +82,8 @@ class SpeedEstimatorContractTest {
     @Test
     fun gps0_rejectionsAreReported() {
         val e = AlphaBetaSpeedEstimator()
-        assertEquals(SampleRejection.NAN_SPEED, e.update(sample(0.0, Float.NaN)))
+        assertEquals(SampleRejection.NON_FINITE_SPEED, e.update(sample(0.0, Float.NaN)))
+        assertEquals(SampleRejection.NON_FINITE_SPEED, e.update(sample(0.0, Float.POSITIVE_INFINITY)))
         assertNull("seed accepted", e.update(sample(1.0, 10f)))
         assertEquals(SampleRejection.NON_MONOTONIC_TIME, e.update(sample(0.5, 12f)))
         for (i in 2..9) assertNull(e.update(sample(i.toDouble(), 10f)))
@@ -102,17 +104,19 @@ class SpeedEstimatorContractTest {
     // ------------------------------------- pinned current defects (GPS-0.3)
 
     @Test
-    fun pinned_gps01_staleEstimate_keepsServingAFrozenSpeed() {
+    fun gps01_estimatorDescribesStaleStateAsInvalid() {
+        // FIXED by GPS-1.1 (was pinned_gps01): a stale estimate is INVALID and
+        // the kinematic chain gates on that validity, not on the diagnostic
+        // number (which is retained for traces per GPS-D4). The session-level
+        // enforcement tests live in GnssSpeedSessionTest.
         val e = AlphaBetaSpeedEstimator()
         for (i in 0..5) e.update(sample(i.toDouble(), 20f))
-        // 60 s of GNSS loss (tunnel). The estimate DESCRIBES itself as INVALID…
-        val est = e.estimateAt(nanos(65.0))
-        assertEquals(EstimateValidity.INVALID, est.validity)
-        // …but the numeric channel still carries the frozen v + a·2s, and
-        // predictAt — the path SpeedProvider actually reads — returns it too.
-        // GPS-1.1 makes INVALID interrupt the kinematic chain.
-        assertEquals(20f, est.speedMps, 0.5f)
-        assertEquals(20f, e.predictAt(nanos(65.0)), 0.5f)
+        assertEquals(
+            EstimateValidity.PREDICTED,
+            e.estimateAt(nanos(5.0 + 1.9)).validity,
+        )
+        val stale = e.estimateAt(nanos(65.0)) // 60 s of GNSS loss (tunnel)
+        assertEquals(EstimateValidity.INVALID, stale.validity)
     }
 
     @Test
@@ -153,17 +157,5 @@ class SpeedEstimatorContractTest {
         // read as a real step change. GPS-2.2 adds the NIS coherence test.
         assertNull(e.update(sample(11.0, 28f)))
         assertTrue("estimate was pulled by the incoherent pair", e.speedMps > 15f)
-    }
-
-    @Test
-    fun pinned_gps08_sessionRestartWithoutReset_reexposesTheOldSpeed() {
-        val e = AlphaBetaSpeedEstimator()
-        for (i in 0..5) e.update(sample(i.toDouble(), 25f))
-        // LIVE exit then re-entry: SpeedProvider.stop()/start() never calls
-        // reset() today, so before the first new fix the old session's speed
-        // is still served. GPS-1.1 requires a fresh fix after every re-entry.
-        val atReentry = e.estimateAt(nanos(90.0))
-        assertEquals(25f, atReentry.speedMps, 0.5f)
-        assertTrue(e.hasFix)
     }
 }

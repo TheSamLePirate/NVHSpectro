@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.window.Popup
+import com.example.nvhspectro.data.EstimateValidity
 import com.example.nvhspectro.ui.InfoDialog
 import com.example.nvhspectro.ui.OrderSelectionDialog
 import com.example.nvhspectro.ui.SplashScreen
@@ -819,14 +820,41 @@ fun AppScreen(liveVm: LiveViewModel, analyzerVm: AnalyzerViewModel, reportVm: Re
                                 horizontalArrangement = Arrangement.SpaceAround
                             ) {
                                 val isGMPe = kinematicsConfig.isEnabled
+                                // [GPS-1.1 gate] Zero and unavailable are different states:
+                                // no exploitable fix or an expired estimate shows "--",
+                                // never a stale number that looks like a measurement.
+                                val gpsSpeedText =
+                                    if (telemetry.gpsStatus == GpsStatus.NONE) {
+                                        "--"
+                                    } else {
+                                        "%.1f".format(telemetry.speedKmh)
+                                    }
+                                val theoInvalid =
+                                    telemetry.speedValidity == EstimateValidity.INVALID
+                                val theoSpeedText =
+                                    if (theoInvalid) {
+                                        "--"
+                                    } else {
+                                        "%.1f".format(telemetry.theoreticalSpeedKmh)
+                                    }
                                 if (isGMPe) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(text = "Vitesse", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                                        Text(text = "GPS: %.1f".format(telemetry.speedKmh), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color.White)
-                                        Text(text = "Théo: %.1f".format(telemetry.theoreticalSpeedKmh), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color(0xFF0275D8))
+                                        Text(
+                                            text = "GPS: $gpsSpeedText",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White,
+                                        )
+                                        Text(
+                                            text = "Théo: $theoSpeedText",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF0275D8),
+                                        )
                                     }
                                 } else {
-                                    KpiItem("Vitesse", String.format("%.1f km/h", telemetry.speedKmh))
+                                    KpiItem("Vitesse", "$gpsSpeedText km/h")
                                 }
                                 KpiItem("Accélération", String.format("%.2f g", telemetry.accelerationG))
                                 var throttledOrderDbFS by remember { mutableDoubleStateOf(-120.0) }

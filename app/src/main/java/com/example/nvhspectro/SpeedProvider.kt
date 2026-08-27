@@ -10,9 +10,9 @@ import android.os.Bundle
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
-import com.example.nvhspectro.data.AlphaBetaSpeedEstimator
 import com.example.nvhspectro.data.FieldLocationLogger
 import com.example.nvhspectro.data.GnssSpeedSample
+import com.example.nvhspectro.data.GnssSpeedSession
 import com.example.nvhspectro.data.SpeedSampleSource
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -57,7 +57,9 @@ class SpeedProvider(
         if (BuildConfig.DEBUG) FieldLocationLogger(appContext) else null
 
     private val lock = Any()
-    private val estimator = AlphaBetaSpeedEstimator()
+
+    // [GPS-1.1/1.3] Qualification + validity enforcement around the estimator.
+    private val session = GnssSpeedSession()
     private var lastFix: Location? = null
     private var lastFixElapsedNanos = Long.MIN_VALUE
     private var started = false
@@ -103,6 +105,9 @@ class SpeedProvider(
     fun start() {
         if (started) return
         started = true
+        // [GPS-08] A LIVE re-entry is a NEW speed session: no speed from the
+        // previous session may be served before the first fresh fix.
+        reset()
         try {
             if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                 locationManager.requestLocationUpdates(
@@ -139,6 +144,8 @@ class SpeedProvider(
         } catch (e: Exception) {
             Log.w(TAG, "fused unsubscribe failed", e)
         }
+        // [GPS-08] Leaving LIVE ends the speed session as well.
+        reset()
     }
 
     /**
@@ -153,10 +160,21 @@ class SpeedProvider(
 
     fun reset() =
         synchronized(lock) {
-            estimator.reset()
+            session.reset()
             lastFix = null
             lastFixElapsedNanos = Long.MIN_VALUE
             _telemetry.value = TelemetryData()
+        }
+
+    /**
+     * [GPS-03] Estimate evaluated at an explicit BOOTTIME instant — the DSP
+     * consumer passes the AUDIO CAPTURE time of the frame being analyzed, so
+     * a backlogged DSP queue can no longer pair a spectrum with a speed newer
+     * than the sound.
+     */
+    fun telemetryAt(elapsedRealtimeNanos: Long): TelemetryData =
+        synchronized(lock) {
+            buildTelemetry(elapsedRealtimeNanos)
         }
 
     private fun onFix(
@@ -190,10 +208,11 @@ class SpeedProvider(
         synchronized(lock) {
             lastFix = loc
             lastFixElapsedNanos = loc.elapsedRealtimeNanos
-            val rejection = sample?.let { estimator.update(it) }
+            // [GPS-1.3] The session qualifies the sample before the estimator sees it.
+            val rejection = sample?.let { session.update(it) }
             _telemetry.value = buildTelemetry(callbackNanos)
             // [GPS-0.4] Schema-v2 drive trace: raw fix + estimator outcome.
-            fieldLogger?.log(loc, callbackNanos, mock, estimator.estimateAt(callbackNanos), rejection)
+            fieldLogger?.log(loc, callbackNanos, mock, session.estimateAt(callbackNanos), rejection)
         }
     }
 
@@ -209,10 +228,14 @@ class SpeedProvider(
     /** Call under [lock]. */
     private fun buildTelemetry(nowNanos: Long): TelemetryData {
         val fix = lastFix
+        val estimate = session.estimateAt(nowNanos)
         return TelemetryData(
             speedKmh = (fix?.takeIf { it.hasSpeed() }?.speed ?: 0f) * 3.6f,
-            theoreticalSpeedKmh = estimator.predictAt(nowNanos) * 3.6f,
-            accelerationG = estimator.accelMps2 / 9.81f,
+            // Numeric value is diagnostic when INVALID [GPS-D4] — consumers
+            // gate on speedValidity [GPS-09], the UI shows "--".
+            theoreticalSpeedKmh = estimate.speedMps * 3.6f,
+            speedValidity = estimate.validity,
+            accelerationG = estimate.accelerationMps2 / 9.81f,
             altitude = fix?.takeIf { it.hasAltitude() }?.altitude ?: 0.0,
             latitude = fix?.latitude ?: 0.0,
             longitude = fix?.longitude ?: 0.0,

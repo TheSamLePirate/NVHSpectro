@@ -71,7 +71,7 @@ class AlphaBetaSpeedEstimator(
         measuredMps: Float,
         sigmaMps: Float?,
     ): SampleRejection? {
-        if (measuredMps.isNaN()) return SampleRejection.NAN_SPEED
+        if (!measuredMps.isFinite()) return SampleRejection.NON_FINITE_SPEED
         val measured = measuredMps.coerceAtLeast(0f)
 
         if (lastUpdateNanos == Long.MIN_VALUE) {

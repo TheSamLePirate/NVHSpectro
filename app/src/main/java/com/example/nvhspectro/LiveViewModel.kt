@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nvhspectro.data.usableForKinematics
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -130,10 +131,14 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
 
         // Selected-order tracking (active only above 1 km/h).
         val speedKmh = if (kConfig.isEnabled) telemetryForCalc.theoreticalSpeedKmh else telemetryForCalc.speedKmh
+        // [GPS-09, GPS-01] An INVALID estimate (no fix, or beyond the
+        // prediction horizon) must never drive RPM/H1/orders — tracking is
+        // suspended instead of coasting on a frozen speed.
+        val speedUsable = telemetryForCalc.speedValidity.usableForKinematics
         var trackedDbFS = -120.0
         var trackedEmergence = 0.0
         val liveDf = (AudioConfig.LIVE_SAMPLE_RATE_HZ / 2.0) / ttnrSpectrum.size
-        if (kConfig.isEnabled && speedKmh > 1.0f) {
+        if (kConfig.isEnabled && speedUsable && speedKmh > 1.0f) {
             val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
             if (h1FreqHz >= 0.5) {
                 val levels = OrderTrackingEngine.searchTrackedOrder(
@@ -155,7 +160,7 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
 
         // Harmonic detection / emergence report [A2, plan 3.2] — the same
         // engine code as the WAV sweep, on the live-owned instance.
-        if (kConfig.isEnabled && speedKmh > 1.0f) {
+        if (kConfig.isEnabled && speedUsable && speedKmh > 1.0f) {
             val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
             if (h1FreqHz >= 0.5) {
                 val reportList = session.emergenceReportEntries.value.toMutableList()

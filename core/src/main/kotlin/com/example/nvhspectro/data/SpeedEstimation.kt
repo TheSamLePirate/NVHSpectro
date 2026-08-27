@@ -41,17 +41,36 @@ enum class EstimateValidity {
     INVALID,
 }
 
-/** Why a sample did not update the estimator state normally [GPS-06, GPS-13]. */
+/** Why a sample did not update the estimator state normally [GPS-06, GPS-12, GPS-13]. */
 enum class SampleRejection {
-    /** `Location.speed` was NaN. State untouched. */
-    NAN_SPEED,
+    /** `Location.speed` was NaN or infinite. State untouched. */
+    NON_FINITE_SPEED,
+
+    /** Negative speed is nonphysical for a Doppler magnitude [GPS-1.3]. State untouched. */
+    NEGATIVE_SPEED,
 
     /** Fix time not after the previous accepted fix [G1]. State untouched. */
     NON_MONOTONIC_TIME,
 
     /** Residual implies an implausible acceleration; coasted on the prediction [G4]. */
     OUTLIER_COASTED,
+
+    /** Mock-provider fix excluded from measurement mode [GPS-12]. State untouched. */
+    MOCK_FIX,
+
+    /** Fix delivered too long after its own timestamp (cached/backlogged) [GPS-1.3]. */
+    STALE_FIX,
 }
+
+/**
+ * [GPS-09] The explicit rule for computation: INVALID never drives RPM, H1 or
+ * order tracking. PREDICTED is allowed within its horizon (that is the whole
+ * point of the estimator [L5]); DEGRADED is allowed until GPS-2 quantifies
+ * uncertainty, because pre-API-26 devices report no σv at all — the quality
+ * LED already shows the degradation to the operator.
+ */
+val EstimateValidity.usableForKinematics: Boolean
+    get() = this != EstimateValidity.INVALID
 
 /**
  * One qualified GNSS speed measurement, as delivered by Android.
