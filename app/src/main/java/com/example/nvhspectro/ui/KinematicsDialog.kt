@@ -10,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -19,27 +18,29 @@ import androidx.compose.ui.window.Dialog
 import com.example.nvhspectro.data.KinematicsConfig
 import com.example.nvhspectro.data.KinematicsInputMode
 import com.example.nvhspectro.data.toFlexibleDoubleOrNull
+import com.example.nvhspectro.theme.NvhAccent
+import com.example.nvhspectro.theme.NvhOnSurfaceVariant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KinematicsDialog(
     currentConfig: KinematicsConfig,
     onDismiss: () -> Unit,
-    onSave: (KinematicsConfig) -> Unit
+    onSave: (KinematicsConfig) -> Unit,
 ) {
     var isEnabled by remember { mutableStateOf(currentConfig.isEnabled) }
     var selectedMode by remember { mutableStateOf(currentConfig.inputMode) }
-    
+
     var v1000Text by remember { mutableStateOf(currentConfig.v1000Kmh.toString()) }
     var globalRatioText by remember { mutableStateOf(currentConfig.globalGearRatio.toString()) }
     var reductionRatioText by remember { mutableStateOf(currentConfig.gearReductionRatio.toString()) }
     var axleRatioText by remember { mutableStateOf(currentConfig.axleRatio.toString()) }
     var wheelRadiusText by remember { mutableStateOf(currentConfig.wheelRadiusMeters.toString()) }
-    
+
     var tireWidthText by remember { mutableStateOf(currentConfig.tireWidthMm.toString()) }
     var tireAspectRatioText by remember { mutableStateOf(currentConfig.tireAspectRatio.toString()) }
     var rimDiameterText by remember { mutableStateOf(currentConfig.rimDiameterInches.toString()) }
-    
+
     var vehicleName by remember { mutableStateOf(currentConfig.vehicleName) }
     var motorName by remember { mutableStateOf(currentConfig.motorName) }
     var comments by remember { mutableStateOf(currentConfig.comments) }
@@ -47,31 +48,44 @@ fun KinematicsDialog(
     var targetHarmonicsText by remember { mutableStateOf(currentConfig.targetHarmonicsText) }
 
     // Construction de la configuration temporaire pour calculs en temps réel
-    val tempConfig = remember(
-        isEnabled, selectedMode, v1000Text, globalRatioText, 
-        reductionRatioText, axleRatioText, tireWidthText, tireAspectRatioText, 
-        rimDiameterText, wheelRadiusText, vehicleName, motorName, comments, holdTimeText, targetHarmonicsText
-    ) {
-        // [C11] Flexible parsing accepts French comma decimals; invalid fields are
-        // flagged red below instead of silently reverting to defaults.
-        KinematicsConfig(
-            isEnabled = isEnabled,
-            inputMode = selectedMode,
-            v1000Kmh = v1000Text.toFlexibleDoubleOrNull() ?: 10.0,
-            globalGearRatio = globalRatioText.toFlexibleDoubleOrNull() ?: 9.5,
-            gearReductionRatio = reductionRatioText.toFlexibleDoubleOrNull() ?: 3.2,
-            axleRatio = axleRatioText.toFlexibleDoubleOrNull() ?: 3.0,
-            tireWidthMm = tireWidthText.trim().toIntOrNull() ?: 205,
-            tireAspectRatio = tireAspectRatioText.trim().toIntOrNull() ?: 55,
-            rimDiameterInches = rimDiameterText.trim().toIntOrNull() ?: 16,
-            wheelRadiusMeters = wheelRadiusText.toFlexibleDoubleOrNull() ?: 0.31,
-            vehicleName = vehicleName,
-            motorName = motorName,
-            comments = comments,
-            holdTimeSec = holdTimeText.toFlexibleDoubleOrNull() ?: 3.0,
-            targetHarmonicsText = targetHarmonicsText
-        )
-    }
+    val tempConfig =
+        remember(
+            isEnabled,
+            selectedMode,
+            v1000Text,
+            globalRatioText,
+            reductionRatioText,
+            axleRatioText,
+            tireWidthText,
+            tireAspectRatioText,
+            rimDiameterText,
+            wheelRadiusText,
+            vehicleName,
+            motorName,
+            comments,
+            holdTimeText,
+            targetHarmonicsText,
+        ) {
+            // [C11] Flexible parsing accepts French comma decimals; invalid fields are
+            // flagged red below instead of silently reverting to defaults.
+            KinematicsConfig(
+                isEnabled = isEnabled,
+                inputMode = selectedMode,
+                v1000Kmh = v1000Text.toFlexibleDoubleOrNull() ?: 10.0,
+                globalGearRatio = globalRatioText.toFlexibleDoubleOrNull() ?: 9.5,
+                gearReductionRatio = reductionRatioText.toFlexibleDoubleOrNull() ?: 3.2,
+                axleRatio = axleRatioText.toFlexibleDoubleOrNull() ?: 3.0,
+                tireWidthMm = tireWidthText.trim().toIntOrNull() ?: 205,
+                tireAspectRatio = tireAspectRatioText.trim().toIntOrNull() ?: 55,
+                rimDiameterInches = rimDiameterText.trim().toIntOrNull() ?: 16,
+                wheelRadiusMeters = wheelRadiusText.toFlexibleDoubleOrNull() ?: 0.31,
+                vehicleName = vehicleName,
+                motorName = motorName,
+                comments = comments,
+                holdTimeSec = holdTimeText.toFlexibleDoubleOrNull() ?: 3.0,
+                targetHarmonicsText = targetHarmonicsText,
+            )
+        }
 
     val effectiveV1000 = tempConfig.getEffectiveV1000()
     val h1At50KmhHz = tempConfig.calculateH1FreqHz(50f)
@@ -82,31 +96,33 @@ fun KinematicsDialog(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
         ) {
             Column(
-                modifier = Modifier
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                modifier =
+                    Modifier
+                        .padding(20.dp)
+                        .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 // Titre
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = "⚙️ Paramètres GMPe & Cinématique",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp
+                        fontSize = 17.sp,
                     )
                     Switch(
                         checked = isEnabled,
-                        onCheckedChange = { isEnabled = it }
+                        onCheckedChange = { isEnabled = it },
                     )
                 }
 
@@ -119,14 +135,14 @@ fun KinematicsDialog(
                     onValueChange = { vehicleName = it },
                     label = { Text("Nom / Modèle Véhicule") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = motorName,
                     onValueChange = { motorName = it },
                     label = { Text("Nom Moteur / GMPe") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Divider()
@@ -135,14 +151,14 @@ fun KinematicsDialog(
                 Text("📐 Méthode de Calcul V1000 & Cinématique", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     KinematicsInputMode.values().forEach { mode ->
                         FilterChip(
                             selected = (selectedMode == mode),
                             onClick = { selectedMode = mode },
                             label = { Text(mode.label, fontSize = 10.5.sp) },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -162,7 +178,7 @@ fun KinematicsDialog(
                                     Text("Nombre invalide (ex : 9.5 ou 9,5)")
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                     KinematicsInputMode.GEAR_RATIO -> {
@@ -173,15 +189,15 @@ fun KinematicsDialog(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             singleLine = true,
                             isError = globalRatioText.toFlexibleDoubleOrNull() == null,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         )
-                        
+
                         // Dimensions Pneu Vendeur (ex: 205 / 55 R 16)
                         Text("🛞 Dimension Pneu (Marquage Flanc)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             OutlinedTextField(
                                 value = tireWidthText,
@@ -189,7 +205,7 @@ fun KinematicsDialog(
                                 label = { Text("Largeur", fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
-                                modifier = Modifier.weight(1.1f)
+                                modifier = Modifier.weight(1.1f),
                             )
                             Text("/", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             OutlinedTextField(
@@ -198,7 +214,7 @@ fun KinematicsDialog(
                                 label = { Text("Ratio %", fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
                             Text("R", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             OutlinedTextField(
@@ -207,7 +223,7 @@ fun KinematicsDialog(
                                 label = { Text("Jante (\")", fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
                         }
                         val computedR = tempConfig.calculateWheelRadiusMeters()
@@ -215,7 +231,7 @@ fun KinematicsDialog(
                             text = "📏 Rayon calculé : %.3f m (Circonférence = %.2f m)".format(computedR, 2.0 * Math.PI * computedR),
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
                         )
                     }
                     KinematicsInputMode.DETAILED_CHAIN -> {
@@ -227,7 +243,7 @@ fun KinematicsDialog(
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true,
                                 isError = reductionRatioText.toFlexibleDoubleOrNull() == null,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
                             OutlinedTextField(
                                 value = axleRatioText,
@@ -236,16 +252,16 @@ fun KinematicsDialog(
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true,
                                 isError = axleRatioText.toFlexibleDoubleOrNull() == null,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
                         }
-                        
+
                         // Dimensions Pneu Vendeur (ex: 205 / 55 R 16)
                         Text("🛞 Dimension Pneu (Marquage Flanc)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             OutlinedTextField(
                                 value = tireWidthText,
@@ -253,7 +269,7 @@ fun KinematicsDialog(
                                 label = { Text("Largeur", fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
-                                modifier = Modifier.weight(1.1f)
+                                modifier = Modifier.weight(1.1f),
                             )
                             Text("/", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             OutlinedTextField(
@@ -262,7 +278,7 @@ fun KinematicsDialog(
                                 label = { Text("Ratio %", fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
                             Text("R", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             OutlinedTextField(
@@ -271,7 +287,7 @@ fun KinematicsDialog(
                                 label = { Text("Jante (\")", fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
                         }
                         val computedR = tempConfig.calculateWheelRadiusMeters()
@@ -279,33 +295,34 @@ fun KinematicsDialog(
                             text = "📏 Rayon calculé : %.3f m (Circonférence = %.2f m)".format(computedR, 2.0 * Math.PI * computedR),
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
                         )
                     }
                 }
 
                 // Carte récapitulative des valeurs calculées
                 Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        ),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "📐 Synthèse V1000 & Fondamental H1 :",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
                         )
                         Text(
                             text = "• V1000 équivalente : %.2f km/h / 1000 RPM".format(effectiveV1000),
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
                         )
                         Text(
                             text = "• À 50 km/h : %d RPM ➔ H1 = %.2f Hz".format(rpmAt50Kmh, h1At50KmhHz),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }
@@ -321,15 +338,17 @@ fun KinematicsDialog(
                     placeholder = { Text("Ex: 7.4, 18, 22.2, 36") },
                     supportingText = {
                         Text(
-                            text = if (targetHarmonicsText.isNotBlank())
-                                "✓ Seules les harmoniques renseignées apparaîtront dans le rapport et sur le spectrogramme."
-                            else
-                                "Laisser vide pour tout détecter. Saisissez des ordres séparés par des virgules (ex: 7.4, 18, 22.2).",
+                            text =
+                                if (targetHarmonicsText.isNotBlank()) {
+                                    "✓ Seules les harmoniques renseignées apparaîtront dans le rapport et sur le spectrogramme."
+                                } else {
+                                    "Laisser vide pour tout détecter. Saisissez des ordres séparés par des virgules (ex: 7.4, 18, 22.2)."
+                                },
                             fontSize = 11.sp,
-                            color = if (targetHarmonicsText.isNotBlank()) Color(0xFF00E5FF) else Color.Gray
+                            color = if (targetHarmonicsText.isNotBlank()) NvhAccent else NvhOnSurfaceVariant,
                         )
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 Divider()
@@ -343,7 +362,7 @@ fun KinematicsDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
                         isError = holdTimeText.toFlexibleDoubleOrNull() == null,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                 }
 
@@ -352,14 +371,14 @@ fun KinematicsDialog(
                     onValueChange = { comments = it },
                     label = { Text("Commentaires libres d'essai") },
                     maxLines = 3,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 // Boutons d'action
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(onClick = onDismiss) {
                         Text("Annuler")

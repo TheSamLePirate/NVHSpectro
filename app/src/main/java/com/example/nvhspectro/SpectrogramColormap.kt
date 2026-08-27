@@ -30,6 +30,10 @@ import com.example.nvhspectro.data.SmartTrackedOrder
 import com.example.nvhspectro.data.TrackedHarmonicTag
 import com.example.nvhspectro.data.AudioFilter
 import com.example.nvhspectro.data.FilterType
+import com.example.nvhspectro.theme.NvhCanvas
+import com.example.nvhspectro.theme.NvhModeWavAccent
+import com.example.nvhspectro.theme.NvhOnSurface
+import com.example.nvhspectro.theme.NvhStatusBad
 import kotlin.math.max
 import kotlin.math.min
 
@@ -40,7 +44,7 @@ data class EmergencePeak(
     val binIndex: Int,
     val freqHz: Int,
     val ttnrDb: Double,
-    val absDbFS: Double
+    val absDbFS: Double,
 )
 
 /**
@@ -52,17 +56,37 @@ fun getJetColorInt(v: Float): Int {
     var g = 1f
     var b = 1f
     when {
-        v < 0.125f -> { r = 0f; g = 0f; b = 0.5f + 4f * v }
-        v < 0.375f -> { r = 0f; g = 4f * (v - 0.125f); b = 1f }
-        v < 0.625f -> { r = 4f * (v - 0.375f); g = 1f; b = 1f - 4f * (v - 0.375f) }
-        v < 0.875f -> { r = 1f; g = 1f - 4f * (v - 0.625f); b = 0f }
-        else -> { r = 1f - 4f * (v - 0.875f); g = 0f; b = 0f }
+        v < 0.125f -> {
+            r = 0f
+            g = 0f
+            b = 0.5f + 4f * v
+        }
+        v < 0.375f -> {
+            r = 0f
+            g = 4f * (v - 0.125f)
+            b = 1f
+        }
+        v < 0.625f -> {
+            r = 4f * (v - 0.375f)
+            g = 1f
+            b = 1f - 4f * (v - 0.375f)
+        }
+        v < 0.875f -> {
+            r = 1f
+            g = 1f - 4f * (v - 0.625f)
+            b = 0f
+        }
+        else -> {
+            r = 1f - 4f * (v - 0.875f)
+            g = 0f
+            b = 0f
+        }
     }
     return AndroidColor.argb(
         255,
         (r * 255).toInt(),
         (g * 255).toInt(),
-        (b * 255).toInt()
+        (b * 255).toInt(),
     )
 }
 
@@ -98,7 +122,7 @@ fun SpectrogramCanvas(
     manualTrackedOrders: List<SmartTrackedOrder> = emptyList(),
     selectedManualOrder: SmartTrackedOrder? = null,
     isBrillanceModeEnabled: Boolean = false,
-    onAddManualPoint: (Int, Int) -> Unit = { _, _ -> }
+    onAddManualPoint: (Int, Int) -> Unit = { _, _ -> },
 ) {
     if (history.isEmpty()) {
         Canvas(modifier = modifier.fillMaxSize()) {}
@@ -115,18 +139,19 @@ fun SpectrogramCanvas(
 
     // [P1, plan 3.5] Full-file bitmaps are downsampled to the producer's
     // column budget instead of one column per FFT frame (~13k for 5 min).
-    val bitmapWidth = if ((isWavAnalyzerMode || isReportModeActive) && history.isNotEmpty()) {
-        SpectrogramImageProducer.columnsFor(history.size)
-    } else {
-        historySize
-    }
+    val bitmapWidth =
+        if ((isWavAnalyzerMode || isReportModeActive) && history.isNotEmpty()) {
+            SpectrogramImageProducer.columnsFor(history.size)
+        } else {
+            historySize
+        }
     val bitmapHeight = displayedBinCount
 
     var cursorYRatio by remember { mutableFloatStateOf(0.5f) }
-    
+
     var zoom by remember { mutableFloatStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
-    
+
     LaunchedEffect(isReportModeActive) {
         if (!isReportModeActive) {
             zoom = 1f
@@ -139,29 +164,32 @@ fun SpectrogramCanvas(
     val pulsePhase by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulsePhase"
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(600, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+        label = "pulsePhase",
     )
     val pulseRadius by infiniteTransition.animateFloat(
         initialValue = 8f,
         targetValue = 18f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseRadius"
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+        label = "pulseRadius",
     )
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.8f,
         targetValue = 0.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseAlpha"
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(1000, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+        label = "pulseAlpha",
     )
 
     val effectiveMin = if (displayMode == DisplayMode.TTNR) 1.0 else minDb
@@ -172,329 +200,371 @@ fun SpectrogramCanvas(
     // without per-frame allocation. (The old code mutated one remembered
     // bitmap in a LaunchedEffect and relied on an unrelated recomposition to
     // repaint — the "black spectrogram until first interaction" quirk.)
-    val producer = remember(bitmapWidth, bitmapHeight) {
-        SpectrogramImageProducer(bitmapWidth, bitmapHeight)
-    }
+    val producer =
+        remember(bitmapWidth, bitmapHeight) {
+            SpectrogramImageProducer(bitmapWidth, bitmapHeight)
+        }
     val imageBitmap by produceState<androidx.compose.ui.graphics.ImageBitmap?>(
         initialValue = null,
-        history, effectiveMin, effectiveMax, displayMode, isWavAnalyzerMode, isReportModeActive, minBin, maxBin, producer
+        history,
+        effectiveMin,
+        effectiveMax,
+        displayMode,
+        isWavAnalyzerMode,
+        isReportModeActive,
+        minBin,
+        maxBin,
+        producer,
     ) {
         if (history.isNotEmpty()) {
             val isTtnr = displayMode == DisplayMode.TTNR
             // [D7, plan 3.7] Sub-30 Hz floor is applied here, at the display layer.
             val maskBelowBin = Math.ceil(AudioConfig.DISPLAY_MIN_FREQ_HZ * totalBinCount / nyquistFreq).toInt()
-            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                if (isWavAnalyzerMode || isReportModeActive) {
-                    producer.renderFull(history, minBin, maxBin, effectiveMin, effectiveMax, isTtnr, maskBelowBin)
-                } else {
-                    // [plan 3.4] Chronological history: the newest frame is LAST.
-                    producer.appendLatest(history.last(), minBin, maxBin, effectiveMin, effectiveMax, isTtnr, maskBelowBin)
-                }
-            }.asImageBitmap()
-        }
-    }
-    
-    val textPaint = remember {
-        Paint().apply {
-            color = AndroidColor.WHITE
-            textSize = 32f
-            typeface = Typeface.DEFAULT_BOLD
-            isAntiAlias = true
+            value =
+                kotlinx.coroutines
+                    .withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        if (isWavAnalyzerMode || isReportModeActive) {
+                            producer.renderFull(history, minBin, maxBin, effectiveMin, effectiveMax, isTtnr, maskBelowBin)
+                        } else {
+                            // [plan 3.4] Chronological history: the newest frame is LAST.
+                            producer.appendLatest(history.last(), minBin, maxBin, effectiveMin, effectiveMax, isTtnr, maskBelowBin)
+                        }
+                    }.asImageBitmap()
         }
     }
 
-    val tickPaint = remember {
-        Paint().apply {
-            color = AndroidColor.WHITE
-            strokeWidth = 3f
-            isAntiAlias = true
+    val textPaint =
+        remember {
+            Paint().apply {
+                color = AndroidColor.WHITE
+                textSize = 32f
+                typeface = Typeface.DEFAULT_BOLD
+                isAntiAlias = true
+            }
         }
-    }
+
+    val tickPaint =
+        remember {
+            Paint().apply {
+                color = AndroidColor.WHITE
+                strokeWidth = 3f
+                isAntiAlias = true
+            }
+        }
 
     // Peinture très visible pour le curseur (ligne blanche avec ombre noire)
-    val cursorLinePaint = remember {
-        Paint().apply {
-            color = AndroidColor.WHITE // Blanc pur
-            style = Paint.Style.STROKE
-            strokeWidth = 3.0f
-            pathEffect = DashPathEffect(floatArrayOf(12f, 8f), 0f)
-            setShadowLayer(4.0f, 0f, 0f, AndroidColor.BLACK)
-            isAntiAlias = true
+    val cursorLinePaint =
+        remember {
+            Paint().apply {
+                color = AndroidColor.WHITE // Blanc pur
+                style = Paint.Style.STROKE
+                strokeWidth = 3.0f
+                pathEffect = DashPathEffect(floatArrayOf(12f, 8f), 0f)
+                setShadowLayer(4.0f, 0f, 0f, AndroidColor.BLACK)
+                isAntiAlias = true
+            }
         }
-    }
 
     // Peinture pour la courbe H1 (Violet vif, trait épais, légèrement transparent)
-    val h1LinePaint = remember {
-        Paint().apply {
-            color = AndroidColor.parseColor("#D500F9")
-            alpha = 178 // ~70% opaque (30% transparent)
-            style = Paint.Style.STROKE
-            strokeWidth = 5.0f
-            pathEffect = DashPathEffect(floatArrayOf(15f, 10f), 0f)
-            isAntiAlias = true
+    val h1LinePaint =
+        remember {
+            Paint().apply {
+                color = AndroidColor.parseColor("#D500F9")
+                alpha = 178 // ~70% opaque (30% transparent)
+                style = Paint.Style.STROKE
+                strokeWidth = 5.0f
+                pathEffect = DashPathEffect(floatArrayOf(15f, 10f), 0f)
+                isAntiAlias = true
+            }
         }
-    }
 
-    val cursorBadgeBgPaint = remember {
-        Paint().apply {
-            color = AndroidColor.parseColor("#E6002A36") // Cyan très sombre translucide
-            style = Paint.Style.FILL
-            isAntiAlias = true
+    val cursorBadgeBgPaint =
+        remember {
+            Paint().apply {
+                color = AndroidColor.parseColor("#E6002A36") // Cyan très sombre translucide
+                style = Paint.Style.FILL
+                isAntiAlias = true
+            }
         }
-    }
 
-    val cursorBadgeTextPaint = remember {
-        Paint().apply {
-            color = AndroidColor.parseColor("#00E5FF")
-            textSize = 30f
-            typeface = Typeface.DEFAULT_BOLD
-            isAntiAlias = true
+    val cursorBadgeTextPaint =
+        remember {
+            Paint().apply {
+                color = AndroidColor.parseColor("#00E5FF")
+                textSize = 30f
+                typeface = Typeface.DEFAULT_BOLD
+                isAntiAlias = true
+            }
         }
-    }
 
     // Peintures pour les Balises d'Émergence
-    val beaconPulsePaint = remember {
-        Paint().apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 4f
-            isAntiAlias = true
+    val beaconPulsePaint =
+        remember {
+            Paint().apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 4f
+                isAntiAlias = true
+            }
         }
-    }
 
-    val beaconCenterPaint = remember {
-        Paint().apply {
-            style = Paint.Style.FILL
-            isAntiAlias = true
+    val beaconCenterPaint =
+        remember {
+            Paint().apply {
+                style = Paint.Style.FILL
+                isAntiAlias = true
+            }
         }
-    }
 
-    val beaconBadgeBgPaint = remember {
-        Paint().apply {
-            color = AndroidColor.parseColor("#EE1A1A2E") // Sombre translucide
-            style = Paint.Style.FILL
-            isAntiAlias = true
+    val beaconBadgeBgPaint =
+        remember {
+            Paint().apply {
+                color = AndroidColor.parseColor("#EE1A1A2E") // Sombre translucide
+                style = Paint.Style.FILL
+                isAntiAlias = true
+            }
         }
-    }
 
-    val beaconBadgeTextPaint = remember {
-        Paint().apply {
-            textSize = 26f
-            typeface = Typeface.DEFAULT_BOLD
-            isAntiAlias = true
+    val beaconBadgeTextPaint =
+        remember {
+            Paint().apply {
+                textSize = 26f
+                typeface = Typeface.DEFAULT_BOLD
+                isAntiAlias = true
+            }
         }
-    }
 
     // [P2, plan 3.5] Paints hoisted out of the 43 Hz draw loop.
-    val filterFillPaint = remember {
-        Paint().apply {
-            style = Paint.Style.FILL
-            isAntiAlias = true
-            xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SCREEN)
+    val filterFillPaint =
+        remember {
+            Paint().apply {
+                style = Paint.Style.FILL
+                isAntiAlias = true
+                xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SCREEN)
+            }
         }
-    }
-    val filterStrokePaint = remember {
-        Paint().apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 5f
-            isAntiAlias = true
+    val filterStrokePaint =
+        remember {
+            Paint().apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 5f
+                isAntiAlias = true
+            }
         }
-    }
-    val manualTagBgPaint = remember {
-        Paint().apply {
-            style = Paint.Style.FILL
-            isAntiAlias = true
+    val manualTagBgPaint =
+        remember {
+            Paint().apply {
+                style = Paint.Style.FILL
+                isAntiAlias = true
+            }
         }
-    }
-    val manualTagTextPaint = remember {
-        Paint().apply {
-            color = AndroidColor.WHITE
-            textSize = 28f
-            typeface = Typeface.DEFAULT_BOLD
-            isAntiAlias = true
+    val manualTagTextPaint =
+        remember {
+            Paint().apply {
+                color = AndroidColor.WHITE
+                textSize = 28f
+                typeface = Typeface.DEFAULT_BOLD
+                isAntiAlias = true
+            }
         }
-    }
-    val manualTagLeaderPaint = remember {
-        Paint().apply {
-            color = AndroidColor.WHITE
-            strokeWidth = 2f
-            isAntiAlias = true
-            alpha = 150
+    val manualTagLeaderPaint =
+        remember {
+            Paint().apply {
+                color = AndroidColor.WHITE
+                strokeWidth = 2f
+                isAntiAlias = true
+                alpha = 150
+            }
         }
-    }
-    val harmonicTagBgPaint = remember {
-        Paint().apply {
-            style = Paint.Style.FILL
-            isAntiAlias = true
+    val harmonicTagBgPaint =
+        remember {
+            Paint().apply {
+                style = Paint.Style.FILL
+                isAntiAlias = true
+            }
         }
-    }
-    val harmonicTagBorderPaint = remember {
-        Paint().apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 2.5f
-            isAntiAlias = true
+    val harmonicTagBorderPaint =
+        remember {
+            Paint().apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 2.5f
+                isAntiAlias = true
+            }
         }
-    }
-    val harmonicTagTextPaint = remember {
-        Paint().apply {
-            color = AndroidColor.WHITE
-            textSize = 22f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            isAntiAlias = true
+    val harmonicTagTextPaint =
+        remember {
+            Paint().apply {
+                color = AndroidColor.WHITE
+                textSize = 22f
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                isAntiAlias = true
+            }
         }
-    }
 
     // --- DÉTECTION DES PICS D'ÉMERGENCE SUR LA TRAME COURANTE ---
-    val detectedPeaks = remember(absHistory, ttnrHistory, isDetectorEnabled, emergenceThresholdDb, magnitudeGateDbFS, minBin, maxBin) {
-        val peaksList = mutableListOf<EmergencePeak>()
-        if (isDetectorEnabled && absHistory.isNotEmpty() && ttnrHistory.isNotEmpty()) {
-            // [plan 3.4] Chronological history: the latest frame is LAST.
-            val latestAbs = absHistory.last()
-            val latestTtnr = ttnrHistory.last()
-            val startBin = maxOf(1, minBin)
-            val endBin = minOf(latestAbs.size - 1, latestTtnr.size - 1, maxBin)
+    val detectedPeaks =
+        remember(absHistory, ttnrHistory, isDetectorEnabled, emergenceThresholdDb, magnitudeGateDbFS, minBin, maxBin) {
+            val peaksList = mutableListOf<EmergencePeak>()
+            if (isDetectorEnabled && absHistory.isNotEmpty() && ttnrHistory.isNotEmpty()) {
+                // [plan 3.4] Chronological history: the latest frame is LAST.
+                val latestAbs = absHistory.last()
+                val latestTtnr = ttnrHistory.last()
+                val startBin = maxOf(1, minBin)
+                val endBin = minOf(latestAbs.size - 1, latestTtnr.size - 1, maxBin)
 
-            for (i in startBin until endBin) {
-                val ttnr = latestTtnr[i].toDouble()
-                val absVal = latestAbs[i].toDouble()
-                val freqHz = (i * nyquistFreq).toDouble() / totalBinCount
+                for (i in startBin until endBin) {
+                    val ttnr = latestTtnr[i].toDouble()
+                    val absVal = latestAbs[i].toDouble()
+                    val freqHz = (i * nyquistFreq).toDouble() / totalBinCount
 
-                val reqThreshold = when {
-                    freqHz < 1500.0 -> maxOf(emergenceThresholdDb, 4.2)
-                    freqHz < 4000.0 -> maxOf(emergenceThresholdDb, 3.2)
-                    else -> emergenceThresholdDb
-                }
+                    val reqThreshold =
+                        when {
+                            freqHz < 1500.0 -> maxOf(emergenceThresholdDb, 4.2)
+                            freqHz < 4000.0 -> maxOf(emergenceThresholdDb, 3.2)
+                            else -> emergenceThresholdDb
+                        }
 
-                val reqGate = when {
-                    freqHz < 500.0 -> maxOf(magnitudeGateDbFS, -75.0)
-                    freqHz < 3000.0 -> maxOf(magnitudeGateDbFS, -85.0)
-                    else -> magnitudeGateDbFS
-                }
+                    val reqGate =
+                        when {
+                            freqHz < 500.0 -> maxOf(magnitudeGateDbFS, -75.0)
+                            freqHz < 3000.0 -> maxOf(magnitudeGateDbFS, -85.0)
+                            else -> magnitudeGateDbFS
+                        }
 
-                val prevTtnr = latestTtnr[i - 1].toDouble()
-                val nextTtnr = latestTtnr[i + 1].toDouble()
+                    val prevTtnr = latestTtnr[i - 1].toDouble()
+                    val nextTtnr = latestTtnr[i + 1].toDouble()
 
-                // Validation Pic Structuré NVH (anti-spikes isolés de 1 pixel)
-                if (ttnr >= reqThreshold && absVal >= reqGate && (prevTtnr > 0.5 || nextTtnr > 0.5)) {
-                    if (ttnr >= prevTtnr && ttnr >= nextTtnr) {
-                        peaksList.add(EmergencePeak(i, freqHz.toInt(), ttnr, absVal))
-                    }
-                }
-            }
-
-            // Non-Maximum Suppression NVH v7 : Trier par TTNR décroissant et éliminer les doublons proches (< 4 bins)
-            peaksList.sortByDescending { it.ttnrDb }
-            val filteredPeaks = mutableListOf<EmergencePeak>()
-            for (p in peaksList) {
-                if (filteredPeaks.none { Math.abs(it.binIndex - p.binIndex) < 4 }) {
-                    filteredPeaks.add(p)
-                }
-                if (filteredPeaks.size >= 12) break // Retenir au maximum les 12 plus fortes émergences (ordres + sifflements HF)
-            }
-            filteredPeaks
-        } else {
-            emptyList()
-        }
-    }
-
-    Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(isReportModeActive, isDrawingMode, bitmapWidth, bitmapHeight) {
-                if (isReportModeActive && isDrawingMode) {
-                    detectTapGestures { offset ->
-                        val w = size.width.toFloat()
-                        val h = size.height.toFloat()
-                        val marginLeft = 150f
-                        val marginTop = 60f
-                        val marginBottom = 120f
-                        val marginRight = 40f
-                        val plotWidth = w - marginLeft - marginRight
-                        val plotHeight = h - marginTop - marginBottom
-                        if (w <= 0 || h <= 0 || plotWidth <= 50f || plotHeight <= 50f) return@detectTapGestures
-                        
-                        val touchX = offset.x
-                        val touchY = offset.y
-                        // modifier.pointerInput is AFTER graphicsLayer, so the framework already inverse-transforms the offset.
-                        val inverseTouchX = touchX
-                        val inverseTouchY = touchY
-                        
-                        if (inverseTouchX in marginLeft..(w-marginRight) && inverseTouchY in marginTop..(h-marginBottom)) {
-                            val x = inverseTouchX - marginLeft
-                            val y = inverseTouchY - marginTop
-                            
-                            val vX = (x - pan.x) / zoom
-                            val vY = (y - pan.y) / zoom
-                            
-                            val bitmapX = if (plotWidth > 0) (vX / plotWidth) * bitmapWidth else 0f
-                            val bitmapY = if (plotHeight > 0) (vY / plotHeight) * bitmapHeight else 0f
-                            
-                            val numFrames = history.size
-                            val frameIndex = if (bitmapWidth > 0) ((bitmapX / bitmapWidth) * (numFrames - 1)).toInt().coerceIn(0, numFrames - 1) else 0
-                            
-                            val displayedBinCount = (maxBin - minBin).coerceAtLeast(1)
-                            val binIndex = (maxBin - 1) - if (bitmapHeight > 0) ((bitmapY / bitmapHeight) * (displayedBinCount - 1)).toInt() else 0
-                            
-                            onAddManualPoint(frameIndex, binIndex.coerceIn(minBin, maxBin - 1))
+                    // Validation Pic Structuré NVH (anti-spikes isolés de 1 pixel)
+                    if (ttnr >= reqThreshold && absVal >= reqGate && (prevTtnr > 0.5 || nextTtnr > 0.5)) {
+                        if (ttnr >= prevTtnr && ttnr >= nextTtnr) {
+                            peaksList.add(EmergencePeak(i, freqHz.toInt(), ttnr, absVal))
                         }
                     }
-                } else {
-                    detectTransformGestures { centroid, panChange, zoomChange, _ ->
-                        val w = size.width.toFloat()
-                        val h = size.height.toFloat()
-                        val marginLeft = 150f
-                        val marginTop = 60f
-                        val marginBottom = 120f
-                        val marginRight = 40f
-                        val plotWidth = w - marginLeft - marginRight
-                        val plotHeight = h - marginTop - marginBottom
-                        
-                        if (w <= 0 || h <= 0 || plotWidth <= 50f || plotHeight <= 50f) return@detectTransformGestures
-                        
-                        // Zoom on Y axis primarily (frequencies), but we'll zoom uniformly for now
-                        val newZoom = (zoom * zoomChange).coerceIn(1f, 20f)
-                        
-                        // Adjust pan to zoom around the centroid
-                        // The pan offset is relative to the top-left of the plot area
-                        val plotCentroidX = centroid.x - marginLeft
-                        val plotCentroidY = centroid.y - marginTop
-                        
-                        var newPanX = pan.x * zoomChange + plotCentroidX * (1 - zoomChange) + panChange.x
-                        var newPanY = pan.y * zoomChange + plotCentroidY * (1 - zoomChange) + panChange.y
-                        
-                        // Clamp pan so the image doesn't fly off screen
-                        val maxPanX = 0f
-                        val minPanX = plotWidth - (plotWidth * newZoom)
-                        val maxPanY = 0f
-                        val minPanY = plotHeight - (plotHeight * newZoom)
-                        
-                        newPanX = newPanX.coerceIn(minPanX, maxPanX)
-                        newPanY = newPanY.coerceIn(minPanY, maxPanY)
-                        
-                        zoom = newZoom
-                        pan = androidx.compose.ui.geometry.Offset(newPanX, newPanY)
-                    }
                 }
+
+                // Non-Maximum Suppression NVH v7 : Trier par TTNR décroissant et éliminer les doublons proches (< 4 bins)
+                peaksList.sortByDescending { it.ttnrDb }
+                val filteredPeaks = mutableListOf<EmergencePeak>()
+                for (p in peaksList) {
+                    if (filteredPeaks.none { Math.abs(it.binIndex - p.binIndex) < 4 }) {
+                        filteredPeaks.add(p)
+                    }
+                    if (filteredPeaks.size >= 12) break // Retenir au maximum les 12 plus fortes émergences (ordres + sifflements HF)
+                }
+                filteredPeaks
+            } else {
+                emptyList()
             }
-            .pointerInput(isDrawingMode) {
-                if (!isDrawingMode) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val pointer = event.changes.firstOrNull { it.pressed }
-                            if (pointer != null && pointer.position.x < 150f) {
-                                val marginTop = 60f
-                                val marginBottom = 120f
-                                val plotHeight = size.height - marginTop - marginBottom
-                                if (plotHeight > 0) {
-                                    val relativeY = (pointer.position.y - marginTop).coerceIn(0f, plotHeight)
-                                    cursorYRatio = relativeY / plotHeight
+        }
+
+    Canvas(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .pointerInput(isReportModeActive, isDrawingMode, bitmapWidth, bitmapHeight) {
+                    if (isReportModeActive && isDrawingMode) {
+                        detectTapGestures { offset ->
+                            val w = size.width.toFloat()
+                            val h = size.height.toFloat()
+                            val marginLeft = 150f
+                            val marginTop = 60f
+                            val marginBottom = 120f
+                            val marginRight = 40f
+                            val plotWidth = w - marginLeft - marginRight
+                            val plotHeight = h - marginTop - marginBottom
+                            if (w <= 0 || h <= 0 || plotWidth <= 50f || plotHeight <= 50f) return@detectTapGestures
+
+                            val touchX = offset.x
+                            val touchY = offset.y
+                            // modifier.pointerInput is AFTER graphicsLayer, so the framework already inverse-transforms the offset.
+                            val inverseTouchX = touchX
+                            val inverseTouchY = touchY
+
+                            if (inverseTouchX in marginLeft..(w - marginRight) && inverseTouchY in marginTop..(h - marginBottom)) {
+                                val x = inverseTouchX - marginLeft
+                                val y = inverseTouchY - marginTop
+
+                                val vX = (x - pan.x) / zoom
+                                val vY = (y - pan.y) / zoom
+
+                                val bitmapX = if (plotWidth > 0) (vX / plotWidth) * bitmapWidth else 0f
+                                val bitmapY = if (plotHeight > 0) (vY / plotHeight) * bitmapHeight else 0f
+
+                                val numFrames = history.size
+                                val frameIndex =
+                                    if (bitmapWidth >
+                                        0
+                                    ) {
+                                        ((bitmapX / bitmapWidth) * (numFrames - 1)).toInt().coerceIn(0, numFrames - 1)
+                                    } else {
+                                        0
+                                    }
+
+                                val displayedBinCount = (maxBin - minBin).coerceAtLeast(1)
+                                val binIndex =
+                                    (maxBin - 1) - if (bitmapHeight > 0) ((bitmapY / bitmapHeight) * (displayedBinCount - 1)).toInt() else 0
+
+                                onAddManualPoint(frameIndex, binIndex.coerceIn(minBin, maxBin - 1))
+                            }
+                        }
+                    } else {
+                        detectTransformGestures { centroid, panChange, zoomChange, _ ->
+                            val w = size.width.toFloat()
+                            val h = size.height.toFloat()
+                            val marginLeft = 150f
+                            val marginTop = 60f
+                            val marginBottom = 120f
+                            val marginRight = 40f
+                            val plotWidth = w - marginLeft - marginRight
+                            val plotHeight = h - marginTop - marginBottom
+
+                            if (w <= 0 || h <= 0 || plotWidth <= 50f || plotHeight <= 50f) return@detectTransformGestures
+
+                            // Zoom on Y axis primarily (frequencies), but we'll zoom uniformly for now
+                            val newZoom = (zoom * zoomChange).coerceIn(1f, 20f)
+
+                            // Adjust pan to zoom around the centroid
+                            // The pan offset is relative to the top-left of the plot area
+                            val plotCentroidX = centroid.x - marginLeft
+                            val plotCentroidY = centroid.y - marginTop
+
+                            var newPanX = pan.x * zoomChange + plotCentroidX * (1 - zoomChange) + panChange.x
+                            var newPanY = pan.y * zoomChange + plotCentroidY * (1 - zoomChange) + panChange.y
+
+                            // Clamp pan so the image doesn't fly off screen
+                            val maxPanX = 0f
+                            val minPanX = plotWidth - (plotWidth * newZoom)
+                            val maxPanY = 0f
+                            val minPanY = plotHeight - (plotHeight * newZoom)
+
+                            newPanX = newPanX.coerceIn(minPanX, maxPanX)
+                            newPanY = newPanY.coerceIn(minPanY, maxPanY)
+
+                            zoom = newZoom
+                            pan =
+                                androidx.compose.ui.geometry
+                                    .Offset(newPanX, newPanY)
+                        }
+                    }
+                }.pointerInput(isDrawingMode) {
+                    if (!isDrawingMode) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val pointer = event.changes.firstOrNull { it.pressed }
+                                if (pointer != null && pointer.position.x < 150f) {
+                                    val marginTop = 60f
+                                    val marginBottom = 120f
+                                    val plotHeight = size.height - marginTop - marginBottom
+                                    if (plotHeight > 0) {
+                                        val relativeY = (pointer.position.y - marginTop).coerceIn(0f, plotHeight)
+                                        cursorYRatio = relativeY / plotHeight
+                                    }
+                                    pointer.consume()
                                 }
-                                pointer.consume()
                             }
                         }
                     }
-                }
-            }
+                },
     ) {
         val w = size.width
         val h = size.height
@@ -503,7 +573,7 @@ fun SpectrogramCanvas(
         val marginTop = 60f
         val marginBottom = 120f
         val marginRight = 40f
-        
+
         val plotWidth = w - marginLeft - marginRight
         val plotHeight = h - marginTop - marginBottom
 
@@ -517,11 +587,19 @@ fun SpectrogramCanvas(
         imageBitmap?.let { img ->
             drawImage(
                 image = img,
-                srcOffset = androidx.compose.ui.unit.IntOffset(srcX, srcY),
-                srcSize = androidx.compose.ui.unit.IntSize(srcW, srcH),
-                dstOffset = androidx.compose.ui.unit.IntOffset(marginLeft.toInt(), marginTop.toInt()),
-                dstSize = androidx.compose.ui.unit.IntSize(plotWidth.toInt(), plotHeight.toInt()),
-                filterQuality = androidx.compose.ui.graphics.FilterQuality.None
+                srcOffset =
+                    androidx.compose.ui.unit
+                        .IntOffset(srcX, srcY),
+                srcSize =
+                    androidx.compose.ui.unit
+                        .IntSize(srcW, srcH),
+                dstOffset =
+                    androidx.compose.ui.unit
+                        .IntOffset(marginLeft.toInt(), marginTop.toInt()),
+                dstSize =
+                    androidx.compose.ui.unit
+                        .IntSize(plotWidth.toInt(), plotHeight.toInt()),
+                filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
             )
         }
 
@@ -529,15 +607,15 @@ fun SpectrogramCanvas(
         if (isWavAnalyzerMode) {
             val xCursor = marginLeft + (wavPlaybackProgress.coerceIn(0f, 1f) * plotWidth)
             drawLine(
-                color = Color(0xFFF59E0B), // Amber Néon Vif
+                color = NvhModeWavAccent,
                 start = Offset(xCursor, marginTop),
                 end = Offset(xCursor, marginTop + plotHeight),
-                strokeWidth = 4f
+                strokeWidth = 4f,
             )
             drawCircle(
-                color = Color(0xFFF59E0B),
+                color = NvhModeWavAccent,
                 radius = 7f,
-                center = Offset(xCursor, marginTop)
+                center = Offset(xCursor, marginTop),
             )
         }
 
@@ -551,7 +629,7 @@ fun SpectrogramCanvas(
             native.drawLine(marginLeft, marginTop, marginLeft, plotBottom, tickPaint)
             val topViewFraction = (-pan.y) / (plotHeight * zoom)
             val bottomViewFraction = (-pan.y + plotHeight) / (plotHeight * zoom)
-            
+
             val visibleMaxFreq = actualMaxFreq - topViewFraction * (actualMaxFreq - actualMinFreq)
             val visibleMinFreq = actualMaxFreq - bottomViewFraction * (actualMaxFreq - actualMinFreq)
 
@@ -560,39 +638,40 @@ fun SpectrogramCanvas(
                 val fraction = i.toFloat() / ySteps
                 val f = (visibleMaxFreq - fraction * (visibleMaxFreq - visibleMinFreq)).toInt()
                 val y = marginTop + fraction * plotHeight
-                
-                native.drawLine(marginLeft - 15f, y, marginLeft, y, tickPaint)
-                
-                val textY = when (i) {
-                    0 -> y + 25f
-                    ySteps -> y - 5f
-                    else -> y + 10f
-                }
-                native.drawText("${f} Hz", 10f, textY, textPaint)
-            }
 
+                native.drawLine(marginLeft - 15f, y, marginLeft, y, tickPaint)
+
+                val textY =
+                    when (i) {
+                        0 -> y + 25f
+                        ySteps -> y - 5f
+                        else -> y + 10f
+                    }
+                native.drawText("$f Hz", 10f, textY, textPaint)
+            }
 
             // --- DESSIN DES OVERLAYS DE FILTRES AUDIO (Bandes Semi-Transparentes) ---
             if (activeFilters.isNotEmpty()) {
                 for (filter in activeFilters) {
-                    val baseColor = android.graphics.Color.argb(
-                        (filter.color.alpha * 255).toInt(),
-                        (filter.color.red * 255).toInt(),
-                        (filter.color.green * 255).toInt(),
-                        (filter.color.blue * 255).toInt()
-                    )
-                    
+                    val baseColor =
+                        android.graphics.Color.argb(
+                            (filter.color.alpha * 255).toInt(),
+                            (filter.color.red * 255).toInt(),
+                            (filter.color.green * 255).toInt(),
+                            (filter.color.blue * 255).toInt(),
+                        )
+
                     filterFillPaint.color = baseColor
                     filterFillPaint.alpha = 80 // Plus subtil, la lumière SCREEN fait le reste
-                    
+
                     filterStrokePaint.color = baseColor
                     filterStrokePaint.alpha = 255
                     // Glow effect sur la bordure (Néon)
                     filterStrokePaint.setShadowLayer(8f, 0f, 0f, baseColor)
-                    
+
                     val fMin = filter.minFreq.toFloat()
                     val fMax = filter.maxFreq.toFloat()
-                    
+
                     // Fonction locale pour calculer la coordonnée Y d'une fréquence
                     fun getFreqY(freqHz: Float): Float {
                         if (freqHz <= actualMinFreq) return plotBottom
@@ -601,7 +680,10 @@ fun SpectrogramCanvas(
                         return plotBottom - (fraction * plotHeight)
                     }
 
-                    fun drawFilterBand(yTop: Float, yBottom: Float) {
+                    fun drawFilterBand(
+                        yTop: Float,
+                        yBottom: Float,
+                    ) {
                         if (yBottom > yTop) {
                             native.drawRect(marginLeft, yTop, plotRight, yBottom, filterFillPaint)
                             native.drawLine(marginLeft, yTop, plotRight, yTop, filterStrokePaint)
@@ -621,11 +703,11 @@ fun SpectrogramCanvas(
                             drawFilterBand(yTop, yBottom)
                         }
                         FilterType.BAND_PASS -> {
-                            // En passe-bande, on rejette l'extérieur. 
+                            // En passe-bande, on rejette l'extérieur.
                             val yTop1 = marginTop
                             val yBottom1 = getFreqY(fMax)
                             drawFilterBand(yTop1, yBottom1)
-                            
+
                             val yTop2 = getFreqY(fMin)
                             val yBottom2 = plotBottom
                             drawFilterBand(yTop2, yBottom2)
@@ -648,11 +730,11 @@ fun SpectrogramCanvas(
                     // Couleur : Rouge Néon si TTNR >= 6.0 dB, Jaune/Ambre si TTNR < 6.0 dB
                     val isCritical = peak.ttnrDb >= 6.0
                     val baseColor = if (isCritical) AndroidColor.parseColor("#FF1744") else AndroidColor.parseColor("#FFC107")
-                    
+
                     // Rayon et Alpha pulsants
                     val pulseRadius = 10f + pulsePhase * 14f
                     val alphaPulse = (230 - pulsePhase * 150).toInt().coerceIn(40, 255)
-                    
+
                     beaconPulsePaint.color = baseColor
                     beaconPulsePaint.alpha = alphaPulse
                     beaconCenterPaint.color = baseColor
@@ -669,228 +751,251 @@ fun SpectrogramCanvas(
             }
 
             // --- DESSIN DU CALQUE H1 (Pointillé Cyan Fluo) ---
-            
-        // --- MANUAL SMART TRACKING OVERLAYS ---
-        if (isReportModeActive) {
-            fun mapAnchorToScreen(anchor: ManualOrderAnchor): Offset {
-                val numFrames = history.size
-                val vX = (anchor.frameIndex.toFloat() / (numFrames - 1).coerceAtLeast(1)) * plotWidth
-                val vY = ((maxBin - 1 - anchor.exactBinF) / (displayedBinCount - 1).coerceAtLeast(1)) * plotHeight
-                
-                val screenX = marginLeft + vX * zoom + pan.x
-                val screenY = marginTop + vY * zoom + pan.y
-                return Offset(screenX, screenY)
-            }
-            
-            // On s'assure que le dessin est clippé à la zone du plot !
-            clipRect(
-                left = marginLeft, top = marginTop, right = plotRight, bottom = plotBottom
-            ) {
-                // 1. Draw Validated Orders
-                manualTrackedOrders.forEach { order ->
-                    val isSelected = order == selectedManualOrder || isBrillanceModeEnabled
-                    val path = androidx.compose.ui.graphics.Path()
-                    var isFirst = true
-                    order.path.forEach { anchor ->
-                        val pt = mapAnchorToScreen(anchor)
-                        if (isFirst) {
-                            path.moveTo(pt.x, pt.y)
-                            isFirst = false
-                        } else {
-                            path.lineTo(pt.x, pt.y)
-                        }
-                    }
-                                        if (isSelected) {
-                        // Halo de surbrillance
-                        drawPath(
-                            path = path,
-                            color = order.color.copy(alpha = 0.6f),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = 14f,
-                                pathEffect = androidx.compose.ui.graphics.PathEffect.cornerPathEffect(10f)
-                            )
-                        )
-                        // Ligne centrale surbrillance
-                        drawPath(
-                            path = path,
-                            color = order.color,
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = 6f,
-                                pathEffect = androidx.compose.ui.graphics.PathEffect.cornerPathEffect(10f)
-                            )
-                        )
-                    } else {
-                        // Contour noir subtil pour garantir le contraste sur fond clair/rouge/jaune
-                        drawPath(
-                            path = path,
-                            color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = 5.5f,
-                                pathEffect = androidx.compose.ui.graphics.PathEffect.cornerPathEffect(10f)
-                            )
-                        )
-                        // Ligne centrale de couleur, épaisseur moyenne, semi-transparente
-                        drawPath(
-                            path = path,
-                            color = order.color.copy(alpha = 0.6f),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = 3f,
-                                pathEffect = androidx.compose.ui.graphics.PathEffect.cornerPathEffect(10f)
-                            )
-                        )
-                    }
-                }
-    
-                // Draw manual tags
-                drawIntoCanvas { canvas ->
-                    val nativeCanvas = canvas.nativeCanvas
-                    val bgPaint = manualTagBgPaint
-                    val textPaint = manualTagTextPaint
 
-                    val occupiedRects = mutableListOf<android.graphics.RectF>()
-                    
+            // --- MANUAL SMART TRACKING OVERLAYS ---
+            if (isReportModeActive) {
+                fun mapAnchorToScreen(anchor: ManualOrderAnchor): Offset {
+                    val numFrames = history.size
+                    val vX = (anchor.frameIndex.toFloat() / (numFrames - 1).coerceAtLeast(1)) * plotWidth
+                    val vY = ((maxBin - 1 - anchor.exactBinF) / (displayedBinCount - 1).coerceAtLeast(1)) * plotHeight
+
+                    val screenX = marginLeft + vX * zoom + pan.x
+                    val screenY = marginTop + vY * zoom + pan.y
+                    return Offset(screenX, screenY)
+                }
+
+                // On s'assure que le dessin est clippé à la zone du plot !
+                clipRect(
+                    left = marginLeft,
+                    top = marginTop,
+                    right = plotRight,
+                    bottom = plotBottom,
+                ) {
+                    // 1. Draw Validated Orders
                     manualTrackedOrders.forEach { order ->
                         val isSelected = order == selectedManualOrder || isBrillanceModeEnabled
-                        if (isSelected && order.path.isNotEmpty()) {
-                            val lastAnchor = order.path.last()
-                            val pt = mapAnchorToScreen(lastAnchor)
-                            val text = order.name
-                            val textWidth = textPaint.measureText(text)
-                            val paddingX = 16f
-                            val paddingY = 10f
-                            
-                            val boxWidth = textWidth + paddingX * 2
-                            val boxHeight = 35f + paddingY * 2
-                            
-                            var tx = pt.x + 15f
-                            var ty = pt.y
-                            if (tx + boxWidth > plotRight) {
-                                tx = pt.x - boxWidth - 15f
+                        val path =
+                            androidx.compose.ui.graphics
+                                .Path()
+                        var isFirst = true
+                        order.path.forEach { anchor ->
+                            val pt = mapAnchorToScreen(anchor)
+                            if (isFirst) {
+                                path.moveTo(pt.x, pt.y)
+                                isFirst = false
+                            } else {
+                                path.lineTo(pt.x, pt.y)
                             }
-                            
-                            var currentRect = android.graphics.RectF(tx, ty - 25f - paddingY, tx + boxWidth, ty + 10f + paddingY)
-                            var offsetStep = 0
-                            val maxSteps = 50
-                            
-                            // Prevent collision with other labels
-                            while (offsetStep < maxSteps) {
-                                var collision = false
-                                for (r in occupiedRects) {
-                                    val expandedR = android.graphics.RectF(r.left - 6f, r.top - 6f, r.right + 6f, r.bottom + 6f)
-                                    if (android.graphics.RectF.intersects(currentRect, expandedR)) {
-                                        collision = true
-                                        break
-                                    }
-                                }
-                                if (!collision) break
-                                
-                                offsetStep++
-                                val direction = if (offsetStep % 2 == 1) -1 else 1
-                                val shift = ((offsetStep + 1) / 2) * 20f * direction
-                                
-                                val newTy = ty + shift
-                                currentRect = android.graphics.RectF(tx, newTy - 25f - paddingY, tx + boxWidth, newTy + 10f + paddingY)
-                            }
-                            
-                            // Prevent collision with screen bounds
-                            if (currentRect.top < marginTop) {
-                                val diff = marginTop - currentRect.top + 10f
-                                currentRect.offset(0f, diff)
-                            }
-                            if (currentRect.bottom > plotBottom) {
-                                val diff = currentRect.bottom - plotBottom - 10f
-                                currentRect.offset(0f, diff)
-                            }
-                            
-                            // Double check bounds might have pushed it back into collision, but we prioritize being in view
-                            occupiedRects.add(currentRect)
-                            
-                            val orderColorInt = android.graphics.Color.argb(
-                                (0.8f * 255).toInt(), 
-                                (order.color.red * 255).toInt(), 
-                                (order.color.green * 255).toInt(), 
-                                (order.color.blue * 255).toInt()
+                        }
+                        if (isSelected) {
+                            // Halo de surbrillance
+                            drawPath(
+                                path = path,
+                                color = order.color.copy(alpha = 0.6f),
+                                style =
+                                    androidx.compose.ui.graphics.drawscope.Stroke(
+                                        width = 14f,
+                                        pathEffect =
+                                            androidx.compose.ui.graphics.PathEffect
+                                                .cornerPathEffect(10f),
+                                    ),
                             )
-                            bgPaint.color = orderColorInt
-                            
-                            nativeCanvas.drawRoundRect(currentRect, 12f, 12f, bgPaint)
-                            
-                            bgPaint.style = android.graphics.Paint.Style.STROKE
-                            bgPaint.strokeWidth = 2f
-                            bgPaint.color = android.graphics.Color.WHITE
-                            nativeCanvas.drawRoundRect(currentRect, 12f, 12f, bgPaint)
-                            bgPaint.style = android.graphics.Paint.Style.FILL
-                            
-                            val distY = Math.abs(currentRect.centerY() - pt.y)
-                            if (distY > 20f) {
-                                val boxEdgeX = if (tx > pt.x) currentRect.left else currentRect.right
-                                nativeCanvas.drawLine(pt.x, pt.y, boxEdgeX, currentRect.centerY(), manualTagLeaderPaint)
-                            }
-                            
-                            nativeCanvas.drawText(text, currentRect.left + paddingX, currentRect.bottom - paddingY - 2f, textPaint)
-                        }
-                    }
-                }
-                
-                // 2. Draw Current Smart Path
-                if (currentSmartPath.isNotEmpty()) {
-                    val path = androidx.compose.ui.graphics.Path()
-                    var isFirst = true
-                    currentSmartPath.forEach { anchor ->
-                        val pt = mapAnchorToScreen(anchor)
-                        if (isFirst) {
-                            path.moveTo(pt.x, pt.y)
-                            isFirst = false
+                            // Ligne centrale surbrillance
+                            drawPath(
+                                path = path,
+                                color = order.color,
+                                style =
+                                    androidx.compose.ui.graphics.drawscope.Stroke(
+                                        width = 6f,
+                                        pathEffect =
+                                            androidx.compose.ui.graphics.PathEffect
+                                                .cornerPathEffect(10f),
+                                    ),
+                            )
                         } else {
-                            path.lineTo(pt.x, pt.y)
+                            // Contour noir subtil pour garantir le contraste sur fond clair/rouge/jaune
+                            drawPath(
+                                path = path,
+                                color = NvhCanvas.copy(alpha = 0.5f),
+                                style =
+                                    androidx.compose.ui.graphics.drawscope.Stroke(
+                                        width = 5.5f,
+                                        pathEffect =
+                                            androidx.compose.ui.graphics.PathEffect
+                                                .cornerPathEffect(10f),
+                                    ),
+                            )
+                            // Ligne centrale de couleur, épaisseur moyenne, semi-transparente
+                            drawPath(
+                                path = path,
+                                color = order.color.copy(alpha = 0.6f),
+                                style =
+                                    androidx.compose.ui.graphics.drawscope.Stroke(
+                                        width = 3f,
+                                        pathEffect =
+                                            androidx.compose.ui.graphics.PathEffect
+                                                .cornerPathEffect(10f),
+                                    ),
+                            )
                         }
                     }
-                    drawPath(
-                        path = path,
-                        color = Color.White.copy(alpha = 0.9f),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(
-                            width = 3f,
-                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+
+                    // Draw manual tags
+                    drawIntoCanvas { canvas ->
+                        val nativeCanvas = canvas.nativeCanvas
+                        val bgPaint = manualTagBgPaint
+                        val textPaint = manualTagTextPaint
+
+                        val occupiedRects = mutableListOf<android.graphics.RectF>()
+
+                        manualTrackedOrders.forEach { order ->
+                            val isSelected = order == selectedManualOrder || isBrillanceModeEnabled
+                            if (isSelected && order.path.isNotEmpty()) {
+                                val lastAnchor = order.path.last()
+                                val pt = mapAnchorToScreen(lastAnchor)
+                                val text = order.name
+                                val textWidth = textPaint.measureText(text)
+                                val paddingX = 16f
+                                val paddingY = 10f
+
+                                val boxWidth = textWidth + paddingX * 2
+                                val boxHeight = 35f + paddingY * 2
+
+                                var tx = pt.x + 15f
+                                var ty = pt.y
+                                if (tx + boxWidth > plotRight) {
+                                    tx = pt.x - boxWidth - 15f
+                                }
+
+                                var currentRect = android.graphics.RectF(tx, ty - 25f - paddingY, tx + boxWidth, ty + 10f + paddingY)
+                                var offsetStep = 0
+                                val maxSteps = 50
+
+                                // Prevent collision with other labels
+                                while (offsetStep < maxSteps) {
+                                    var collision = false
+                                    for (r in occupiedRects) {
+                                        val expandedR = android.graphics.RectF(r.left - 6f, r.top - 6f, r.right + 6f, r.bottom + 6f)
+                                        if (android.graphics.RectF.intersects(currentRect, expandedR)) {
+                                            collision = true
+                                            break
+                                        }
+                                    }
+                                    if (!collision) break
+
+                                    offsetStep++
+                                    val direction = if (offsetStep % 2 == 1) -1 else 1
+                                    val shift = ((offsetStep + 1) / 2) * 20f * direction
+
+                                    val newTy = ty + shift
+                                    currentRect = android.graphics.RectF(tx, newTy - 25f - paddingY, tx + boxWidth, newTy + 10f + paddingY)
+                                }
+
+                                // Prevent collision with screen bounds
+                                if (currentRect.top < marginTop) {
+                                    val diff = marginTop - currentRect.top + 10f
+                                    currentRect.offset(0f, diff)
+                                }
+                                if (currentRect.bottom > plotBottom) {
+                                    val diff = currentRect.bottom - plotBottom - 10f
+                                    currentRect.offset(0f, diff)
+                                }
+
+                                // Double check bounds might have pushed it back into collision, but we prioritize being in view
+                                occupiedRects.add(currentRect)
+
+                                val orderColorInt =
+                                    android.graphics.Color.argb(
+                                        (0.8f * 255).toInt(),
+                                        (order.color.red * 255).toInt(),
+                                        (order.color.green * 255).toInt(),
+                                        (order.color.blue * 255).toInt(),
+                                    )
+                                bgPaint.color = orderColorInt
+
+                                nativeCanvas.drawRoundRect(currentRect, 12f, 12f, bgPaint)
+
+                                bgPaint.style = android.graphics.Paint.Style.STROKE
+                                bgPaint.strokeWidth = 2f
+                                bgPaint.color = android.graphics.Color.WHITE
+                                nativeCanvas.drawRoundRect(currentRect, 12f, 12f, bgPaint)
+                                bgPaint.style = android.graphics.Paint.Style.FILL
+
+                                val distY = Math.abs(currentRect.centerY() - pt.y)
+                                if (distY > 20f) {
+                                    val boxEdgeX = if (tx > pt.x) currentRect.left else currentRect.right
+                                    nativeCanvas.drawLine(pt.x, pt.y, boxEdgeX, currentRect.centerY(), manualTagLeaderPaint)
+                                }
+
+                                nativeCanvas.drawText(text, currentRect.left + paddingX, currentRect.bottom - paddingY - 2f, textPaint)
+                            }
+                        }
+                    }
+
+                    // 2. Draw Current Smart Path
+                    if (currentSmartPath.isNotEmpty()) {
+                        val path =
+                            androidx.compose.ui.graphics
+                                .Path()
+                        var isFirst = true
+                        currentSmartPath.forEach { anchor ->
+                            val pt = mapAnchorToScreen(anchor)
+                            if (isFirst) {
+                                path.moveTo(pt.x, pt.y)
+                                isFirst = false
+                            } else {
+                                path.lineTo(pt.x, pt.y)
+                            }
+                        }
+                        drawPath(
+                            path = path,
+                            color = NvhOnSurface.copy(alpha = 0.9f),
+                            style =
+                                androidx.compose.ui.graphics.drawscope.Stroke(
+                                    width = 3f,
+                                    pathEffect =
+                                        androidx.compose.ui.graphics.PathEffect
+                                            .dashPathEffect(floatArrayOf(10f, 10f), 0f),
+                                ),
                         )
-                    )
-                }
-    
-                // 3. Draw Current User Anchor Points
-                currentUserPoints.forEach { anchor ->
-                    val pt = mapAnchorToScreen(anchor)
-                    // Halo clignotant
-                    drawCircle(
-                        color = Color.Red.copy(alpha = pulseAlpha),
-                        radius = pulseRadius,
-                        center = pt
-                    )
-                    // Bordure extérieure noire pour le contraste
-                    drawCircle(
-                        color = Color.Black,
-                        radius = 7f,
-                        center = pt
-                    )
-                    // Point rouge central (plus grand)
-                    drawCircle(
-                        color = Color.Red,
-                        radius = 6f,
-                        center = pt
-                    )
-                    // Cœur blanc
-                    drawCircle(
-                        color = Color.White,
-                        radius = 3.5f,
-                        center = pt
-                    )
+                    }
+
+                    // 3. Draw Current User Anchor Points
+                    currentUserPoints.forEach { anchor ->
+                        val pt = mapAnchorToScreen(anchor)
+                        // Halo clignotant
+                        drawCircle(
+                            color = NvhStatusBad.copy(alpha = pulseAlpha),
+                            radius = pulseRadius,
+                            center = pt,
+                        )
+                        // Bordure extérieure noire pour le contraste
+                        drawCircle(
+                            color = NvhCanvas,
+                            radius = 7f,
+                            center = pt,
+                        )
+                        // Point rouge central (plus grand)
+                        drawCircle(
+                            color = NvhStatusBad,
+                            radius = 6f,
+                            center = pt,
+                        )
+                        // Cœur blanc
+                        drawCircle(
+                            color = NvhOnSurface,
+                            radius = 3.5f,
+                            center = pt,
+                        )
+                    }
                 }
             }
-        }
 
-        if (showH1Overlay && kinematicsConfig.isEnabled && telemetryHistory.isNotEmpty()) {
+            if (showH1Overlay && kinematicsConfig.isEnabled && telemetryHistory.isNotEmpty()) {
                 val path = android.graphics.Path()
                 var isFirst = true
                 val numFrames = telemetryHistory.size
-                
+
                 for (x in 0 until plotWidth.toInt()) {
                     // [plan 3.4] One chronological mapping for every mode:
                     // left = oldest, right = newest.
@@ -901,12 +1006,26 @@ fun SpectrogramCanvas(
 
                     val telemBefore = telemetryHistory[idxBefore]
                     val telemAfter = telemetryHistory[idxAfter]
-                    
-                    val speedBefore = if (kinematicsConfig.isEnabled && telemBefore.theoreticalSpeedKmh > 0.1f) telemBefore.theoreticalSpeedKmh else telemBefore.speedKmh
-                    val speedAfter = if (kinematicsConfig.isEnabled && telemAfter.theoreticalSpeedKmh > 0.1f) telemAfter.theoreticalSpeedKmh else telemAfter.speedKmh
-                    
+
+                    val speedBefore =
+                        if (kinematicsConfig.isEnabled &&
+                            telemBefore.theoreticalSpeedKmh > 0.1f
+                        ) {
+                            telemBefore.theoreticalSpeedKmh
+                        } else {
+                            telemBefore.speedKmh
+                        }
+                    val speedAfter =
+                        if (kinematicsConfig.isEnabled &&
+                            telemAfter.theoreticalSpeedKmh > 0.1f
+                        ) {
+                            telemAfter.theoreticalSpeedKmh
+                        } else {
+                            telemAfter.speedKmh
+                        }
+
                     val speed = speedBefore + fraction * (speedAfter - speedBefore)
-                    
+
                     if (speed > 1.0f) {
                         val h1Freq = kinematicsConfig.calculateH1FreqHz(speed)
                         val projectedFreq = h1Freq * projectedOrder
@@ -914,7 +1033,7 @@ fun SpectrogramCanvas(
                             val freqFraction = (projectedFreq - actualMinFreq) / (actualMaxFreq - actualMinFreq)
                             val y = plotBottom - (freqFraction * plotHeight)
                             val xPos = marginLeft + x
-                            
+
                             if (isFirst) {
                                 path.moveTo(xPos, y.toFloat())
                                 isFirst = false
@@ -928,7 +1047,7 @@ fun SpectrogramCanvas(
                         isFirst = true
                     }
                 }
-                
+
                 native.drawPath(path, h1LinePaint)
             }
 
@@ -954,14 +1073,14 @@ fun SpectrogramCanvas(
 
                     val isCritical = tag.ttnrDb >= 6.0
                     val primaryColor = if (isCritical) AndroidColor.parseColor("#FF1744") else AndroidColor.parseColor("#FFC107")
-                    
+
                     val alphaInt = (alphaRatio * 255).toInt().coerceIn(0, 255)
                     tagBgPaint.color = AndroidColor.parseColor("#E6121212")
                     tagBgPaint.alpha = (alphaRatio * 230).toInt()
-                    
+
                     tagBorderPaint.color = primaryColor
                     tagBorderPaint.alpha = alphaInt
-                    
+
                     tagTextPaint.color = primaryColor
                     tagTextPaint.alpha = alphaInt
 
@@ -984,7 +1103,7 @@ fun SpectrogramCanvas(
             if (!isDrawingMode) {
                 // --- CURSEUR EN FRÉQUENCE DISCRET ---
                 val cursorY = marginTop + cursorYRatio * plotHeight
-                
+
                 // Utilisation des fréquences visibles calculées pour l'axe Y
                 val selectedFreqHz = visibleMinFreq + ((1f - cursorYRatio) * (visibleMaxFreq - visibleMinFreq))
 
@@ -1009,8 +1128,15 @@ fun SpectrogramCanvas(
 
             val hopSize = fftSize / 2.0
             val dt = hopSize / sampleRate
-            val totalTimeSec = if ((isWavAnalyzerMode || isReportModeActive) && history.isNotEmpty()) (history.size * dt) else (historySize * dt)
-            
+            val totalTimeSec =
+                if ((isWavAnalyzerMode || isReportModeActive) &&
+                    history.isNotEmpty()
+                ) {
+                    (history.size * dt)
+                } else {
+                    (historySize * dt)
+                }
+
             val visibleMinTimeSec = if (isReportModeActive) (-pan.x / (plotWidth * zoom)) * totalTimeSec else (if (isWavAnalyzerMode) 0.0 else -totalTimeSec)
             val visibleMaxTimeSec = if (isReportModeActive) ((-pan.x + plotWidth) / (plotWidth * zoom)) * totalTimeSec else (if (isWavAnalyzerMode) totalTimeSec else 0.0)
 

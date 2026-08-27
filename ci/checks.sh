@@ -51,6 +51,16 @@ if grep -RIn --include='*.kt' -E '^import (android\.|androidx\.|com\.google\.and
   grep -RIn --include='*.kt' -E '^import (android\.|androidx\.|com\.google\.android\.)' core/src | head -10
 fi
 
+# --- [ARMED] colours come from the theme, not from literals [U5, plan 4.3]
+# The fixed dark instrument palette only stays coherent (and contrast-checked)
+# if no screen re-introduces its own hex. theme/Color.kt is the one exception.
+COLOR_HITS=$(grep -RIn --include='*.kt' -E 'Color\(0x' app/src/main core/src/main \
+  | grep -v 'theme/Color.kt' | wc -l | tr -d ' ')
+if [ "$COLOR_HITS" -gt 0 ]; then
+  violation "raw colour literals outside theme/Color.kt ($COLOR_HITS) [audit U5, plan 4.3]:"
+  grep -RIn --include='*.kt' -E 'Color\(0x' app/src/main core/src/main | grep -v 'theme/Color.kt' | head -20
+fi
+
 # --- [ARMED] purged dead code must not return [A3/A4/D5, plan 3.8] --------
 # The regex-patch era resurrected deleted code more than once. These symbols
 # and files were deliberately removed; any reappearance fails the build.

@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Launch-window theme [U5, plan 4.3]. The app is Compose-only and fixed-dark (decision D4),
+  so this XML theme exists purely to make the window Android draws *before* the first frame
+  match the app. The previous Theme.Material.Light parent produced a white flash into a dark
+  instrument UI on every cold start.
+-->
 <resources>
 
-    <style name="Theme.NVHSpectro" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.NVHSpectro" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/nvh_background</item>
+        <item name="android:colorBackground">@color/nvh_background</item>
+        <item name="android:statusBarColor">@color/nvh_primary_container</item>
+        <item name="android:navigationBarColor">@color/nvh_background</item>
+    </style>
 </resources>

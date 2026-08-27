@@ -3,7 +3,6 @@ package com.example.nvhspectro
 import android.app.Application
 import android.content.Context
 import android.net.Uri
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nvhspectro.data.ManualOrderAnchor
@@ -11,6 +10,7 @@ import com.example.nvhspectro.data.SmartTrackedOrder
 import com.example.nvhspectro.data.TimelineMapper
 import com.example.nvhspectro.export.PdfReportGenerator
 import com.example.nvhspectro.export.PngExporter
+import com.example.nvhspectro.theme.NvhOrderTrace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -222,14 +222,12 @@ class ReportViewModel(application: Application, val session: MeasurementSession)
     }
 
     companion object {
-        private val ORDER_COLORS = listOf(
-            Color(0xFFB026FF),
-            Color(0xFFFF1493),
-            Color(0xFF32CD32),
-            Color(0xFFFFA500),
-            Color(0xFF8A2BE2),
-            Color(0xFF00FFFF),
-            Color(0xFFFFD700)
-        )
+        /**
+         * Colour assigned to each manually validated order, by validation index.
+         *
+         * Shared with the PDF report through [NvhOrderTrace]/`NvhOrderTraceArgb` so the same
+         * order carries the same colour on screen and on the customer deliverable [U7].
+         */
+        private val ORDER_COLORS = NvhOrderTrace
     }
 }

@@ -17,13 +17,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.nvhspectro.theme.NvhAccent
+import com.example.nvhspectro.theme.NvhCanvas
+import com.example.nvhspectro.theme.NvhOnSurface
+import com.example.nvhspectro.theme.NvhOnSurfaceVariant
+import com.example.nvhspectro.theme.NvhOutline
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderSelectionDialog(
     currentOrder: Double,
     onOrderSelected: (Double) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     val presets = listOf(1.0, 2.0, 6.0, 8.0, 12.0, 16.0, 18.0, 24.0, 36.0, 48.0)
     var customOrderText by remember { mutableStateOf(if (presets.contains(currentOrder)) "" else currentOrder.toString()) }
@@ -34,34 +39,36 @@ fun OrderSelectionDialog(
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
         ) {
             Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                modifier =
+                    Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 // En-tête
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = "⚙️ Sélection de l'Ordre Traqué",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 16.sp,
                     )
                 }
 
                 Text(
                     text = "Choisissez une harmonique standard ou saisissez une valeur personnalisée (ex: 22.5) :",
                     fontSize = 12.sp,
-                    color = Color.LightGray
+                    color = Color.LightGray,
                 )
 
                 // Presets d'ordres courants en grille 5x2
@@ -69,7 +76,7 @@ fun OrderSelectionDialog(
                     columns = GridCells.Fixed(5),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.height(84.dp)
+                    modifier = Modifier.height(84.dp),
                 ) {
                     items(presets) { ord ->
                         val isSelected = (ord == selectedVal) && customOrderText.isEmpty()
@@ -77,27 +84,27 @@ fun OrderSelectionDialog(
 
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = if (isSelected) Color(0xFF00E5FF) else MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier
-                                .clickable {
-                                    selectedVal = ord
-                                    customOrderText = ""
-                                }
-                                .border(
-                                    width = if (isSelected) 2.dp else 1.dp,
-                                    color = if (isSelected) Color.White else Color.Transparent,
-                                    shape = RoundedCornerShape(6.dp)
-                                )
+                            color = if (isSelected) NvhAccent else MaterialTheme.colorScheme.surfaceVariant,
+                            modifier =
+                                Modifier
+                                    .clickable {
+                                        selectedVal = ord
+                                        customOrderText = ""
+                                    }.border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) NvhOnSurface else Color.Transparent,
+                                        shape = RoundedCornerShape(6.dp),
+                                    ),
                         ) {
                             Box(
                                 contentAlignment = Alignment.Center,
-                                modifier = Modifier.padding(vertical = 8.dp)
+                                modifier = Modifier.padding(vertical = 8.dp),
                             ) {
                                 Text(
                                     text = ordName,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp,
-                                    color = if (isSelected) Color.Black else Color.White
+                                    color = if (isSelected) NvhCanvas else NvhOnSurface,
                                 )
                             }
                         }
@@ -117,20 +124,21 @@ fun OrderSelectionDialog(
                     label = { Text("Ordre Personnalisé (ex: 22.5)", fontSize = 11.sp) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF00E5FF),
-                        unfocusedBorderColor = Color.Gray
-                    )
+                    colors =
+                        OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NvhAccent,
+                            unfocusedBorderColor = NvhOutline,
+                        ),
                 )
 
                 // Boutons d'action
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Annuler", color = Color.Gray)
+                        Text("Annuler", color = NvhOnSurfaceVariant)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
@@ -138,9 +146,9 @@ fun OrderSelectionDialog(
                             onOrderSelected(selectedVal)
                             onDismiss()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF))
+                        colors = ButtonDefaults.buttonColors(containerColor = NvhAccent),
                     ) {
-                        Text("Appliquer (H%.1f)".format(selectedVal), color = Color.Black, fontWeight = FontWeight.Bold)
+                        Text("Appliquer (H%.1f)".format(selectedVal), color = NvhCanvas, fontWeight = FontWeight.Bold)
                     }
                 }
             }
