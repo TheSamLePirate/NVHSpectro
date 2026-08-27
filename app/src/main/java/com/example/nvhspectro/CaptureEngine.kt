@@ -1,6 +1,5 @@
 package com.example.nvhspectro
 
-import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
@@ -11,6 +10,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * [C5, C7, plan 2.1] The ONE owner of live microphone capture.
@@ -27,9 +27,12 @@ import kotlinx.coroutines.flow.update
  */
 class CaptureEngine(
     private val audioRepository: AudioRepository,
-    private val onCaptureError: (String) -> Unit
+    private val onCaptureError: (String) -> Unit,
 ) {
-    private data class Settings(val fftSize: Int, val enabled: Boolean)
+    private data class Settings(
+        val fftSize: Int,
+        val enabled: Boolean,
+    )
 
     private val settings = MutableStateFlow(Settings(AudioConfig.DEFAULT_FFT_SIZE, enabled = true))
 
@@ -46,23 +49,25 @@ class CaptureEngine(
     fun setEnabled(enabled: Boolean) = settings.update { it.copy(enabled = enabled) }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun frames(): Flow<ShortArray> = settings
-        // StateFlow already conflates equal values - no distinctUntilChanged needed.
-        .flatMapLatest { s ->
-            if (!s.enabled) {
-                emptyFlow()
-            } else {
-                captureRestarts.incrementAndGet()
-                audioRepository.startAudioCapture(s.fftSize)
-                    .onEach { framesProduced.incrementAndGet() }
-                    .catch { e ->
-                        // Inner-flow catch: the engine stays alive for a retry.
-                        onCaptureError("🎙️ ${e.message ?: "Capture micro impossible"}")
-                    }
+    fun frames(): Flow<CapturedAudioFrame> =
+        settings
+            // StateFlow already conflates equal values - no distinctUntilChanged needed.
+            .flatMapLatest { s ->
+                if (!s.enabled) {
+                    emptyFlow()
+                } else {
+                    captureRestarts.incrementAndGet()
+                    audioRepository
+                        .startAudioCapture(s.fftSize)
+                        .onEach { framesProduced.incrementAndGet() }
+                        .catch { e ->
+                            // Inner-flow catch: the engine stays alive for a retry.
+                            onCaptureError("🎙️ ${e.message ?: "Capture micro impossible"}")
+                        }
+                }
             }
-        }
-        // Bounded backpressure: a stalled consumer drops the OLDEST frames
-        // instead of growing without limit (the old channel was UNLIMITED).
-        .buffer(capacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-        .onEach { framesConsumed.incrementAndGet() }
+            // Bounded backpressure: a stalled consumer drops the OLDEST frames
+            // instead of growing without limit (the old channel was UNLIMITED).
+            .buffer(capacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+            .onEach { framesConsumed.incrementAndGet() }
 }

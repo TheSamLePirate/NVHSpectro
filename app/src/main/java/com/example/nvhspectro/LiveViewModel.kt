@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.nvhspectro.data.KinematicsConfig
 import com.example.nvhspectro.data.usableForKinematics
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -70,7 +71,7 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
     private fun startLivePipeline() {
         viewModelScope.launch(analysisDispatcher) {
             var frameCount = 0L
-            captureEngine.frames().collect { audioBuffer ->
+            captureEngine.frames().collect { frame ->
                 // [plan 2.6] Debug integrity log (~every 6 s): produced==consumed
                 // proves the single consumer loses nothing; the thread name
                 // proves DSP is off main.
@@ -84,7 +85,7 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
                     )
                 }
                 if (session.audioSourceMode.value == AudioSourceMode.LIVE) {
-                    processLiveFrame(audioBuffer)
+                    processLiveFrame(frame)
                 }
             }
         }
@@ -106,10 +107,13 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
     }
 
     /** Runs on the dedicated DSP thread [C6]. */
-    private fun processLiveFrame(audioBuffer: ShortArray) {
+    private fun processLiveFrame(frame: CapturedAudioFrame) {
+        val audioBuffer = frame.pcm
         val kConfig = session.kinematicsConfig.value
-        // [L5 removed] Speed is PREDICTED at the frame instant by SpeedProvider.
-        val telemetryNow = speedProvider.currentTelemetry()
+        // [GPS-03] The speed estimate is evaluated at the CAPTURE time of this
+        // window's center sample — a backlogged DSP queue can no longer pair a
+        // spectrum with a speed newer than the analyzed sound.
+        val telemetryNow = speedProvider.telemetryAt(frame.centerTimeNanos)
         val telemetryForCalc = if (kConfig.isEnabled) {
             telemetryNow
         } else {
@@ -161,29 +165,39 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
         // Harmonic detection / emergence report [A2, plan 3.2] — the same
         // engine code as the WAV sweep, on the live-owned instance.
         if (kConfig.isEnabled && speedUsable && speedKmh > 1.0f) {
-            val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
-            if (h1FreqHz >= 0.5) {
-                val reportList = session.emergenceReportEntries.value.toMutableList()
-                session.setTrackedHarmonicTags(
-                    orderEngine.step(
-                        OrderTrackingEngine.Frame(
-                            ttnrRow = ttnrSpectrum,
-                            absRow = magnitudes,
-                            df = liveDf,
-                            speedKmh = speedKmh,
-                            rpm = kConfig.calculateRpm(speedKmh),
-                            h1FreqHz = h1FreqHz
-                        ),
-                        nowMs = System.currentTimeMillis(),
-                        holdMs = (kConfig.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L),
-                        targetOrders = kConfig.parsedTargetOrders(),
-                        activeTags = session.trackedHarmonicTags.value,
-                        report = reportList
-                    )
-                )
-                session.setEmergenceReportEntries(reportList)
-            }
+            runHarmonicDetection(kConfig, speedKmh, magnitudes, ttnrSpectrum, liveDf)
         }
+    }
+
+    /** The per-frame detection step, gated by [processLiveFrame] on speed validity [GPS-09]. */
+    private fun runHarmonicDetection(
+        kConfig: KinematicsConfig,
+        speedKmh: Float,
+        magnitudes: FloatArray,
+        ttnrSpectrum: FloatArray,
+        liveDf: Double
+    ) {
+        val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
+        if (h1FreqHz < 0.5) return
+        val reportList = session.emergenceReportEntries.value.toMutableList()
+        session.setTrackedHarmonicTags(
+            orderEngine.step(
+                OrderTrackingEngine.Frame(
+                    ttnrRow = ttnrSpectrum,
+                    absRow = magnitudes,
+                    df = liveDf,
+                    speedKmh = speedKmh,
+                    rpm = kConfig.calculateRpm(speedKmh),
+                    h1FreqHz = h1FreqHz
+                ),
+                nowMs = System.currentTimeMillis(),
+                holdMs = (kConfig.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L),
+                targetOrders = kConfig.parsedTargetOrders(),
+                activeTags = session.trackedHarmonicTags.value,
+                report = reportList
+            )
+        )
+        session.setEmergenceReportEntries(reportList)
     }
 
     // ------------------------------------------------------ display settings

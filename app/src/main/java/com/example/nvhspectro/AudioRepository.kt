@@ -5,19 +5,26 @@ import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
+import android.media.AudioTimestamp
 import android.media.MediaRecorder
-import kotlin.math.max
+import android.os.SystemClock
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
+import kotlin.math.max
 
 /** Raised when the microphone cannot be opened or keeps failing [C9] — surfaced to the UI, never a crash. */
-class AudioCaptureException(message: String) : Exception(message)
+class AudioCaptureException(
+    message: String,
+) : Exception(message)
 
-class AudioRepository(context: Context) {
+class AudioRepository(
+    context: Context,
+) {
     private val appContext = context.applicationContext
     private var audioRecord: AudioRecord? = null
     private val sampleRate = AudioConfig.LIVE_SAMPLE_RATE_HZ
@@ -47,32 +54,27 @@ class AudioRepository(context: Context) {
         }
     }
 
+    /**
+     * [plan-gps GPS-1.2] Emits [CapturedAudioFrame]s carrying the BOOTTIME of
+     * each window's first and center sample, anchored on
+     * `AudioRecord.getTimestamp(TIMEBASE_BOOTTIME)` (refreshed periodically);
+     * when the hardware timestamp is unavailable the anchor falls back to the
+     * read-completion clock and frames are marked [AudioTimestampSource.ESTIMATED]
+     * (logged once). The speed chain evaluates its estimate at
+     * `centerTimeNanos` [GPS-03].
+     */
     @SuppressLint("MissingPermission")
-    fun startAudioCapture(fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE): Flow<ShortArray> =
+    fun startAudioCapture(fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE): Flow<CapturedAudioFrame> =
         callbackFlow {
             val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
             val recordBufferSize = max(minBufferSize, fftSize * 2)
 
-            // [C9] Validate every step of mic acquisition: a busy mic or failed init
-            // used to throw IllegalStateException straight through the coroutine
-            // scope and crash the app.
-            try {
-                val record = AudioRecord(captureSource, sampleRate, channelConfig, audioFormat, recordBufferSize)
-                if (record.state != AudioRecord.STATE_INITIALIZED) {
-                    record.release()
-                    close(AudioCaptureException("Micro indisponible (initialisation échouée)"))
-                } else {
-                    record.startRecording()
-                    if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
-                        record.release()
-                        close(AudioCaptureException("Micro occupé par une autre application"))
-                    } else {
-                        audioRecord = record
-                    }
-                }
-            } catch (e: Exception) {
-                close(AudioCaptureException("Capture micro impossible : ${e.message ?: e.javaClass.simpleName}"))
-            }
+            // [C9] Validated mic acquisition: a busy mic or failed init used to
+            // throw straight through the coroutine scope and crash the app.
+            openValidatedRecord(recordBufferSize).fold(
+                onSuccess = { audioRecord = it },
+                onFailure = { close(it) },
+            )
 
             // Fenêtre glissante avec recouvrement 50 %
             val stepSize = fftSize / 2
@@ -80,21 +82,16 @@ class AudioRepository(context: Context) {
             val slidingWindow = ShortArray(fftSize)
             var consecutiveErrors = 0
 
-            while (isActive && audioRecord?.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                // [C9] Fill the step completely — a short read used to leave stale
-                // samples in the window tail.
-                var filled = 0
-                var readFailed = false
-                while (filled < stepSize) {
-                    val r = audioRecord?.read(readBuffer, filled, stepSize - filled) ?: -1
-                    if (r <= 0) {
-                        readFailed = true
-                        break
-                    }
-                    filled += r
-                }
+            // [GPS-1.2] Frame-position ↔ BOOTTIME anchoring.
+            val clock = AudioFrameClock(sampleRate)
+            val timestamp = AudioTimestamp()
+            var totalFramesRead = 0L
+            var sequence = 0L
+            var timestampSource = AudioTimestampSource.ESTIMATED
+            var readsSinceAnchor = ANCHOR_REFRESH_READS // force an attempt on the first read
 
-                if (readFailed) {
+            while (isActive && audioRecord?.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                if (!fillStepCompletely(readBuffer, stepSize)) {
                     consecutiveErrors++
                     if (consecutiveErrors >= MAX_READ_ERRORS) {
                         close(AudioCaptureException("Erreurs de lecture micro répétées — capture arrêtée"))
@@ -104,16 +101,99 @@ class AudioRepository(context: Context) {
                     continue
                 }
                 consecutiveErrors = 0
+                totalFramesRead += stepSize
+
+                val attemptHardwareAnchor = ++readsSinceAnchor >= ANCHOR_REFRESH_READS
+                if (attemptHardwareAnchor) readsSinceAnchor = 0
+                timestampSource =
+                    maintainClockAnchor(clock, timestamp, totalFramesRead, attemptHardwareAnchor, timestampSource)
 
                 System.arraycopy(slidingWindow, stepSize, slidingWindow, 0, fftSize - stepSize)
                 System.arraycopy(readBuffer, 0, slidingWindow, fftSize - stepSize, stepSize)
-                trySend(slidingWindow.clone())
+                val firstSampleIndex = totalFramesRead - fftSize
+                trySend(
+                    CapturedAudioFrame(
+                        pcm = slidingWindow.clone(),
+                        firstSampleTimeNanos = clock.frameTimeNanos(firstSampleIndex),
+                        centerTimeNanos = clock.frameTimeNanos(firstSampleIndex + fftSize / 2),
+                        sampleRateHz = sampleRate,
+                        sequenceNumber = sequence++,
+                        timestampSource = timestampSource,
+                    ),
+                )
             }
 
             awaitClose {
                 stopAudioCapture()
             }
         }.flowOn(Dispatchers.IO)
+
+    /** [C9] Fill the step completely — a short read used to leave stale samples in the window tail. */
+    private fun fillStepCompletely(
+        readBuffer: ShortArray,
+        stepSize: Int,
+    ): Boolean {
+        var filled = 0
+        while (filled < stepSize) {
+            val r = audioRecord?.read(readBuffer, filled, stepSize - filled) ?: -1
+            if (r <= 0) return false
+            filled += r
+        }
+        return true
+    }
+
+    /** [C9] Every acquisition step validated; failures become typed [AudioCaptureException]s. */
+    @SuppressLint("MissingPermission")
+    private fun openValidatedRecord(recordBufferSize: Int): Result<AudioRecord> =
+        try {
+            val record = AudioRecord(captureSource, sampleRate, channelConfig, audioFormat, recordBufferSize)
+            if (record.state != AudioRecord.STATE_INITIALIZED) {
+                record.release()
+                Result.failure(AudioCaptureException("Micro indisponible (initialisation échouée)"))
+            } else {
+                record.startRecording()
+                if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                    record.release()
+                    Result.failure(AudioCaptureException("Micro occupé par une autre application"))
+                } else {
+                    Result.success(record)
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(AudioCaptureException("Capture micro impossible : ${e.message ?: e.javaClass.simpleName}"))
+        }
+
+    /**
+     * [GPS-1.2] Keep the frame clock anchored: prefer the hardware BOOTTIME
+     * timestamp (attempted on schedule; never downgraded once obtained); fall
+     * back to "last sample of this read ≈ now" — explicitly less precise,
+     * logged once.
+     */
+    private fun maintainClockAnchor(
+        clock: AudioFrameClock,
+        timestamp: AudioTimestamp,
+        totalFramesRead: Long,
+        attemptHardware: Boolean,
+        currentSource: AudioTimestampSource,
+    ): AudioTimestampSource {
+        var source = currentSource
+        if (attemptHardware &&
+            audioRecord?.getTimestamp(timestamp, AudioTimestamp.TIMEBASE_BOOTTIME) == AudioRecord.SUCCESS
+        ) {
+            clock.setAnchor(timestamp.framePosition, timestamp.nanoTime)
+            source = AudioTimestampSource.HARDWARE
+        }
+        if (!clock.hasAnchor || source == AudioTimestampSource.ESTIMATED) {
+            clock.setAnchor(totalFramesRead, SystemClock.elapsedRealtimeNanos())
+            if (!estimatedClockLogged) {
+                Log.w(TAG, "AudioTimestamp unavailable — using ESTIMATED audio clock")
+                estimatedClockLogged = true
+            }
+        }
+        return source
+    }
+
+    private var estimatedClockLogged = false
 
     fun stopAudioCapture() {
         try {
@@ -126,7 +206,11 @@ class AudioRepository(context: Context) {
     }
 
     private companion object {
+        const val TAG = "AudioRepository"
         const val MAX_READ_ERRORS = 25
         const val READ_ERROR_BACKOFF_MS = 40L
+
+        /** Re-anchor about every ~0.7 s at the default FFT size — tracks clock drift cheaply. */
+        const val ANCHOR_REFRESH_READS = 32
     }
 }
