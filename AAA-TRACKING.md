@@ -4,7 +4,7 @@ Live log of the `V13.1-AAA-plan.md` execution. One section per phase: steps,
 commits, verification evidence, and every deviation from the written plan.
 Update this file **in the same session** as the work it describes.
 
-**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0–3 COMPLETE; GPS-0, GPS-1 & GPS-2 COMPLETE — Gates 0–3, GPS-0–GPS-2 passed on emulator (hardware follow-ups listed per phase)** (2026-08-27)
+**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0–3 COMPLETE; GPS-0 → GPS-3 COMPLETE — Gates 0–3 and GPS-0–GPS-3 passed on emulator (hardware follow-ups listed per phase)** (2026-08-27)
 
 ---
 
@@ -295,7 +295,41 @@ no-NaN/PSD invariants, less-noise-than-raw + no-delay gate). 141 :core tests.
 - ✅ Parameters recorded as PROVISIONAL (named `Config` fields) until Gate GPS-5.
 - ⏳ A/B traces on two chipsets + drive-log replay tuning → field tasks (GPS-5).
 
-**Still open (next: GPS-3):** explicit API-31+ LocationRequest, provider/
-permission states, GnssStatus diagnostics, controlled full-tracking A/B
-[GPS-07, GPS-11, GPS-12]; then GPS-4 (σ → order search window, schema v3,
-RTS reconstruction [GPS-09/10/13/14 surfaces]), GPS-5 (field validation).
+### Phase GPS-3 — Acquisition & diagnostics (COMPLETE, 2026-08-27)
+
+| Step | What was done | Commit |
+|---|---|---|
+| GPS-3.1 | Callbacks on the dedicated `nvh-gnss` HandlerThread (never main); API 31+ subscribes GPS_PROVIDER via an explicit HIGH_ACCURACY / zero-interval / unbatched `LocationRequest` (legacy overload < 31); listener registered even while the provider is disabled | `ba2af36` |
+| GPS-3.2 | **[GPS-07, GPS-12]** Provider enable/disable handled mid-session: disable resets the speed session IMMEDIATELY (no ghost values) + user notice; fallback = LocationManager FUSED/NETWORK, INFORMATION_ONLY (never feeds the estimator without GNSS provenance) — **play-services-location dependency deleted** [B4 bonus]; approximate-only permission posts an explicit notice | `ba2af36` |
+| GPS-3.3 | `GnssDiagnosticsMonitor` snapshots GnssStatus (visible/used sats, mean used C/N0, constellations, L5-band) into 5 new trace columns — diagnostics only, never a σ substitute | `ba2af36` |
+| GPS-3.4 | **[GPS-11]** Full-tracking (API 31+) registered only during an active measurement session AND only when the A/B switch asks (constructor param, default OFF until Gate GPS-5); minimal consumption proves cadence; state in trace header | `ba2af36` |
+| GPS-3.5 | Capability matrix (`# caps sdk=… gnssYear=… gnssHw=… rawMeasurements=… fullTracking=…`) as a second trace-header line, round-trip-tested; 18/19-column legacy rows still parse | `ba2af36` |
+
+### Gate GPS-3 verification (2026-08-27, emulator NVH_Pixel_7_API_37, debug)
+
+- ✅ Metrological chain receives only GPS_PROVIDER (`ProviderRequest[@0,
+  HIGH_ACCURACY, WorkSource com.example.nvhspectro]` — the explicit API-31+
+  request path live on this AVD); fixes flow, Kalman σ in trace, zero FATAL.
+- ✅ **Mid-session GPS toggle**: disable → banner "📡 GPS désactivé — vitesse
+  GNSS indisponible" + card flips to "Signal Perdu"/"--" immediately (reset,
+  not the 5 s LED timeout) — no ghost value (screenshot).
+- ✅ Caps header + GnssStatus columns in the on-device trace (`# caps sdk=37
+  … gnssYear=2023 gnssHw=Android Studio Emulator GPS rawMeasurements=true`;
+  satsVisible=6 per row).
+- ✅ **Zero GNSS resources outside LIVE**: in WAV mode `ProviderRequest[OFF]`
+  and no nvhspectro GNSS listeners in `dumpsys location`.
+- ⏳ Hardware follow-ups: approximate-permission path blocked behind the U1
+  permission dead-end until plan 4.1 (SecurityException notice is code-
+  complete); full-tracking A/B needs two chipsets + endurance (GPS-5);
+  real GnssStatus content (used sats, C/N0) needs a physical phone.
+
+| ID | Deviation | Rationale |
+|---|---|---|
+| DEV-39 | Fused fallback = LocationManager FUSED_PROVIDER (API 31+) / NETWORK_PROVIDER, not the Google Play fused client; play-services-location removed | Same INFORMATION_ONLY role, one dependency less [B4]; gms client added nothing the framework API lacks here |
+| DEV-40 | Full-tracking A/B switch is a constructor parameter (default OFF), not yet a debug UI toggle | The GPS-5 campaign flips it in a debug build; a settings surface for it belongs to Phase 4 UI work if wanted |
+
+**Still open (next: GPS-4):** σ → dynamic order-search window + suspension
+[GPS-10], kinematic error budget [GPS-4.1], telemetry/export schema v3 with
+validity + provenance [GPS-09/13/14 surfaces, DEV-35/36], RTS reconstruction
+for deferred analyses [GPS-4.4]; then GPS-5 (field validation, 3 phones,
+ground truth, parameter freeze).
