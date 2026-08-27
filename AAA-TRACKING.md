@@ -4,7 +4,7 @@ Live log of the `V13.1-AAA-plan.md` execution. One section per phase: steps,
 commits, verification evidence, and every deviation from the written plan.
 Update this file **in the same session** as the work it describes.
 
-**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0, 1 AND 2 COMPLETE — Gates 0, 1 & 2 passed on emulator** (2026-08-26)
+**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0–3 COMPLETE — Gates 0–3 passed on emulator (hardware follow-ups listed per phase)** (2026-08-27)
 
 ---
 
@@ -139,7 +139,7 @@ Unit tests: **61** total, all green; lint 0 errors; minified release builds; all
 
 ---
 
-## Phase 3 — Architecture extraction & persistence (IN PROGRESS)
+## Phase 3 — Architecture extraction & persistence (COMPLETE)
 
 ### Steps executed (2026-08-27)
 
@@ -149,13 +149,24 @@ Unit tests: **61** total, all green; lint 0 errors; minified release builds; all
 | 3.2 | **[A2, D7]** ONE `OrderTrackingEngine` in `:core` consumed by live path AND WAV sweep (the drifted ~130-line copies deleted); tracked-order search (3 copies) → `searchTrackedOrder`. Every threshold a named constant; deliberate D7 resolutions documented in-code: ±1 (per-frame) vs ±3 (interpolated sweep) radii kept with rationale; sweep center-bin projection unified to rounding. 7 engine tests (`a2_*`, `d7_*`, `l7_*`) | `89b8be3` |
 | 3.3 | **[A1, C6-export]** MainViewModel (2,024 lines) **deleted**. `:core MeasurementSession` = shared state machine w/ registered transition hooks + resettables (single L7 enforcement point). `LiveViewModel` (281 code lines), `AnalyzerViewModel` (296, playback driving in `WavPlaybackCoordinator`), `ReportViewModel` (189) share it via `AppGraph`/factory. Pure computation to `:core`: `WavAnalysis` (STFT sweep, speed interpolation, cursor state, order sweep), `SmartPathTracker`, `FilterChain`; `LoadedWavData` moved. `export/` package: `PngExporter` renders on **Default** (was Main), PdfReportGenerator moved from utils/, PDF errors now hit the notice banner | `e479dbd` |
 | 3.4 | **[U9, U10]** Canonical **chronological** history (newest LAST) in every mode; draw layer alone knows live scrolls right-to-left. Report-from-live no longer mirrored vs its own axis [U9]; PNG export column-mirror deleted, export time scale follows the actual data [U10]. 6 session tests | `8e612e4` |
+| 3.5 | **[P1, P2, U2]** `SpectrogramImageProducer`: full-file bitmaps downsampled to ≤4096 columns (was ~13k), rendered on `Dispatchers.Default` via `produceState`, double-buffered so every data change repaints (kills the mutate-and-pray LaunchedEffect hack AND the DEV-14 "black until interaction" quirk). Spectra stored/crossed as **FloatArray** (DSP stays double; golden untouched); Paints hoisted from the 43 Hz draw loop | `74f9263` |
+| 3.6 | **[S1, S2]** `SettingsStore` (DataStore): dB range, FFT size, freq/time windows, detector, full `KinematicsConfig` (`@Serializable`) restored at startup (before observers — defaults can't clobber), written back debounced; `LiveViewModel` follows `session.fftSize` from any writer. `TelemetryCodec`: sidecar **schema v2** (schemaVersion, appVersion, per-sample monotonic `elapsedRealtimeNanos`, altitude, `speedAccuracyMs`) via kotlinx-serialization; v1 sidecars still decode. `TelemetryData` + 2 fields fed by SpeedProvider | `37e3d1a` |
+| — | Coverage wave for the 3.3-extracted pipelines (WavAnalysis, SmartPathTracker, FilterChain): **:core 67.7 % → 91.4 %**, `koverVerify` armed in CI (closes DEV-22) | `9b2ebee` |
+| 3.7 | **[D2, D3, D6, D9, D7-display]** DSP polish, golden regenerated with analytic justification: `realForward` on preallocated buffers; shock detector rate-based (`258 dB/s` ≡ historical 6 dB @ 43 fps) and **first frame analyzed**; TTNR scale `[0,30]` with plain 0 = none, linear-power integration at honest τ = 52 ms (both processor EMA and engine 0.75/0.25 attack); sub-30 Hz masking → display layer (`AudioConfig.DISPLAY_MIN_FREQ_HZ`, producer/PNG/PDF); `searchTrackedOrder` parabolic amplitude (half-bin worst case +0.32 dB vs −1.42 dB, corrections > analytic 1.8 dB rejected as non-tonal). Pinned D3/D7/D9 tests replaced by fixed-behavior tests in the same commit | `8645105` |
+| 3.8 | **[A4, A6, D5]** Purge completed: `CandidateHarmonicTracker`, `isFrequencyAllowed`, PDF's private `getJetColorInt` copy, the dead PDF `"\n"` branch, the unused `AutoResizedText(String,color)` overload, never-mutated `yOffsetAccumulator`, duplicate `vibratec_logo.png`. `ci/checks.sh` **resurrection gate**: purged symbols/files fail the build if they return. Coverage → **93.2 %** | `7199f14` |
 
-### Phase-3 device verification so far (2026-08-27, emulator NVH_API_37_compact, debug)
+### Gate 3 verification (2026-08-27, emulators NVH_API_37_compact + NVH_Pixel_7_API_37, debug)
 
 - ✅ Post-3.3 smoke: boot, 30 s live session, `LivePipeline produced==consumed thread=nvh-dsp`, LIVE→WAV (mic **released**, appops finalized) → LIVE (mic `(running)`, restarts=2), report-mode round trip — zero FATAL.
 - ✅ Post-3.4: synthetic 200→4000 Hz sweep WAV loads via SAF; renders **rising left→right** on screen; frozen-view PNG export shows the same orientation (old code mirrored it) with the −10 s→0 s axis spanning the real file duration; export no longer freezes the UI.
+- ✅ **5-min WAV memory gate**: 26 MB file → **TOTAL PSS 242 MB / Java heap 161 MB** — under the 256 MB plan-§1 bound (old layout: 211 MB double spectra + 52 MB full-width bitmap alone). Rendered immediately with the correct 0–300 s axis. *Load < 3 s to be timed on real hardware (emulator FFT speed unrepresentative).*
+- ✅ **[S1] Process death**: FFT 4096 + Min −94 dBFS set → `am force-stop` → relaunch shows "Min −94" restored and the engine running at the restored size (also survived a full emulator reboot).
+- ✅ **Gate-1 regression (48 kHz)**: reference tone renders the 48 kHz grid (7987/5990/3993/1996), tone exactly ON the 3993 gridline — C1 intact through FloatArray/chronological/producer refactors. Stereo covered by `c2_*` unit tests + original Gate 1 (device re-check skipped: tap automation flakiness, format handling unchanged since).
+- ✅ **[S2] Record→save→reload round trip** (Pixel 7 AVD, real mic): 8 s recording saved; sidecar on device is **schema v2** (`schemaVersion: 2`, `appVersion: 13.2.0`, `captureSource`, 347 samples 1:1 with frames, per-sample monotonic `elapsedRealtimeNanos` + `speedAccuracyMs`); picker lists it; reload restores audio (real spectral content, 00:08, chronological) + decoded telemetry.
+- ✅ Post-3.7 DSP smoke: sweep renders correctly in ABS and TTNR (crisp emergence trace on the new 0-based scale), zero FATAL.
+- ⚠️ **Emulator-infrastructure ANRs** (NOT app defects — evidence): 4 ANRs on `NVH_API_37_compact` under swiftshader; traces show main waiting in `HardwareRenderer.setStopped` on the RenderThread, which is blocked in `qemu_pipe_read` inside `eglMakeCurrent` (the emulator's guest→host GPU transport; 45 s kernel time on that thread), with the system launcher ANRing simultaneously. App threads healthy in every trace; zero FATAL all night. Same flows run clean on `NVH_Pixel_7_API_37` with host GPU. **Follow-up: repeat Gate-3 checklist on a physical phone (as every gate ultimately requires).**
 
-### Phase-3 deviations so far
+### Phase-3 deviations
 
 | ID | Deviation | Rationale |
 |---|---|---|
@@ -165,6 +176,26 @@ Unit tests: **61** total, all green; lint 0 errors; minified release builds; all
 | DEV-25 | Session (AppGraph) is process-scoped: measurement state now survives activity finish→relaunch | Direction of S1; VMs re-register hooks via unregister-on-clear handles |
 | DEV-26 | `session.clearEmergenceReport()` also clears `latestTTNRSpectrum`/tags (slightly broader than the old method) | One reset path [L7]; display-only nuance mid-sweep |
 | DEV-27 | Detector beacons in WAV mode now read the LAST frame (was frame 0 after load) | Chronological `.last()` = "most recent frame" semantics; live behavior unchanged |
+| DEV-28 | Kover 90 % gate armed mid-phase (after `9b2ebee`), not at 3.1 | Coverage had to be earned first: 80→87.9→67.7 (3.3 extractions landed untested)→91.4→93.2 |
+| DEV-29 | 3.7's D2 also clamps the detection floor to 0 dB (old −3..0 dB window dropped) | Analytically invisible: sub-0 dB values were below the 1.0 display-black threshold, masked by the old −3 output gate, and rejected by the engine's `>0` fold — no consumer could observe them |
+| DEV-30 | D9 correction lives in `searchTrackedOrder` (the readout feeding reports/graphs), not in raw FFT bins | Raw bins keep physical scalloping by design — documented in `d9_rawBinReadout_hasPhysicalScalloping` |
+| DEV-31 | Gate-3 "5-min load < 3 s" and LeakCanary check deferred to hardware / plan 5.1 | Emulator FFT throughput unrepresentative; LeakCanary was already deferred by DEV-19 |
+| DEV-32 | `updateKinematicsConfig`/`updateSelectedTrackedOrder` live on AnalyzerViewModel (they own the WAV re-sweep); live path reads config per frame from the session | One owner for the recalc choreography; no cross-VM callback needed |
+
+### Phase-3 exit-gate check (plan §1 Architecture row)
+
+- ✅ `MainViewModel` < 300 lines → **deleted entirely**; largest VM is 296 code lines.
+- ✅ Pure-Kotlin `:core` with zero Android imports → armed `ci/checks.sh` gate.
+- ✅ One `OrderTrackingEngine` for live + sweep.
+- ✅ Dead-code purge + CI resurrection gate; `:core` coverage **93.2 %** with `koverVerify` in CI.
+
+### Notes for Phase 4
+
+- The permission dead-end (U1, plan 4.1) is untouched: `AppNavigation` still parks on "En attente des permissions…" if any permission is denied.
+- `session.analysisNotice` is ready to become the SnackbarHost feed (plan 4.7).
+- Emergence Report dialog is still unreachable (D6 restore is plan 4.6) — `session.clearEmergenceReport()` is already wired for it.
+- The 30 s recording cap constant now lives in `LiveViewModel.MAX_RECORDING_SEC` (S5 single-sourcing partially done; dialog text still hard-codes "00:30").
+- PngExporter/PdfReportGenerator share `AudioConfig.DISPLAY_MIN_FREQ_HZ`; 4.5's PDF stamps (date/version/capture source) have `TelemetryCodec`'s appVersion pattern to follow.
 
 ---
 
