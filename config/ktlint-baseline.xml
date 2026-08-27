@@ -45,45 +45,6 @@
         <error line="39" column="63" source="standard:class-signature" />
         <error line="40" column="1" source="standard:no-empty-first-line-in-class-body" />
     </file>
-    <file name="app/src/main/java/com/example/nvhspectro/LiveViewModel.kt">
-        <error line="3" column="1" source="standard:import-ordering" />
-        <error line="29" column="21" source="standard:class-signature" />
-        <error line="29" column="47" source="standard:class-signature" />
-        <error line="29" column="78" source="standard:class-signature" />
-        <error line="30" column="1" source="standard:no-empty-first-line-in-class-body" />
-        <error line="48" column="26" source="standard:multiline-expression-wrapping" />
-        <error line="52" column="32" source="standard:multiline-expression-wrapping" />
-        <error line="84" column="68" source="standard:trailing-comma-on-call-site" />
-        <error line="101" column="86" source="standard:trailing-comma-on-call-site" />
-        <error line="102" column="26" source="standard:trailing-comma-on-call-site" />
-        <error line="117" column="32" source="standard:multiline-expression-wrapping" />
-        <error line="148" column="30" source="standard:multiline-expression-wrapping" />
-        <error line="149" column="33" source="standard:argument-list-wrapping" />
-        <error line="149" column="47" source="standard:argument-list-wrapping" />
-        <error line="149" column="88" source="standard:argument-list-wrapping" />
-        <error line="150" column="73" source="standard:trailing-comma-on-call-site" />
-        <error line="158" column="29" source="standard:multiline-expression-wrapping" />
-        <error line="161" column="55" source="standard:trailing-comma-on-call-site" />
-        <error line="178" column="23" source="standard:trailing-comma-on-declaration-site" />
-        <error line="191" column="40" source="standard:trailing-comma-on-call-site" />
-        <error line="197" column="36" source="standard:trailing-comma-on-call-site" />
-        <error line="198" column="14" source="standard:trailing-comma-on-call-site" />
-        <error line="205" column="24" source="standard:function-signature" />
-        <error line="205" column="42" source="standard:function-signature" />
-        <error line="205" column="60" source="standard:function-signature" />
-        <error line="205" column="77" source="standard:function-signature" />
-        <error line="205" column="94" source="standard:function-signature" />
-        <error line="205" column="111" source="standard:function-signature" />
-        <error line="205" column="132" source="standard:function-signature" />
-        <error line="217" column="32" source="standard:function-signature" />
-        <error line="217" column="50" source="standard:function-signature" />
-        <error line="217" column="71" source="standard:function-signature" />
-        <error line="217" column="94" source="standard:function-signature" />
-        <error line="217" column="97" source="standard:function-signature" />
-        <error line="270" column="34" source="standard:multiline-expression-wrapping" />
-        <error line="326" column="65" source="standard:trailing-comma-on-call-site" />
-        <error line="352" column="30" source="standard:trailing-comma-on-call-site" />
-    </file>
     <file name="app/src/main/java/com/example/nvhspectro/MainActivity.kt">
         <error line="14" column="1" source="standard:indent" />
         <error line="15" column="1" source="standard:indent" />
@@ -1002,33 +963,33 @@
         <error line="873" column="1" source="standard:indent" />
         <error line="874" column="1" source="standard:indent" />
         <error line="875" column="1" source="standard:indent" />
-        <error line="875" column="38" source="standard:trailing-comma-on-call-site" />
         <error line="876" column="1" source="standard:indent" />
         <error line="877" column="1" source="standard:indent" />
+        <error line="878" column="1" source="standard:indent" />
         <error line="879" column="1" source="standard:indent" />
+        <error line="879" column="38" source="standard:trailing-comma-on-call-site" />
+        <error line="880" column="1" source="standard:indent" />
         <error line="881" column="1" source="standard:indent" />
-        <error line="882" column="1" source="standard:indent" />
         <error line="883" column="1" source="standard:indent" />
-        <error line="883" column="44" source="standard:multiline-expression-wrapping" />
-        <error line="884" column="1" source="standard:indent" />
         <error line="885" column="1" source="standard:indent" />
         <error line="886" column="1" source="standard:indent" />
         <error line="887" column="1" source="standard:indent" />
-        <error line="887" column="79" source="standard:trailing-comma-on-call-site" />
+        <error line="887" column="44" source="standard:multiline-expression-wrapping" />
         <error line="888" column="1" source="standard:indent" />
         <error line="889" column="1" source="standard:indent" />
         <error line="890" column="1" source="standard:indent" />
         <error line="891" column="1" source="standard:indent" />
+        <error line="891" column="79" source="standard:trailing-comma-on-call-site" />
         <error line="892" column="1" source="standard:indent" />
-        <error line="892" column="52" source="standard:multiline-expression-wrapping" />
         <error line="893" column="1" source="standard:indent" />
         <error line="894" column="1" source="standard:indent" />
         <error line="895" column="1" source="standard:indent" />
         <error line="896" column="1" source="standard:indent" />
+        <error line="896" column="52" source="standard:multiline-expression-wrapping" />
+        <error line="897" column="1" source="standard:indent" />
         <error line="898" column="1" source="standard:indent" />
         <error line="899" column="1" source="standard:indent" />
         <error line="900" column="1" source="standard:indent" />
-        <error line="901" column="1" source="standard:indent" />
         <error line="902" column="1" source="standard:indent" />
         <error line="903" column="1" source="standard:indent" />
         <error line="904" column="1" source="standard:indent" />
@@ -1039,51 +1000,51 @@
         <error line="909" column="1" source="standard:indent" />
         <error line="910" column="1" source="standard:indent" />
         <error line="911" column="1" source="standard:indent" />
-        <error line="911" column="116" source="standard:trailing-comma-on-call-site" />
         <error line="912" column="1" source="standard:indent" />
         <error line="913" column="1" source="standard:indent" />
-        <error line="913" column="42" source="standard:trailing-comma-on-call-site" />
         <error line="914" column="1" source="standard:indent" />
         <error line="915" column="1" source="standard:indent" />
+        <error line="915" column="116" source="standard:trailing-comma-on-call-site" />
         <error line="916" column="1" source="standard:indent" />
+        <error line="917" column="1" source="standard:indent" />
+        <error line="917" column="42" source="standard:trailing-comma-on-call-site" />
         <error line="918" column="1" source="standard:indent" />
         <error line="919" column="1" source="standard:indent" />
         <error line="920" column="1" source="standard:indent" />
-        <error line="920" column="44" source="standard:multiline-expression-wrapping" />
-        <error line="921" column="1" source="standard:indent" />
         <error line="922" column="1" source="standard:indent" />
         <error line="923" column="1" source="standard:indent" />
-        <error line="923" column="80" source="standard:trailing-comma-on-call-site" />
         <error line="924" column="1" source="standard:indent" />
+        <error line="924" column="44" source="standard:multiline-expression-wrapping" />
         <error line="925" column="1" source="standard:indent" />
         <error line="926" column="1" source="standard:indent" />
         <error line="927" column="1" source="standard:indent" />
+        <error line="927" column="80" source="standard:trailing-comma-on-call-site" />
         <error line="928" column="1" source="standard:indent" />
-        <error line="928" column="69" source="standard:binary-expression-wrapping" />
-        <error line="928" column="141" source="standard:max-line-length" />
         <error line="929" column="1" source="standard:indent" />
-        <error line="929" column="67" source="standard:binary-expression-wrapping" />
-        <error line="929" column="141" source="standard:max-line-length" />
         <error line="930" column="1" source="standard:indent" />
         <error line="931" column="1" source="standard:indent" />
         <error line="932" column="1" source="standard:indent" />
+        <error line="932" column="69" source="standard:binary-expression-wrapping" />
+        <error line="932" column="141" source="standard:max-line-length" />
         <error line="933" column="1" source="standard:indent" />
+        <error line="933" column="67" source="standard:binary-expression-wrapping" />
+        <error line="933" column="141" source="standard:max-line-length" />
         <error line="934" column="1" source="standard:indent" />
         <error line="935" column="1" source="standard:indent" />
         <error line="936" column="1" source="standard:indent" />
         <error line="937" column="1" source="standard:indent" />
-        <error line="937" column="70" source="standard:trailing-comma-on-call-site" />
         <error line="938" column="1" source="standard:indent" />
         <error line="939" column="1" source="standard:indent" />
         <error line="940" column="1" source="standard:indent" />
         <error line="941" column="1" source="standard:indent" />
+        <error line="941" column="70" source="standard:trailing-comma-on-call-site" />
         <error line="942" column="1" source="standard:indent" />
         <error line="943" column="1" source="standard:indent" />
         <error line="944" column="1" source="standard:indent" />
+        <error line="945" column="1" source="standard:indent" />
         <error line="946" column="1" source="standard:indent" />
         <error line="947" column="1" source="standard:indent" />
         <error line="948" column="1" source="standard:indent" />
-        <error line="949" column="1" source="standard:indent" />
         <error line="950" column="1" source="standard:indent" />
         <error line="951" column="1" source="standard:indent" />
         <error line="952" column="1" source="standard:indent" />
@@ -1091,41 +1052,41 @@
         <error line="954" column="1" source="standard:indent" />
         <error line="955" column="1" source="standard:indent" />
         <error line="956" column="1" source="standard:indent" />
-        <error line="956" column="18" source="standard:trailing-comma-on-call-site" />
         <error line="957" column="1" source="standard:indent" />
         <error line="958" column="1" source="standard:indent" />
-        <error line="959" column="1" source="standard:no-trailing-spaces" />
+        <error line="959" column="1" source="standard:indent" />
         <error line="960" column="1" source="standard:indent" />
+        <error line="960" column="18" source="standard:trailing-comma-on-call-site" />
         <error line="961" column="1" source="standard:indent" />
         <error line="962" column="1" source="standard:indent" />
-        <error line="962" column="55" source="standard:trailing-comma-on-call-site" />
-        <error line="963" column="1" source="standard:indent" />
+        <error line="963" column="1" source="standard:no-trailing-spaces" />
         <error line="964" column="1" source="standard:indent" />
+        <error line="965" column="1" source="standard:indent" />
         <error line="966" column="1" source="standard:indent" />
+        <error line="966" column="55" source="standard:trailing-comma-on-call-site" />
         <error line="967" column="1" source="standard:indent" />
         <error line="968" column="1" source="standard:indent" />
-        <error line="969" column="1" source="standard:indent" />
         <error line="970" column="1" source="standard:indent" />
         <error line="971" column="1" source="standard:indent" />
         <error line="972" column="1" source="standard:indent" />
-        <error line="972" column="65" source="standard:trailing-comma-on-call-site" />
         <error line="973" column="1" source="standard:indent" />
         <error line="974" column="1" source="standard:indent" />
+        <error line="975" column="1" source="standard:indent" />
         <error line="976" column="1" source="standard:indent" />
+        <error line="976" column="65" source="standard:trailing-comma-on-call-site" />
         <error line="977" column="1" source="standard:indent" />
         <error line="978" column="1" source="standard:indent" />
-        <error line="979" column="1" source="standard:indent" />
         <error line="980" column="1" source="standard:indent" />
         <error line="981" column="1" source="standard:indent" />
         <error line="982" column="1" source="standard:indent" />
         <error line="983" column="1" source="standard:indent" />
-        <error line="983" column="65" source="standard:trailing-comma-on-call-site" />
         <error line="984" column="1" source="standard:indent" />
         <error line="985" column="1" source="standard:indent" />
+        <error line="986" column="1" source="standard:indent" />
         <error line="987" column="1" source="standard:indent" />
+        <error line="987" column="65" source="standard:trailing-comma-on-call-site" />
         <error line="988" column="1" source="standard:indent" />
         <error line="989" column="1" source="standard:indent" />
-        <error line="990" column="1" source="standard:indent" />
         <error line="991" column="1" source="standard:indent" />
         <error line="992" column="1" source="standard:indent" />
         <error line="993" column="1" source="standard:indent" />
@@ -1155,57 +1116,57 @@
         <error line="1017" column="1" source="standard:indent" />
         <error line="1018" column="1" source="standard:indent" />
         <error line="1019" column="1" source="standard:indent" />
-        <error line="1019" column="76" source="standard:trailing-comma-on-call-site" />
         <error line="1020" column="1" source="standard:indent" />
         <error line="1021" column="1" source="standard:indent" />
-        <error line="1022" column="1" source="standard:no-trailing-spaces" />
+        <error line="1022" column="1" source="standard:indent" />
         <error line="1023" column="1" source="standard:indent" />
+        <error line="1023" column="76" source="standard:trailing-comma-on-call-site" />
         <error line="1024" column="1" source="standard:indent" />
         <error line="1025" column="1" source="standard:indent" />
-        <error line="1026" column="1" source="standard:indent" />
+        <error line="1026" column="1" source="standard:no-trailing-spaces" />
         <error line="1027" column="1" source="standard:indent" />
         <error line="1028" column="1" source="standard:indent" />
         <error line="1029" column="1" source="standard:indent" />
         <error line="1030" column="1" source="standard:indent" />
-        <error line="1030" column="18" source="standard:trailing-comma-on-call-site" />
         <error line="1031" column="1" source="standard:indent" />
         <error line="1032" column="1" source="standard:indent" />
+        <error line="1033" column="1" source="standard:indent" />
         <error line="1034" column="1" source="standard:indent" />
+        <error line="1034" column="18" source="standard:trailing-comma-on-call-site" />
         <error line="1035" column="1" source="standard:indent" />
         <error line="1036" column="1" source="standard:indent" />
-        <error line="1037" column="1" source="standard:indent" />
         <error line="1038" column="1" source="standard:indent" />
         <error line="1039" column="1" source="standard:indent" />
         <error line="1040" column="1" source="standard:indent" />
         <error line="1041" column="1" source="standard:indent" />
-        <error line="1041" column="18" source="standard:trailing-comma-on-call-site" />
         <error line="1042" column="1" source="standard:indent" />
         <error line="1043" column="1" source="standard:indent" />
+        <error line="1044" column="1" source="standard:indent" />
         <error line="1045" column="1" source="standard:indent" />
+        <error line="1045" column="18" source="standard:trailing-comma-on-call-site" />
         <error line="1046" column="1" source="standard:indent" />
         <error line="1047" column="1" source="standard:indent" />
-        <error line="1048" column="1" source="standard:indent" />
         <error line="1049" column="1" source="standard:indent" />
         <error line="1050" column="1" source="standard:indent" />
-        <error line="1050" column="67" source="standard:trailing-comma-on-call-site" />
         <error line="1051" column="1" source="standard:indent" />
         <error line="1052" column="1" source="standard:indent" />
+        <error line="1053" column="1" source="standard:indent" />
         <error line="1054" column="1" source="standard:indent" />
+        <error line="1054" column="67" source="standard:trailing-comma-on-call-site" />
         <error line="1055" column="1" source="standard:indent" />
         <error line="1056" column="1" source="standard:indent" />
-        <error line="1057" column="1" source="standard:indent" />
         <error line="1058" column="1" source="standard:indent" />
         <error line="1059" column="1" source="standard:indent" />
         <error line="1060" column="1" source="standard:indent" />
         <error line="1061" column="1" source="standard:indent" />
         <error line="1062" column="1" source="standard:indent" />
-        <error line="1062" column="18" source="standard:trailing-comma-on-call-site" />
         <error line="1063" column="1" source="standard:indent" />
         <error line="1064" column="1" source="standard:indent" />
+        <error line="1065" column="1" source="standard:indent" />
         <error line="1066" column="1" source="standard:indent" />
+        <error line="1066" column="18" source="standard:trailing-comma-on-call-site" />
         <error line="1067" column="1" source="standard:indent" />
         <error line="1068" column="1" source="standard:indent" />
-        <error line="1069" column="1" source="standard:indent" />
         <error line="1070" column="1" source="standard:indent" />
         <error line="1071" column="1" source="standard:indent" />
         <error line="1072" column="1" source="standard:indent" />
@@ -1213,20 +1174,24 @@
         <error line="1074" column="1" source="standard:indent" />
         <error line="1075" column="1" source="standard:indent" />
         <error line="1076" column="1" source="standard:indent" />
-        <error line="1076" column="18" source="standard:trailing-comma-on-call-site" />
         <error line="1077" column="1" source="standard:indent" />
         <error line="1078" column="1" source="standard:indent" />
         <error line="1079" column="1" source="standard:indent" />
-        <error line="1084" column="5" source="standard:function-naming" />
-        <error line="1085" column="33" source="standard:multiline-expression-wrapping" />
-        <error line="1093" column="59" source="standard:trailing-comma-on-call-site" />
-        <error line="1097" column="24" source="standard:multiline-expression-wrapping" />
-        <error line="1099" column="67" source="standard:trailing-comma-on-call-site" />
-        <error line="1106" column="5" source="standard:function-naming" />
-        <error line="1106" column="13" source="standard:function-signature" />
-        <error line="1106" column="28" source="standard:function-signature" />
-        <error line="1106" column="41" source="standard:function-signature" />
-        <error line="1113" column="1" source="standard:no-consecutive-blank-lines" />
+        <error line="1080" column="1" source="standard:indent" />
+        <error line="1080" column="18" source="standard:trailing-comma-on-call-site" />
+        <error line="1081" column="1" source="standard:indent" />
+        <error line="1082" column="1" source="standard:indent" />
+        <error line="1083" column="1" source="standard:indent" />
+        <error line="1088" column="5" source="standard:function-naming" />
+        <error line="1089" column="33" source="standard:multiline-expression-wrapping" />
+        <error line="1097" column="59" source="standard:trailing-comma-on-call-site" />
+        <error line="1101" column="24" source="standard:multiline-expression-wrapping" />
+        <error line="1103" column="67" source="standard:trailing-comma-on-call-site" />
+        <error line="1110" column="5" source="standard:function-naming" />
+        <error line="1110" column="13" source="standard:function-signature" />
+        <error line="1110" column="28" source="standard:function-signature" />
+        <error line="1110" column="41" source="standard:function-signature" />
+        <error line="1117" column="1" source="standard:no-consecutive-blank-lines" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/PlaybackController.kt">
         <error line="3" column="1" source="standard:import-ordering" />
@@ -2992,33 +2957,6 @@
         <error line="61" column="142" source="standard:argument-list-wrapping" />
         <error line="77" column="34" source="standard:multiline-expression-wrapping" />
         <error line="83" column="33" source="standard:multiline-expression-wrapping" />
-    </file>
-    <file name="core/src/main/kotlin/com/example/nvhspectro/WavAnalysis.kt">
-        <error line="14" column="1" source="standard:no-empty-first-line-in-class-body" />
-        <error line="15" column="23" source="standard:class-signature" />
-        <error line="15" column="54" source="standard:class-signature" />
-        <error line="15" column="84" source="standard:class-signature" />
-        <error line="27" column="37" source="standard:trailing-comma-on-declaration-site" />
-        <error line="93" column="37" source="standard:trailing-comma-on-declaration-site" />
-        <error line="109" column="24" source="standard:trailing-comma-on-declaration-site" />
-        <error line="147" column="30" source="standard:multiline-expression-wrapping" />
-        <error line="148" column="33" source="standard:argument-list-wrapping" />
-        <error line="148" column="39" source="standard:argument-list-wrapping" />
-        <error line="148" column="79" source="standard:argument-list-wrapping" />
-        <error line="149" column="73" source="standard:trailing-comma-on-call-site" />
-        <error line="151" column="25" source="standard:multiline-expression-wrapping" />
-        <error line="154" column="65" source="standard:trailing-comma-on-call-site" />
-        <error line="166" column="47" source="standard:trailing-comma-on-declaration-site" />
-        <error line="179" column="24" source="standard:trailing-comma-on-declaration-site" />
-        <error line="183" column="30" source="standard:multiline-expression-wrapping" />
-        <error line="196" column="34" source="standard:multiline-expression-wrapping" />
-        <error line="197" column="33" source="standard:argument-list-wrapping" />
-        <error line="197" column="42" source="standard:argument-list-wrapping" />
-        <error line="197" column="65" source="standard:argument-list-wrapping" />
-        <error line="198" column="77" source="standard:trailing-comma-on-call-site" />
-        <error line="225" column="27" source="standard:multiline-expression-wrapping" />
-        <error line="232" column="49" source="standard:trailing-comma-on-call-site" />
-        <error line="238" column="32" source="standard:trailing-comma-on-call-site" />
     </file>
     <file name="core/src/main/kotlin/com/example/nvhspectro/data/BiQuadFilter.kt">
         <error line="6" column="1" source="standard:no-unused-imports" />

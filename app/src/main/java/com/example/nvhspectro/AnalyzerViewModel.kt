@@ -15,7 +15,6 @@ import com.example.nvhspectro.data.VideoAudioExtractor
 import com.example.nvhspectro.data.WavAudioWriter
 import com.example.nvhspectro.data.WavDataReader
 import com.example.nvhspectro.data.WavReadResult
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -24,24 +23,28 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * [plan 3.3] The analyzer third of the historical MainViewModel: WAV/video
  * loading, the full-file sweep (computed in :core's WavAnalysis), playback
  * ownership and the audio filter chain. Shared state lives in [session].
  */
-class AnalyzerViewModel(application: Application, val session: MeasurementSession) : AndroidViewModel(application) {
-
+class AnalyzerViewModel(
+    application: Application,
+    val session: MeasurementSession,
+) : AndroidViewModel(application) {
     // [L1/L2/L4] One owner of the MediaPlayer; release guaranteed in onCleared.
     private val playback = PlaybackController()
 
     /** Position/play-state driver for the loaded source [plan 3.3]. */
-    val player = WavPlaybackCoordinator(
-        scope = viewModelScope,
-        playback = playback,
-        loadedData = { session.loadedWavData.value },
-        onFrameAt = ::processWavFrameAt
-    ).also { p -> playback.onCompletion = { p.onSourceCompleted() } }
+    val player =
+        WavPlaybackCoordinator(
+            scope = viewModelScope,
+            playback = playback,
+            loadedData = { session.loadedWavData.value },
+            onFrameAt = ::processWavFrameAt,
+        ).also { p -> playback.onCompletion = { p.onSourceCompleted() } }
 
     private var processingJob: Job? = null
     private var filterJob: Job? = null
@@ -53,17 +56,19 @@ class AnalyzerViewModel(application: Application, val session: MeasurementSessio
     private val unregisterResettable: () -> Unit
 
     init {
-        unregisterHook = session.registerModeTransitionHook {
-            processingJob?.cancel()
-            player.stopAndRewind()
-            playback.release()
-            _loadedWavFileName.value = null
-            _loadedVideoUri.value = null
-            _loadedYouTubeUrl.value = null
-        }
-        unregisterResettable = session.registerAnalysisResettable {
-            wavTagsByFrame = emptyMap()
-        }
+        unregisterHook =
+            session.registerModeTransitionHook {
+                processingJob?.cancel()
+                player.stopAndRewind()
+                playback.release()
+                _loadedWavFileName.value = null
+                _loadedVideoUri.value = null
+                _loadedYouTubeUrl.value = null
+            }
+        unregisterResettable =
+            session.registerAnalysisResettable {
+                wavTagsByFrame = emptyMap()
+            }
     }
 
     // ------------------------------------------------------------- UI state
@@ -129,43 +134,52 @@ class AnalyzerViewModel(application: Application, val session: MeasurementSessio
 
         filterJob?.cancel() // [L2] no race on the temp file/player
         if (filters.isEmpty()) {
-            filterJob = viewModelScope.launch {
-                val currentPos = playback.currentPositionMs
-                val wasPlaying = player.isPlaying.value || playback.isPlaying
-                playback.restoreOriginalSource()
-                playback.seekTo(currentPos)
-                if (wasPlaying) playback.play()
-                processFullWavSpectrogram(originalData) // [C10] display back to raw
-            }
+            filterJob =
+                viewModelScope.launch {
+                    val currentPos = playback.currentPositionMs
+                    val wasPlaying = player.isPlaying.value || playback.isPlaying
+                    playback.restoreOriginalSource()
+                    playback.seekTo(currentPos)
+                    if (wasPlaying) playback.play()
+                    processFullWavSpectrogram(originalData) // [C10] display back to raw
+                }
             return
         }
 
-        filterJob = viewModelScope.launch(Dispatchers.Default) {
-            // [L2] Capture position BEFORE the seconds-long filtering, not after.
-            val currentPos = playback.currentPositionMs
-            val wasPlaying = player.isPlaying.value || playback.isPlaying
+        filterJob =
+            viewModelScope.launch(Dispatchers.Default) {
+                // [L2] Capture position BEFORE the seconds-long filtering, not after.
+                val currentPos = playback.currentPositionMs
+                val wasPlaying = player.isPlaying.value || playback.isPlaying
 
-            val specs = filters.map { FilterSpec(it.type, it.minFreq, it.maxFreq) }
-            val filteredPcm = FilterChain.renderFilteredPcm(
-                originalData.pcmSamples, specs, originalData.sampleRate.toDouble()
-            ) { ensureActive() }
+                val specs = filters.map { FilterSpec(it.type, it.minFreq, it.maxFreq) }
+                val filteredPcm =
+                    FilterChain.renderFilteredPcm(
+                        originalData.pcmSamples,
+                        specs,
+                        originalData.sampleRate.toDouble(),
+                    ) { ensureActive() }
 
-            val tempFile = File(getApplication<Application>().cacheDir, "filtered_playback.wav")
-            WavAudioWriter.writePcmToWav(filteredPcm, tempFile, originalData.sampleRate)
+                val tempFile = File(getApplication<Application>().cacheDir, "filtered_playback.wav")
+                WavAudioWriter.writePcmToWav(filteredPcm, tempFile, originalData.sampleRate)
 
-            withContext(Dispatchers.Main) {
-                playback.setFilteredSource(tempFile)
-                playback.seekTo(currentPos)
-                if (wasPlaying) playback.play()
-                // [C10] The display analyzes the same signal the user hears.
-                processFullWavSpectrogram(originalData, analysisData = originalData.copy(pcmSamples = filteredPcm))
+                withContext(Dispatchers.Main) {
+                    playback.setFilteredSource(tempFile)
+                    playback.seekTo(currentPos)
+                    if (wasPlaying) playback.play()
+                    // [C10] The display analyzes the same signal the user hears.
+                    processFullWavSpectrogram(originalData, analysisData = originalData.copy(pcmSamples = filteredPcm))
+                }
             }
-        }
     }
 
     // --------------------------------------------------------------- loading
 
-    fun loadWavFromUri(context: Context, uri: Uri, jsonUri: Uri? = null) {
+    fun loadWavFromUri(
+        context: Context,
+        uri: Uri,
+        jsonUri: Uri? = null,
+    ) {
         val gen = prepareForWavLoad()
         val name = uri.lastPathSegment?.substringAfterLast("/") ?: "fichier.wav"
         // [C16] Full-file read + parse on IO with the progress overlay.
@@ -192,7 +206,11 @@ class AnalyzerViewModel(application: Application, val session: MeasurementSessio
     }
 
     /** [C2] Typed import result: success feeds the pipeline, rejection feeds the banner. */
-    private suspend fun handleWavResult(result: WavReadResult, fileName: String, prepareSource: suspend () -> Long?) {
+    private suspend fun handleWavResult(
+        result: WavReadResult,
+        fileName: String,
+        prepareSource: suspend () -> Long?,
+    ) {
         when (result) {
             is WavReadResult.Success -> {
                 val data = result.data
@@ -222,7 +240,10 @@ class AnalyzerViewModel(application: Application, val session: MeasurementSessio
         }
     }
 
-    fun loadVideoFromUri(context: Context, uri: Uri) {
+    fun loadVideoFromUri(
+        context: Context,
+        uri: Uri,
+    ) {
         processingJob?.cancel()
         player.stopAndRewind()
         session.dismissNotice()
@@ -272,44 +293,52 @@ class AnalyzerViewModel(application: Application, val session: MeasurementSessio
     // -------------------------------------------------------------- analysis
 
     /** [C10] analysisData carries the (possibly filtered) PCM; [data] stays the original. */
-    private fun processFullWavSpectrogram(data: LoadedWavData, analysisData: LoadedWavData = data) {
+    private fun processFullWavSpectrogram(
+        data: LoadedWavData,
+        analysisData: LoadedWavData = data,
+    ) {
         val durationSec = data.durationMs / 1000.0
         _isProcessingVideo.value = true
-        _processingEstimateMessage.value = if (durationSec >= 60.0) {
-            val min = (durationSec / 60).toInt()
-            val sec = (durationSec % 60).toInt()
-            val estimatedSec = String.format("%.1f", durationSec * 0.002).replace(",", ".")
-            "⏳ Traitement du spectrogramme en cours...\nVidéo (${min}m ${sec}s) | Temps estimé: ~$estimatedSec s"
-        } else {
-            null
-        }
+        _processingEstimateMessage.value =
+            if (durationSec >= 60.0) {
+                val min = (durationSec / 60).toInt()
+                val sec = (durationSec % 60).toInt()
+                val estimatedSec = String.format("%.1f", durationSec * 0.002).replace(",", ".")
+                "⏳ Traitement du spectrogramme en cours...\nVidéo (${min}m ${sec}s) | Temps estimé: ~$estimatedSec s"
+            } else {
+                null
+            }
 
         processingJob?.cancel()
-        processingJob = viewModelScope.launch(Dispatchers.Default) {
-            val spectro = WavAnalysis.computeSpectrogram(
-                analysisData.pcmSamples, data.sampleRate, AudioConfig.WAV_FFT_SIZE
-            ) { ensureActive() }
+        processingJob =
+            viewModelScope.launch(Dispatchers.Default) {
+                val spectro =
+                    WavAnalysis.computeSpectrogram(
+                        analysisData.pcmSamples,
+                        data.sampleRate,
+                        AudioConfig.WAV_FFT_SIZE,
+                    ) { ensureActive() }
 
-            withContext(Dispatchers.Main) {
-                if (spectro == null) {
-                    session.setWavAnalysis(emptyList(), emptyList())
-                    session.setTelemetryHistory(emptyList())
-                } else {
-                    session.setWavAnalysis(spectro.absList, spectro.ttnrList)
-                    if (data.telemetryList.isNotEmpty()) {
-                        val finalTelemList = WavAnalysis.interpolateTheoreticalSpeed(data.telemetryList)
-                        session.setLoadedWavData(data.copy(telemetryList = finalTelemList))
-                        session.setTelemetryHistory(finalTelemList)
+                withContext(Dispatchers.Main) {
+                    if (spectro == null) {
+                        session.setWavAnalysis(emptyList(), emptyList())
+                        session.setTelemetryHistory(emptyList())
                     } else {
-                        session.setTelemetryHistory(List(spectro.absList.size) { TelemetryData(gpsStatus = GpsStatus.NONE) })
+                        session.setWavAnalysis(spectro.absList, spectro.ttnrList)
+                        if (data.telemetryList.isNotEmpty()) {
+                            val finalTelemList = WavAnalysis.interpolateTheoreticalSpeed(data.telemetryList)
+                            session.setLoadedWavData(data.copy(telemetryList = finalTelemList))
+                            session.setTelemetryHistory(finalTelemList)
+                        } else {
+                            session.setTelemetryHistory(List(spectro.absList.size) { TelemetryData(gpsStatus = GpsStatus.NONE) })
+                        }
+                        recalculateOrderTrackingForWav()
                     }
-                    recalculateOrderTrackingForWav()
+                    _isProcessingVideo.value = false
+                    _processingEstimateMessage.value = null
+                    processWavFrameAt(0L)
                 }
-                _isProcessingVideo.value = false
-                _processingEstimateMessage.value = null
-                processWavFrameAt(0L)
             }
-        }
     }
 
     private fun recalculateOrderTrackingForWav() {
@@ -331,15 +360,19 @@ class AnalyzerViewModel(application: Application, val session: MeasurementSessio
     private fun processWavFrameAt(posMs: Long) {
         val data = session.loadedWavData.value ?: return
         val teleHist = session.telemetryHistory.value
-        val cursor = WavAnalysis.cursorStateAt(
-            posMs = posMs,
-            durationMs = data.durationMs,
-            absList = session.fftHistoryAbsolute.value,
-            ttnrList = session.fftHistoryTTNR.value,
-            telemetrySource = if (teleHist.isNotEmpty()) teleHist else data.telemetryList,
-            config = session.kinematicsConfig.value,
-            sampleRate = data.sampleRate
-        )
+        val cursor =
+            WavAnalysis.cursorStateAt(
+                posMs = posMs,
+                durationMs = data.durationMs,
+                spectrogram =
+                    WavAnalysis.Spectrogram(
+                        session.fftHistoryAbsolute.value,
+                        session.fftHistoryTTNR.value,
+                        data.sampleRate,
+                    ),
+                telemetrySource = if (teleHist.isNotEmpty()) teleHist else data.telemetryList,
+                config = session.kinematicsConfig.value,
+            )
         cursor.ttnrSpectrum?.let { session.setLatestTtnrSpectrum(it) }
         session.setTelemetryState(cursor.telemetry)
         if (session.audioSourceMode.value != AudioSourceMode.LIVE) {

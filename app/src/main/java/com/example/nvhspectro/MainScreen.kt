@@ -871,6 +871,10 @@ fun AppScreen(liveVm: LiveViewModel, analyzerVm: AnalyzerViewModel, reportVm: Re
                                     when {
                                         !kinematicsConfig.isEnabled -> "Inactif"
                                         telemetry.speedKmh <= 1.0f -> "/"
+                                        // [GPS-4.2] Search window wider than the
+                                        // identifiability bound: suspended, never
+                                        // an ambiguous number.
+                                        !telemetry.trackedOrderIdentifiable -> "Non identifiable"
                                         else -> String.format("%.1f dBFS", throttledOrderDbFS)
                                     }
                                 )

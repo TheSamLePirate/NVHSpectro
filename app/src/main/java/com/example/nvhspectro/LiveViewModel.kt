@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nvhspectro.data.KinematicsConfig
+import com.example.nvhspectro.data.OrderSearchPolicy
 import com.example.nvhspectro.data.usableForKinematics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -147,31 +148,21 @@ class LiveViewModel(
         // prediction horizon) must never drive RPM/H1/orders — tracking is
         // suspended instead of coasting on a frozen speed.
         val speedUsable = telemetryForCalc.speedValidity.usableForKinematics
-        var trackedDbFS = -120.0
-        var trackedEmergence = 0.0
         val liveDf = (AudioConfig.LIVE_SAMPLE_RATE_HZ / 2.0) / ttnrSpectrum.size
-        if (kConfig.isEnabled && speedUsable && speedKmh > 1.0f) {
-            val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
-            if (h1FreqHz >= 0.5) {
-                val levels =
-                    OrderTrackingEngine.searchTrackedOrder(
-                        magnitudes,
-                        ttnrSpectrum,
-                        kConfig.selectedTrackedOrder * h1FreqHz,
-                        liveDf,
-                        OrderTrackingEngine.TRACKED_SEARCH_RADIUS_FRAME_BINS,
-                    )
-                trackedDbFS = levels.dbFS
-                trackedEmergence = levels.emergenceDb
+        val tracked =
+            if (kConfig.isEnabled && speedUsable && speedKmh > 1.0f) {
+                trackedOrderReadout(kConfig, telemetryForCalc, speedKmh, magnitudes, ttnrSpectrum)
+            } else {
+                TrackedOrderReadout()
             }
-        }
 
         // Telemetry stays 1-to-1 with the audio display.
         val telemWithTtnr =
             telemetryForCalc.copy(
                 ttnrDb = ttnrSpectrum.maxOrNull() ?: 0f,
-                trackedOrderDbFS = trackedDbFS,
-                trackedOrderEmergenceDb = trackedEmergence,
+                trackedOrderDbFS = tracked.dbFS,
+                trackedOrderEmergenceDb = tracked.emergenceDb,
+                trackedOrderIdentifiable = tracked.identifiable,
             )
         session.appendLiveTelemetry(telemWithTtnr, maxHist)
 
@@ -179,6 +170,58 @@ class LiveViewModel(
         // engine code as the WAV sweep, on the live-owned instance.
         if (kConfig.isEnabled && speedUsable && speedKmh > 1.0f) {
             runHarmonicDetection(kConfig, speedKmh, magnitudes, ttnrSpectrum, liveDf)
+        }
+    }
+
+    private class TrackedOrderReadout(
+        val dbFS: Double = NO_SIGNAL_DBFS,
+        val emergenceDb: Double = 0.0,
+        val identifiable: Boolean = true,
+    )
+
+    /**
+     * [GPS-10, GPS-4.2] Tracked-order readout behind the σ-driven search
+     * window: wide enough to contain the true line, bounded so it cannot pick
+     * a neighbouring order's — beyond the bound the readout SUSPENDS.
+     */
+    private fun trackedOrderReadout(
+        kConfig: KinematicsConfig,
+        telemetry: TelemetryData,
+        speedKmh: Float,
+        magnitudes: FloatArray,
+        ttnrSpectrum: FloatArray,
+    ): TrackedOrderReadout {
+        val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
+        val liveDf = (AudioConfig.LIVE_SAMPLE_RATE_HZ / 2.0) / ttnrSpectrum.size
+        val sigmaF =
+            telemetry.theoreticalSpeedSigmaKmh?.let {
+                OrderSearchPolicy.sigmaOrderFreqHz(
+                    kConfig.selectedTrackedOrder,
+                    it.toDouble(),
+                    kConfig.getEffectiveV1000(),
+                )
+            }
+        val window =
+            OrderSearchPolicy.windowFor(
+                sigmaFreqHz = sigmaF,
+                h1FreqHz = h1FreqHz,
+                dfHz = liveDf,
+                legacyRadiusBins = OrderTrackingEngine.TRACKED_SEARCH_RADIUS_FRAME_BINS,
+            )
+        return when {
+            h1FreqHz < 0.5 -> TrackedOrderReadout()
+            !window.identifiable -> TrackedOrderReadout(identifiable = false)
+            else -> {
+                val levels =
+                    OrderTrackingEngine.searchTrackedOrder(
+                        magnitudes,
+                        ttnrSpectrum,
+                        kConfig.selectedTrackedOrder * h1FreqHz,
+                        liveDf,
+                        window.radiusBins,
+                    )
+                TrackedOrderReadout(levels.dbFS, levels.emergenceDb, identifiable = true)
+            }
         }
     }
 
@@ -390,5 +433,6 @@ class LiveViewModel(
 
     companion object {
         const val MAX_RECORDING_SEC = 30
+        private const val NO_SIGNAL_DBFS = -120.0
     }
 }

@@ -296,6 +296,8 @@ class SpeedProvider(
             // gate on speedValidity [GPS-09], the UI shows "--".
             theoreticalSpeedKmh = estimate.speedMps * 3.6f,
             speedValidity = estimate.validity,
+            // [GPS-4.1] σ rides along in km/h for the order error budget.
+            theoreticalSpeedSigmaKmh = estimate.speedSigmaMps?.times(KMH_PER_MPS),
             accelerationG = estimate.accelerationMps2 / 9.81f,
             altitude = fix?.takeIf { it.hasAltitude() }?.altitude ?: 0.0,
             latitude = fix?.latitude ?: 0.0,
@@ -315,6 +317,7 @@ class SpeedProvider(
     private companion object {
         const val TAG = "SpeedProvider"
         const val FUSED_FALLBACK_INTERVAL_MS = 500L
+        const val KMH_PER_MPS = 3.6f
     }
 }
 

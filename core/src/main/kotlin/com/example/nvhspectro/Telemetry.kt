@@ -36,4 +36,16 @@ data class TelemetryData(
      * field lands with schema v3 (plan-gps GPS-4.3).
      */
     val speedValidity: EstimateValidity = EstimateValidity.INVALID,
+    /**
+     * [GPS-4.1] 1-σ of [theoreticalSpeedKmh], km/h; null = the estimator
+     * carries no covariance (legacy data, α-β) — never 0-as-unknown. Feeds
+     * the dynamic order-search window [GPS-10].
+     */
+    val theoreticalSpeedSigmaKmh: Float? = null,
+    /**
+     * [GPS-4.2] False = the tracked order was SUSPENDED this frame because
+     * its search window exceeded the identifiability bound — the UI shows
+     * "non identifiable" instead of an ambiguous level.
+     */
+    val trackedOrderIdentifiable: Boolean = true,
 )
