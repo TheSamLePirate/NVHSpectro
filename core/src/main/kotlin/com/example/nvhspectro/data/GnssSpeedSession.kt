@@ -30,8 +30,14 @@ package com.example.nvhspectro.data
  */
 class GnssSpeedSession(
     private val config: Config = Config(),
+    // [GPS-2] The uncertainty-aware Kalman is the production estimator; the
+    // α-β remains available for A/B comparison and replay tuning.
     private val estimator: SpeedEstimator =
-        AlphaBetaSpeedEstimator(maxPredictAheadSeconds = config.predictionHorizonSeconds),
+        KalmanSpeedEstimator(
+            KalmanSpeedEstimator.Config(
+                predictionHorizonSeconds = config.predictionHorizonSeconds.toDouble(),
+            ),
+        ),
 ) : SpeedEstimator {
     /** Named, testable thresholds [plan-gps §2] — PROVISIONAL until Gate GPS-5 tuning. */
     data class Config(
@@ -46,6 +52,8 @@ class GnssSpeedSession(
     override fun update(sample: GnssSpeedSample): SampleRejection? = qualify(sample) ?: estimator.update(sample)
 
     override fun estimateAt(elapsedRealtimeNanos: Long): SpeedEstimate = estimator.estimateAt(elapsedRealtimeNanos)
+
+    override val lastNis: Double? get() = estimator.lastNis
 
     override fun reset() = estimator.reset()
 

@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
+import com.example.nvhspectro.data.EstimatorOutcome
 import com.example.nvhspectro.data.FieldLocationLogger
 import com.example.nvhspectro.data.GnssSpeedSample
 import com.example.nvhspectro.data.GnssSpeedSession
@@ -212,7 +213,12 @@ class SpeedProvider(
             val rejection = sample?.let { session.update(it) }
             _telemetry.value = buildTelemetry(callbackNanos)
             // [GPS-0.4] Schema-v2 drive trace: raw fix + estimator outcome.
-            fieldLogger?.log(loc, callbackNanos, mock, session.estimateAt(callbackNanos), rejection)
+            fieldLogger?.log(
+                loc,
+                callbackNanos,
+                mock,
+                EstimatorOutcome(session.estimateAt(callbackNanos), rejection, session.lastNis),
+            )
         }
     }
 

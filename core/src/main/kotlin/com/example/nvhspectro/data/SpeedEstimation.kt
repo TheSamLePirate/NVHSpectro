@@ -55,6 +55,9 @@ enum class SampleRejection {
     /** Residual implies an implausible acceleration; coasted on the prediction [G4]. */
     OUTLIER_COASTED,
 
+    /** Statistically implausible innovation (NIS gate); state kept at its last accepted epoch [GPS-2.2]. */
+    OUTLIER_REJECTED,
+
     /** Mock-provider fix excluded from measurement mode [GPS-12]. State untouched. */
     MOCK_FIX,
 
@@ -110,6 +113,15 @@ data class SpeedEstimate(
     val validity: EstimateValidity,
 )
 
+/** What the estimator did with one fix — the per-fix trace payload [GPS-0.4, GPS-2.2]. */
+data class EstimatorOutcome(
+    val estimate: SpeedEstimate,
+    /** Null = the fix fed the estimator normally, or produced no sample at all. */
+    val rejection: SampleRejection?,
+    /** Normalized innovation of the gate, when the estimator computes one. */
+    val nis: Double?,
+)
+
 /**
  * [plan-gps GPS-0.2] The speed-estimation contract. GPS-2 swaps the α-β
  * implementation for a Kalman filter behind this same interface.
@@ -120,6 +132,12 @@ interface SpeedEstimator {
      * (including a re-seed after a long dropout), else why it was not.
      */
     fun update(sample: GnssSpeedSample): SampleRejection?
+
+    /**
+     * Normalized innovation (NIS) of the last gated sample — a tuning/trace
+     * diagnostic [GPS-2.2]. Null for estimators without an innovation gate.
+     */
+    val lastNis: Double? get() = null
 
     /**
      * Evaluate the state at a BOOTTIME instant. GPS-1.2's target call is

@@ -44,16 +44,16 @@ class FieldLocationLogger(
 
     /**
      * [GPS-0.4] One row per fix: raw Location fields + estimator state,
-     * validity and rejection reason at delivery time.
+     * validity, rejection reason and NIS at delivery time.
      */
     fun log(
         location: Location,
         callbackTimeNanos: Long,
         isMock: Boolean,
-        estimate: SpeedEstimate,
-        rejection: SampleRejection?,
+        outcome: EstimatorOutcome,
     ) {
         // Capture values on the caller thread; Location objects are recycled.
+        val estimate = outcome.estimate
         val record =
             FieldTraceV2.Record(
                 fixTimeNanos = location.elapsedRealtimeNanos,
@@ -78,7 +78,8 @@ class FieldLocationLogger(
                 estimatedSpeedSigmaMps = estimate.speedSigmaMps,
                 validity = estimate.validity,
                 ageSinceFixNanos = estimate.ageSinceFixNanos,
-                rejection = rejection,
+                rejection = outcome.rejection,
+                nis = outcome.nis,
             )
 
         executor.execute {

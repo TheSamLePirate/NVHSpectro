@@ -49,6 +49,8 @@ object FieldTraceV2 {
         val ageSinceFixNanos: Long?,
         /** Null = the fix fed the estimator normally, or produced no sample at all. */
         val rejection: SampleRejection?,
+        /** Normalized innovation of this fix's gate — the GPS-2.2 tuning diagnostic. */
+        val nis: Double? = null,
     )
 
     data class Trace(
@@ -59,8 +61,11 @@ object FieldTraceV2 {
     private const val COLUMNS =
         "fixTimeNanos,callbackTimeNanos,utcTimeMs,provider,isMock," +
             "lat,lon,altM,speedMps,speedSigmaMps,horizAccM,bearingDeg," +
-            "estSpeedMps,estAccelMps2,estSpeedSigmaMps,validity,ageSinceFixNanos,rejection"
+            "estSpeedMps,estAccelMps2,estSpeedSigmaMps,validity,ageSinceFixNanos,rejection,nis"
     private val FIELD_COUNT = COLUMNS.count { it == ',' } + 1
+
+    /** Rows written before the GPS-2 `nis` column — still decodable (nis = null). */
+    private val LEGACY_FIELD_COUNT = FIELD_COUNT - 1
 
     fun encodeHeader(metadata: Metadata): String = headerLine(metadata) + "\n" + COLUMNS
 
@@ -87,6 +92,7 @@ object FieldTraceV2 {
             r.validity.name,
             r.ageSinceFixNanos?.toString().orEmpty(),
             r.rejection?.name.orEmpty(),
+            r.nis?.toString().orEmpty(),
         ).joinToString(",")
 
     /** Whole-file decode. Returns null only when the v2 header is missing. */
@@ -112,7 +118,7 @@ object FieldTraceV2 {
     /** Malformed rows decode to null and are skipped — a trace can end mid-line on process death. */
     fun parseRow(line: String): Record? {
         val fields = line.split(',')
-        if (fields.size != FIELD_COUNT) return null
+        if (fields.size != FIELD_COUNT && fields.size != LEGACY_FIELD_COUNT) return null
         // Named arguments evaluate in source order, which is column order.
         val f = fields.iterator()
         return try {
@@ -135,6 +141,7 @@ object FieldTraceV2 {
                 validity = EstimateValidity.valueOf(f.next()),
                 ageSinceFixNanos = f.next().ifEmpty { null }?.toLong(),
                 rejection = f.next().ifEmpty { null }?.let(SampleRejection::valueOf),
+                nis = if (f.hasNext()) f.next().ifEmpty { null }?.toDouble() else null,
             )
         } catch (_: IllegalArgumentException) {
             null

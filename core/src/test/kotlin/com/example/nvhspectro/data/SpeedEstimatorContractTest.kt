@@ -7,11 +7,12 @@ import org.junit.Test
 
 /**
  * [plan-gps GPS-0.2, GPS-0.3] The [SpeedEstimator] contract on the α-β
- * implementation. GPS-01/GPS-08 were fixed by GPS-1.1 — their pins became the
- * gps01_* test here and the gps08_* tests in GnssSpeedSessionTest. The
- * remaining pinned_* tests freeze the σ-weighting, covariance and
- * outlier-coherence defects (GPS-02/04/06) until GPS-2 fixes them — update
- * each in the same commit as its fix, never delete one to make a build pass.
+ * implementation. Every GPS-0 pin is now closed: GPS-01/GPS-08 by GPS-1.1
+ * (gps01_* here, gps08_* in GnssSpeedSessionTest) and GPS-02/04/06 by the
+ * GPS-2 Kalman (gps02/gps04/gps06 tests in KalmanSpeedEstimatorTest — the
+ * production estimator behind GnssSpeedSession). The α-β stays as the
+ * fixed-gain A/B baseline for replay tuning; its σ-blindness is by design
+ * and documented here, no longer a pinned app defect.
  */
 class SpeedEstimatorContractTest {
     private fun nanos(sec: Double) = (sec * 1e9).toLong()
@@ -120,42 +121,27 @@ class SpeedEstimatorContractTest {
     }
 
     @Test
-    fun pinned_gps02_impreciseFix_movesTheEstimateExactlyLikeAPreciseOne() {
-        val precise = AlphaBetaSpeedEstimator()
-        val degraded = AlphaBetaSpeedEstimator()
-        for (i in 0..5) {
-            precise.update(sample(i.toDouble(), 10f, sigma = 0.05f))
-            degraded.update(sample(i.toDouble(), 10f, sigma = 5f))
-        }
-        // Same +4 m/s residual, declared σv 100× apart → identical correction.
-        // GPS-2's Kalman weights by R = σv².
-        precise.update(sample(6.0, 14f, sigma = 0.05f))
-        degraded.update(sample(6.0, 14f, sigma = 5f))
-        assertEquals(precise.speedMps, degraded.speedMps, 1e-6f)
-        assertEquals(precise.accelMps2, degraded.accelMps2, 1e-6f)
-    }
-
-    @Test
-    fun pinned_gps04_estimateCarriesNoCovariance() {
+    fun gps04_alphaBetaBaseline_reportsHonestNullCovariance() {
+        // The A/B baseline has no covariance to report — honest nulls, never a
+        // fake σ. The production path's real covariance is tested on the
+        // Kalman (gps04_* in KalmanSpeedEstimatorTest).
         val e = AlphaBetaSpeedEstimator()
         e.update(sample(0.0, 10f))
         e.update(sample(1.0, 10f))
         val est = e.estimateAt(nanos(1.5))
-        // The α-β has no covariance to report — honest nulls, never fake σ.
         assertNull(est.speedSigmaMps)
         assertNull(est.accelerationSigmaMps2)
+        assertNull(e.lastNis)
     }
 
     @Test
-    fun pinned_gps06_secondIncoherentOutlier_isAcceptedAsRealChange() {
+    fun alphaBetaBaseline_coastsOneOutlierThenAcceptsTheNextFix() {
+        // Documented fixed-gain baseline behavior (no coherence test) — the
+        // production NIS gate lives in the Kalman (gps06_* tests).
         val e = AlphaBetaSpeedEstimator()
         for (i in 0..9) e.update(sample(i.toDouble(), 10f))
-        // First implausible fix (+35 m/s in 1 s) is coasted…
         assertEquals(SampleRejection.OUTLIER_COASTED, e.update(sample(10.0, 45f)))
-        // …then a second implausible fix is accepted although it is NOT
-        // coherent with the first (28 ≠ 45): two successive multipath errors
-        // read as a real step change. GPS-2.2 adds the NIS coherence test.
         assertNull(e.update(sample(11.0, 28f)))
-        assertTrue("estimate was pulled by the incoherent pair", e.speedMps > 15f)
+        assertTrue(e.speedMps > 15f)
     }
 }

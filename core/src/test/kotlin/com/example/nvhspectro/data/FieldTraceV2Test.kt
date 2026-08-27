@@ -24,10 +24,11 @@ class FieldTraceV2Test {
             bearingDeg = 271.5f,
             estimatedSpeedMps = 13.68f,
             estimatedAccelMps2 = 0.42f,
-            estimatedSpeedSigmaMps = null,
+            estimatedSpeedSigmaMps = 0.42f,
             validity = EstimateValidity.VALID,
             ageSinceFixNanos = 42_211_000L,
             rejection = null,
+            nis = 1.37,
         )
 
     private val sparseRecord =
@@ -102,6 +103,15 @@ class FieldTraceV2Test {
                 "not,a,record\n"
         val trace = FieldTraceV2.parse(text)!!
         assertEquals(listOf(fullRecord), trace.records)
+    }
+
+    @Test
+    fun gps2_legacyRowWithoutNisColumn_stillDecodes() {
+        // Rows written before GPS-2 added `nis` lack the final column.
+        val legacyLine = FieldTraceV2.encodeRow(sparseRecord).removeSuffix(",")
+        val parsed = FieldTraceV2.parseRow(legacyLine)!!
+        assertNull(parsed.nis)
+        assertEquals(sparseRecord, parsed)
     }
 
     @Test
