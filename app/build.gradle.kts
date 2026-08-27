@@ -98,6 +98,4 @@ dependencies {
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.espresso.core)
 
-  // Location Services
-  implementation("com.google.android.gms:play-services-location:21.0.1")
 }

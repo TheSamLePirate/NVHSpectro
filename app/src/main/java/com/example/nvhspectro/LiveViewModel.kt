@@ -6,10 +6,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.nvhspectro.data.KinematicsConfig
 import com.example.nvhspectro.data.usableForKinematics
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.Executors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -19,6 +15,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.Executors
 
 /**
  * [plan 3.3] The live-capture third of the historical MainViewModel:
@@ -26,10 +26,15 @@ import kotlinx.coroutines.withContext
  * GPS speed, the 30 s field recorder, and live display settings. All shared
  * measurement state lives in [session].
  */
-class LiveViewModel(application: Application, val session: MeasurementSession) : AndroidViewModel(application) {
-
+class LiveViewModel(
+    application: Application,
+    val session: MeasurementSession,
+) : AndroidViewModel(application) {
     private val audioRepository = AudioRepository(application)
-    private val speedProvider = SpeedProvider(application)
+
+    // [GPS-3.2] Provider/permission state changes surface as user notices;
+    // full tracking stays OFF until the GPS-5 A/B campaign proves it [GPS-3.4].
+    private val speedProvider = SpeedProvider(application, onNotice = { msg -> session.postNotice(msg) })
     private val captureEngine = CaptureEngine(audioRepository) { msg -> session.postNotice(msg) }
 
     // [C6, L3] All live-DSP state lives in the engines, confined to nvh-dsp.
@@ -45,14 +50,16 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
 
     init {
         // [C7] Mic and GPS run only in LIVE mode; [L7] engines reset on transitions.
-        unregisterHook = session.registerModeTransitionHook { mode ->
-            captureEngine.setEnabled(mode == AudioSourceMode.LIVE)
-            if (mode == AudioSourceMode.LIVE) speedProvider.start() else speedProvider.stop()
-        }
-        unregisterResettable = session.registerAnalysisResettable {
-            liveEngine.reset()
-            orderEngine.reset()
-        }
+        unregisterHook =
+            session.registerModeTransitionHook { mode ->
+                captureEngine.setEnabled(mode == AudioSourceMode.LIVE)
+                if (mode == AudioSourceMode.LIVE) speedProvider.start() else speedProvider.stop()
+            }
+        unregisterResettable =
+            session.registerAnalysisResettable {
+                liveEngine.reset()
+                orderEngine.reset()
+            }
         // [S1, plan 3.6] The engine follows session.fftSize wherever it is set
         // from — the settings dialog or the persisted-value restore at startup.
         viewModelScope.launch {
@@ -81,7 +88,7 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
                         "produced=${captureEngine.framesProduced.get()} " +
                             "consumed=${captureEngine.framesConsumed.get()} " +
                             "restarts=${captureEngine.captureRestarts.get()} " +
-                            "thread=${Thread.currentThread().name}"
+                            "thread=${Thread.currentThread().name}",
                     )
                 }
                 if (session.audioSourceMode.value == AudioSourceMode.LIVE) {
@@ -98,8 +105,8 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
                         data.copy(
                             ttnrDb = current.ttnrDb,
                             trackedOrderDbFS = current.trackedOrderDbFS,
-                            trackedOrderEmergenceDb = current.trackedOrderEmergenceDb
-                        )
+                            trackedOrderEmergenceDb = current.trackedOrderEmergenceDb,
+                        ),
                     )
                 }
             }
@@ -114,11 +121,12 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
         // window's center sample — a backlogged DSP queue can no longer pair a
         // spectrum with a speed newer than the analyzed sound.
         val telemetryNow = speedProvider.telemetryAt(frame.centerTimeNanos)
-        val telemetryForCalc = if (kConfig.isEnabled) {
-            telemetryNow
-        } else {
-            telemetryNow.copy(theoreticalSpeedKmh = telemetryNow.speedKmh)
-        }
+        val telemetryForCalc =
+            if (kConfig.isEnabled) {
+                telemetryNow
+            } else {
+                telemetryNow.copy(theoreticalSpeedKmh = telemetryNow.speedKmh)
+            }
 
         if (_isAudioRecording.value) {
             val stepSize = audioBuffer.size / 2
@@ -145,21 +153,26 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
         if (kConfig.isEnabled && speedUsable && speedKmh > 1.0f) {
             val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
             if (h1FreqHz >= 0.5) {
-                val levels = OrderTrackingEngine.searchTrackedOrder(
-                    magnitudes, ttnrSpectrum, kConfig.selectedTrackedOrder * h1FreqHz, liveDf,
-                    OrderTrackingEngine.TRACKED_SEARCH_RADIUS_FRAME_BINS
-                )
+                val levels =
+                    OrderTrackingEngine.searchTrackedOrder(
+                        magnitudes,
+                        ttnrSpectrum,
+                        kConfig.selectedTrackedOrder * h1FreqHz,
+                        liveDf,
+                        OrderTrackingEngine.TRACKED_SEARCH_RADIUS_FRAME_BINS,
+                    )
                 trackedDbFS = levels.dbFS
                 trackedEmergence = levels.emergenceDb
             }
         }
 
         // Telemetry stays 1-to-1 with the audio display.
-        val telemWithTtnr = telemetryForCalc.copy(
-            ttnrDb = ttnrSpectrum.maxOrNull() ?: 0f,
-            trackedOrderDbFS = trackedDbFS,
-            trackedOrderEmergenceDb = trackedEmergence
-        )
+        val telemWithTtnr =
+            telemetryForCalc.copy(
+                ttnrDb = ttnrSpectrum.maxOrNull() ?: 0f,
+                trackedOrderDbFS = trackedDbFS,
+                trackedOrderEmergenceDb = trackedEmergence,
+            )
         session.appendLiveTelemetry(telemWithTtnr, maxHist)
 
         // Harmonic detection / emergence report [A2, plan 3.2] — the same
@@ -175,7 +188,7 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
         speedKmh: Float,
         magnitudes: FloatArray,
         ttnrSpectrum: FloatArray,
-        liveDf: Double
+        liveDf: Double,
     ) {
         val h1FreqHz = kConfig.calculateH1FreqHz(speedKmh)
         if (h1FreqHz < 0.5) return
@@ -188,21 +201,28 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
                     df = liveDf,
                     speedKmh = speedKmh,
                     rpm = kConfig.calculateRpm(speedKmh),
-                    h1FreqHz = h1FreqHz
+                    h1FreqHz = h1FreqHz,
                 ),
                 nowMs = System.currentTimeMillis(),
                 holdMs = (kConfig.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L),
                 targetOrders = kConfig.parsedTargetOrders(),
                 activeTags = session.trackedHarmonicTags.value,
-                report = reportList
-            )
+                report = reportList,
+            ),
         )
         session.setEmergenceReportEntries(reportList)
     }
 
     // ------------------------------------------------------ display settings
 
-    fun updateSettings(newMinDb: Double, newMaxDb: Double, newFftSize: Int, newMinFreq: Int, newMaxFreq: Int, newTimeWindow: Double) {
+    fun updateSettings(
+        newMinDb: Double,
+        newMaxDb: Double,
+        newFftSize: Int,
+        newMinFreq: Int,
+        newMaxFreq: Int,
+        newTimeWindow: Double,
+    ) {
         session.updateDisplaySettings(newMinDb, newMaxDb, newMinFreq, newMaxFreq, newTimeWindow)
         if (session.fftSize.value != newFftSize) {
             // [C13] FFT size is fixed at WAV_FFT_SIZE outside LIVE; applying the
@@ -214,8 +234,11 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
         }
     }
 
-    fun updateDetectorSettings(enabled: Boolean, thresholdDb: Double, magnitudeGateDb: Double) =
-        session.updateDetectorSettings(enabled, thresholdDb, magnitudeGateDb)
+    fun updateDetectorSettings(
+        enabled: Boolean,
+        thresholdDb: Double,
+        magnitudeGateDb: Double,
+    ) = session.updateDetectorSettings(enabled, thresholdDb, magnitudeGateDb)
 
     // ---------------------------------------------------- display preferences
 
@@ -267,17 +290,18 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
         _isAudioRecording.value = true
 
         audioRecordingTimerJob?.cancel()
-        audioRecordingTimerJob = viewModelScope.launch {
-            while (_isAudioRecording.value && _recordingElapsedSec.value < MAX_RECORDING_SEC) {
-                delay(1000L)
-                if (_isAudioRecording.value) {
-                    _recordingElapsedSec.value += 1
+        audioRecordingTimerJob =
+            viewModelScope.launch {
+                while (_isAudioRecording.value && _recordingElapsedSec.value < MAX_RECORDING_SEC) {
+                    delay(1000L)
+                    if (_isAudioRecording.value) {
+                        _recordingElapsedSec.value += 1
+                    }
+                }
+                if (_isAudioRecording.value && _recordingElapsedSec.value >= MAX_RECORDING_SEC) {
+                    stopAudioRecording()
                 }
             }
-            if (_isAudioRecording.value && _recordingElapsedSec.value >= MAX_RECORDING_SEC) {
-                stopAudioRecording()
-            }
-        }
     }
 
     private fun stopAudioRecording() {
@@ -323,7 +347,7 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
                     baseName = baseName,
                     pcm = fullPcm,
                     sampleRate = AudioConfig.LIVE_SAMPLE_RATE_HZ,
-                    telemetryJson = buildTelemetryJson(baseName)
+                    telemetryJson = buildTelemetryJson(baseName),
                 )
                 withContext(Dispatchers.Main) {
                     recordedPcmList.clear()
@@ -349,7 +373,7 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
             sampleRate = AudioConfig.LIVE_SAMPLE_RATE_HZ,
             captureSource = audioRepository.captureSourceLabel,
             appVersion = BuildConfig.VERSION_NAME,
-            samples = samples
+            samples = samples,
         )
     }
 
@@ -358,7 +382,7 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
         unregisterHook()
         unregisterResettable()
         captureEngine.setEnabled(false)
-        speedProvider.stop()
+        speedProvider.shutdown()
         audioRepository.stopAudioCapture()
         analysisDispatcher.close()
         super.onCleared()

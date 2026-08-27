@@ -29,6 +29,14 @@ class FieldTraceV2Test {
             ageSinceFixNanos = 42_211_000L,
             rejection = null,
             nis = 1.37,
+            gnss =
+                GnssDiagnostics(
+                    satellitesVisible = 21,
+                    satellitesUsedInFix = 14,
+                    meanUsedCn0DbHz = 38.5f,
+                    constellations = "GALILEO+GPS",
+                    dualFrequencySeen = true,
+                ),
         )
 
     private val sparseRecord =
@@ -58,6 +66,7 @@ class FieldTraceV2Test {
             schemaVersion = FieldTraceV2.SCHEMA_VERSION,
             installId = "3f2c9a4e-1111-2222-3333-444455556666",
             deviceModel = "Pixel 7 Pro",
+            capabilities = "sdk=37 fullTracking=false gnssYear=2021 gnssHw=BCM47765 rawMeasurements=true",
         )
 
     @Test
@@ -78,6 +87,18 @@ class FieldTraceV2Test {
         assertEquals("Pixel 7 Pro", trace.metadata.deviceModel)
         assertEquals(metadata.installId, trace.metadata.installId)
         assertTrue(trace.records.isEmpty())
+    }
+
+    @Test
+    fun gps3_capabilityMatrix_roundTripsInTheHeader() {
+        val trace = FieldTraceV2.parse(FieldTraceV2.encodeHeader(metadata))!!
+        assertEquals(metadata.capabilities, trace.metadata.capabilities)
+        // Traces from before GPS-3.5 have no caps line.
+        val old =
+            FieldTraceV2.parse(
+                FieldTraceV2.encodeHeader(metadata.copy(capabilities = null)),
+            )!!
+        assertNull(old.metadata.capabilities)
     }
 
     @Test
@@ -106,12 +127,14 @@ class FieldTraceV2Test {
     }
 
     @Test
-    fun gps2_legacyRowWithoutNisColumn_stillDecodes() {
-        // Rows written before GPS-2 added `nis` lack the final column.
-        val legacyLine = FieldTraceV2.encodeRow(sparseRecord).removeSuffix(",")
-        val parsed = FieldTraceV2.parseRow(legacyLine)!!
-        assertNull(parsed.nis)
-        assertEquals(sparseRecord, parsed)
+    fun gps2_legacyRowsFromEarlierRevisions_stillDecode() {
+        // GPS-1 rows had 18 columns (pre-nis); GPS-2 rows had 19 (pre-GNSS).
+        val full = FieldTraceV2.encodeRow(sparseRecord).split(",")
+        for (columns in intArrayOf(18, 19)) {
+            val parsed = FieldTraceV2.parseRow(full.take(columns).joinToString(","))!!
+            assertNull(parsed.gnss)
+            assertEquals(sparseRecord, parsed)
+        }
     }
 
     @Test

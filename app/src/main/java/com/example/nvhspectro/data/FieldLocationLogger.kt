@@ -32,6 +32,8 @@ import java.util.concurrent.Executors
  */
 class FieldLocationLogger(
     context: Context,
+    /** [GPS-3.5] Free-form `key=value` capability matrix for the trace header. */
+    private val capabilities: String? = null,
 ) {
     private val appContext = context.applicationContext
     private val executor =
@@ -51,6 +53,7 @@ class FieldLocationLogger(
         callbackTimeNanos: Long,
         isMock: Boolean,
         outcome: EstimatorOutcome,
+        gnss: GnssDiagnostics?,
     ) {
         // Capture values on the caller thread; Location objects are recycled.
         val estimate = outcome.estimate
@@ -80,6 +83,7 @@ class FieldLocationLogger(
                 ageSinceFixNanos = estimate.ageSinceFixNanos,
                 rejection = outcome.rejection,
                 nis = outcome.nis,
+                gnss = gnss,
             )
 
         executor.execute {
@@ -111,6 +115,7 @@ class FieldLocationLogger(
                     schemaVersion = FieldTraceV2.SCHEMA_VERSION,
                     installId = installId(dir),
                     deviceModel = Build.MODEL ?: "?",
+                    capabilities = capabilities,
                 ),
             ),
         )

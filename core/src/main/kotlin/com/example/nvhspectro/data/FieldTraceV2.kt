@@ -20,12 +20,17 @@ object FieldTraceV2 {
 
     const val HEADER_PREFIX = "# nvh-field-trace v2 "
 
+    /** A second header line carrying the GPS-3.5 capability matrix. */
+    const val CAPS_PREFIX = "# caps "
+
     /** `model=` is last on the header line: device models may contain spaces. */
     data class Metadata(
         val schemaVersion: Int,
         /** Random per-install UUID — anonymized device identity [GPS-13]. */
         val installId: String,
         val deviceModel: String,
+        /** Free-form `key=value` capability matrix [GPS-3.5]; null on old traces. */
+        val capabilities: String? = null,
     )
 
     /** One raw fix + the estimator's outcome for it. Null = value absent. */
@@ -51,6 +56,8 @@ object FieldTraceV2 {
         val rejection: SampleRejection?,
         /** Normalized innovation of this fix's gate — the GPS-2.2 tuning diagnostic. */
         val nis: Double? = null,
+        /** Latest GNSS signal snapshot at this fix [GPS-3.3]; null = not observed. */
+        val gnss: GnssDiagnostics? = null,
     )
 
     data class Trace(
@@ -61,13 +68,20 @@ object FieldTraceV2 {
     private const val COLUMNS =
         "fixTimeNanos,callbackTimeNanos,utcTimeMs,provider,isMock," +
             "lat,lon,altM,speedMps,speedSigmaMps,horizAccM,bearingDeg," +
-            "estSpeedMps,estAccelMps2,estSpeedSigmaMps,validity,ageSinceFixNanos,rejection,nis"
+            "estSpeedMps,estAccelMps2,estSpeedSigmaMps,validity,ageSinceFixNanos,rejection,nis," +
+            "satsVisible,satsUsed,meanCn0DbHz,constellations,dualFreq"
     private val FIELD_COUNT = COLUMNS.count { it == ',' } + 1
+    private const val GNSS_COLUMN_COUNT = 5
 
-    /** Rows written before the GPS-2 `nis` column — still decodable (nis = null). */
-    private val LEGACY_FIELD_COUNT = FIELD_COUNT - 1
+    /** Earlier same-session revisions of v2: pre-nis (18) and pre-diagnostics (19). */
+    private val KNOWN_SIZES = setOf(FIELD_COUNT, FIELD_COUNT - GNSS_COLUMN_COUNT, FIELD_COUNT - GNSS_COLUMN_COUNT - 1)
 
-    fun encodeHeader(metadata: Metadata): String = headerLine(metadata) + "\n" + COLUMNS
+    fun encodeHeader(metadata: Metadata): String =
+        buildString {
+            append(headerLine(metadata))
+            metadata.capabilities?.let { append("\n").append(CAPS_PREFIX).append(it) }
+            append("\n").append(COLUMNS)
+        }
 
     private fun headerLine(m: Metadata): String = "${HEADER_PREFIX}install=${m.installId} model=${m.deviceModel}"
 
@@ -93,6 +107,26 @@ object FieldTraceV2 {
             r.ageSinceFixNanos?.toString().orEmpty(),
             r.rejection?.name.orEmpty(),
             r.nis?.toString().orEmpty(),
+            r.gnss
+                ?.satellitesVisible
+                ?.toString()
+                .orEmpty(),
+            r.gnss
+                ?.satellitesUsedInFix
+                ?.toString()
+                .orEmpty(),
+            r.gnss
+                ?.meanUsedCn0DbHz
+                ?.toString()
+                .orEmpty(),
+            r.gnss
+                ?.constellations
+                ?.replace(',', '_')
+                .orEmpty(),
+            r.gnss
+                ?.dualFrequencySeen
+                ?.toString()
+                .orEmpty(),
         ).joinToString(",")
 
     /** Whole-file decode. Returns null only when the v2 header is missing. */
@@ -101,16 +135,18 @@ object FieldTraceV2 {
         val header = lines.firstOrNull()
         if (header == null || !header.startsWith(HEADER_PREFIX)) return null
         val rest = header.removePrefix(HEADER_PREFIX)
+        val capsLine = lines.getOrNull(1)?.takeIf { it.startsWith(CAPS_PREFIX) }
         val metadata =
             Metadata(
                 schemaVersion = SCHEMA_VERSION,
                 installId = rest.substringAfter("install=").substringBefore(" "),
                 deviceModel = rest.substringAfter("model=", ""),
+                capabilities = capsLine?.removePrefix(CAPS_PREFIX),
             )
         val records =
             lines
                 .drop(1)
-                .filterNot { it == COLUMNS }
+                .filterNot { it == COLUMNS || it.startsWith("#") }
                 .mapNotNull(::parseRow)
         return Trace(metadata, records)
     }
@@ -118,9 +154,11 @@ object FieldTraceV2 {
     /** Malformed rows decode to null and are skipped — a trace can end mid-line on process death. */
     fun parseRow(line: String): Record? {
         val fields = line.split(',')
-        if (fields.size != FIELD_COUNT && fields.size != LEGACY_FIELD_COUNT) return null
+        if (fields.size !in KNOWN_SIZES) return null
+        // Pad older revisions so the single decode path below reads one shape.
+        val padded = fields + List(FIELD_COUNT - fields.size) { "" }
         // Named arguments evaluate in source order, which is column order.
-        val f = fields.iterator()
+        val f = padded.iterator()
         return try {
             Record(
                 fixTimeNanos = f.next().toLong(),
@@ -141,10 +179,25 @@ object FieldTraceV2 {
                 validity = EstimateValidity.valueOf(f.next()),
                 ageSinceFixNanos = f.next().ifEmpty { null }?.toLong(),
                 rejection = f.next().ifEmpty { null }?.let(SampleRejection::valueOf),
-                nis = if (f.hasNext()) f.next().ifEmpty { null }?.toDouble() else null,
+                nis = f.next().ifEmpty { null }?.toDouble(),
+                gnss = parseGnss(f),
             )
         } catch (_: IllegalArgumentException) {
             null
+        }
+    }
+
+    /** The five GPS-3.3 columns come back as one [GnssDiagnostics] (or null when absent). */
+    private fun parseGnss(f: Iterator<String>): GnssDiagnostics? {
+        val visible = f.next().ifEmpty { null }?.toInt()
+        val used = f.next().ifEmpty { null }?.toInt()
+        val cn0 = f.next().ifEmpty { null }?.toFloat()
+        val constellations = f.next()
+        val dualFreq = f.next().ifEmpty { null }?.toBooleanStrict()
+        return if (visible == null || used == null || dualFreq == null) {
+            null
+        } else {
+            GnssDiagnostics(visible, used, cn0, constellations, dualFreq)
         }
     }
 }
