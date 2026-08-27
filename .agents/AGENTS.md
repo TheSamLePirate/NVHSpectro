@@ -84,10 +84,16 @@ isn't responding" dialogs are the emulator's, not the app's.
   structural damage they caused (audit A4, A5) are why this rule exists.
   (Whitespace-only bulk reindents verified by `git diff -w` being empty are
   the one sanctioned sed use.)
-- ktlint/detekt baselines are **line-position-sensitive**: whenever you edit a
-  heavily-baselined file, regenerate both baselines in the same commit
-  (commands in §2 plus `--create-baseline` for detekt). Never add new
-  violations of your own — new code must be clean without baseline growth.
+- ktlint/detekt baselines are **line-position-sensitive** (ktlint) and
+  **signature-sensitive** (detekt): whenever you edit a heavily-baselined
+  file, regenerate both baselines in the same commit (commands in §2 plus
+  `--create-baseline` for detekt). Never add new violations of your own —
+  new code must be clean without baseline growth.
+- **Style checks run LAST, after any `ktlint --format`.** A reformat changes
+  detekt signatures, so a detekt pass that ran before the format proves
+  nothing. The first remote CI run failed exactly this way (LiveViewModel
+  reformat after the last local detekt pass — commit `a6b8b46` fixed it).
+  Order before every commit: format → ktlint → detekt → tests → checks.
 - Keep new code out of the god files: new logic goes in new, small,
   single-purpose classes (the plan's Phase 3 target structure), not appended
   to `MainViewModel.kt`.

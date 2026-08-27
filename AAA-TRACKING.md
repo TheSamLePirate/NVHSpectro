@@ -327,6 +327,7 @@ no-NaN/PSD invariants, less-noise-than-raw + no-delay gate). 141 :core tests.
 |---|---|---|
 | DEV-39 | Fused fallback = LocationManager FUSED_PROVIDER (API 31+) / NETWORK_PROVIDER, not the Google Play fused client; play-services-location removed | Same INFORMATION_ONLY role, one dependency less [B4]; gms client added nothing the framework API lacks here |
 | DEV-40 | Full-tracking A/B switch is a constructor parameter (default OFF), not yet a debug UI toggle | The GPS-5 campaign flips it in a debug build; a settings surface for it belongs to Phase 4 UI work if wanted |
+| DEV-41 | **First remote CI run failed on detekt** (`updateSettings` LongParameterList): the GPS-3 session ran `ktlint --format` on LiveViewModel AFTER its last local detekt pass, so the reformatted signature no longer matched its baselined entry | Fixed by baseline re-sync `a6b8b46` (net −15 entries, nothing new baselined). Rule added to AGENTS.md: style checks run LAST, after any format — format → ktlint → detekt → tests → checks |
 
 **Still open (next: GPS-4):** σ → dynamic order-search window + suspension
 [GPS-10], kinematic error budget [GPS-4.1], telemetry/export schema v3 with
