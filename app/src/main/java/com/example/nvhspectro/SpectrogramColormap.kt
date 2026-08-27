@@ -940,7 +940,6 @@ fun SpectrogramCanvas(
 
                 val nowMs = System.currentTimeMillis()
                 val maxHoldMs = (kinematicsConfig.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L)
-                var yOffsetAccumulator = 0f
 
                 for (tag in trackedHarmonicTags) {
                     val ageMs = nowMs - tag.lastSeenTimestampMs
@@ -951,7 +950,7 @@ fun SpectrogramCanvas(
                     if (binFraction !in 0f..1f) continue
 
                     val basePeakY = marginTop + ((1f - binFraction) * plotHeight).coerceIn(0f, plotHeight)
-                    val peakY = (basePeakY + yOffsetAccumulator).coerceIn(marginTop, plotBottom - 30f)
+                    val peakY = basePeakY.coerceIn(marginTop, plotBottom - 30f)
 
                     val isCritical = tag.ttnrDb >= 6.0
                     val primaryColor = if (isCritical) AndroidColor.parseColor("#FF1744") else AndroidColor.parseColor("#FFC107")

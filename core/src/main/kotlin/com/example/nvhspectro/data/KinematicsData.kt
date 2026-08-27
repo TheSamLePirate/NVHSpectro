@@ -134,36 +134,6 @@ data class EmergenceReportEntry(
     var lastTimestampMs: Long = System.currentTimeMillis()
 )
 
-/**
- * Suivi dynamique d'un candidat d'ordre continu au dixième avec tolérance +-0.10.
- */
-data class CandidateHarmonicTracker(
-    var orderSum: Double,
-    var count: Int,
-    val firstSeenTimestampMs: Long,
-    var lastSeenTimestampMs: Long,
-    var lastFreqHz: Int,
-    var maxTtnrDb: Double,
-    var maxAbsDbFS: Double,
-    var minSpeedKmh: Float,
-    var maxSpeedKmh: Float,
-    var minRpm: Int,
-    var maxRpm: Int,
-    var minFreqHz: Int,
-    var maxFreqHz: Int,
-    var binIndex: Int,
-    var isFixedNoise: Boolean = false
-) {
-    val currentMeanOrder: Double
-        get() = orderSum / count.coerceAtLeast(1)
-
-    val formattedOrderName: String
-        get() {
-            val roundedOneDec = Math.round(currentMeanOrder * 10.0) / 10.0
-            return if (roundedOneDec % 1.0 == 0.0) "H${roundedOneDec.toInt()}" else "H%.1f".format(roundedOneDec)
-        }
-}
-
 data class ManualOrderAnchor(
     val frameIndex: Int,
     val binIndex: Int,

@@ -51,6 +51,19 @@ if grep -RIn --include='*.kt' -E '^import (android\.|androidx\.|com\.google\.and
   grep -RIn --include='*.kt' -E '^import (android\.|androidx\.|com\.google\.android\.)' core/src | head -10
 fi
 
+# --- [ARMED] purged dead code must not return [A3/A4/D5, plan 3.8] --------
+# The regex-patch era resurrected deleted code more than once. These symbols
+# and files were deliberately removed; any reappearance fails the build.
+DEAD_SYMBOLS='CandidateHarmonicTracker|isFrequencyAllowed|toggleDrawingMode|parseYouTubeEmbedUrl_DELETED'
+if grep -RIn --include='*.kt' -E "$DEAD_SYMBOLS" app/src/main core/src/main >/dev/null 2>&1; then
+  violation "purged dead code has returned [plan 3.8]:"
+  grep -RIn --include='*.kt' -E "$DEAD_SYMBOLS" app/src/main core/src/main | head -10
+fi
+if git ls-files | grep -qE '(report_mode_screen_copy\.kt|ui/main/|vibratec_logo\.png)'; then
+  violation "deleted dead files are tracked again [plan 3.8]:"
+  git ls-files | grep -E '(report_mode_screen_copy\.kt|ui/main/|vibratec_logo\.png)'
+fi
+
 if [ "$fail" -ne 0 ]; then
   say ""; say "ci/checks.sh: FAILED"
   exit 1

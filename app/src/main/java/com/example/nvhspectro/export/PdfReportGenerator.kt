@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.*
 import android.graphics.pdf.PdfDocument
 import com.example.nvhspectro.AudioConfig
+import com.example.nvhspectro.getJetColorInt
 import com.example.nvhspectro.R
 import com.example.nvhspectro.data.KinematicsConfig
 import com.example.nvhspectro.data.KinematicsInputMode
@@ -14,28 +15,7 @@ import kotlin.math.ceil
 object PdfReportGenerator {
     
     // Copied from SpectrogramColormap.kt
-    private fun getJetColorInt(v: Float): Int {
-        val vClamped = v.coerceIn(0f, 1f)
-        var r = 0f
-        var g = 0f
-        var b = 0f
-        if (vClamped < 0.125f) {
-            b = 0.5f + 4f * vClamped
-        } else if (vClamped < 0.375f) {
-            b = 1f
-            g = 4f * (vClamped - 0.125f)
-        } else if (vClamped < 0.625f) {
-            r = 4f * (vClamped - 0.375f)
-            g = 1f
-            b = 1f - 4f * (vClamped - 0.375f)
-        } else if (vClamped < 0.875f) {
-            r = 1f
-            g = 1f - 4f * (vClamped - 0.625f)
-        } else {
-            r = 1f - 4f * (vClamped - 0.875f)
-        }
-        return Color.argb(255, (r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt())
-    }
+    // [A4/3.8] Colormap comes from the one shared implementation (SpectrogramColormap.kt).
 
     private fun createBitmapFromHistory(history: List<FloatArray>, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0): Bitmap? {
         if (history.isEmpty()) return null
@@ -149,7 +129,7 @@ object PdfReportGenerator {
         
         // Logo
         val logoBitmap = try {
-            BitmapFactory.decodeResource(context.resources, R.drawable.vibratec_logo)
+            BitmapFactory.decodeResource(context.resources, R.drawable.logo_vibratec)
         } catch (e: Exception) {
             null
         }
@@ -394,27 +374,10 @@ object PdfReportGenerator {
         for (word in words) {
             // Stop drawing if we reach bottom of comment box
             if (cy > currentY + commentsBoxHeight - 10f) break
-            
-            if ("\n" in word) {
-                val split = word.split("\n")
-                for (i in split.indices) {
-                    if (cy > currentY + commentsBoxHeight - 10f) break
-                    val w = split[i]
-                    val testLine = if (line.isEmpty()) w else "$line $w"
-                    if (textPaint.measureText(testLine) > maxTextWidth) {
-                        canvas.drawText(line, leftX + 5f, cy, textPaint)
-                        line = w
-                        cy += 12f
-                    } else {
-                        line = testLine
-                    }
-                    if (i < split.size - 1) {
-                        canvas.drawText(line, leftX + 5f, cy, textPaint)
-                        line = ""
-                        cy += 12f
-                    }
-                }
-            } else {
+
+            // [A4/3.8] The dead '"\n" in word' branch is gone: split(" ", "\n")
+            // already consumed newlines. (Preserving user line breaks is plan 4.5.)
+            run {
                 val testLine = if (line.isEmpty()) word else "$line $word"
                 if (textPaint.measureText(testLine) > maxTextWidth) {
                     canvas.drawText(line, leftX + 5f, cy, textPaint)

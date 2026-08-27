@@ -33,7 +33,6 @@
     <ID>FunctionNaming:MainScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppNavigation()</ID>
     <ID>FunctionNaming:MainScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppScreen(liveVm: LiveViewModel, analyzerVm: AnalyzerViewModel, reportVm: ReportViewModel)</ID>
     <ID>FunctionNaming:OrderSelectionDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun OrderSelectionDialog( currentOrder: Double, onOrderSelected: (Double) -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
-    <ID>FunctionNaming:ReportModeScreen.kt$@Composable fun AutoResizedText( text: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier, fontWeight: androidx.compose.ui.text.font.FontWeight? = null, initialFontSize: androidx.compose.ui.unit.TextUnit = 11.sp, minFontSize: androidx.compose.ui.unit.TextUnit = 8.sp )</ID>
     <ID>FunctionNaming:ReportModeScreen.kt$@Composable fun AutoResizedText( text: androidx.compose.ui.text.AnnotatedString, modifier: Modifier = Modifier, initialFontSize: androidx.compose.ui.unit.TextUnit = 11.sp, minFontSize: androidx.compose.ui.unit.TextUnit = 8.sp )</ID>
     <ID>FunctionNaming:ReportModeScreen.kt$@Composable fun SegmentedToggleButton( options: List&lt;String&gt;, selectedIndex: Int, onOptionSelected: (Int) -&gt; Unit, modifier: Modifier = Modifier, activeColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary )</ID>
     <ID>FunctionNaming:ReportModeScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ReportModeScreen( viewModel: ReportViewModel, onBack: () -&gt; Unit )</ID>
@@ -113,7 +112,6 @@
     <ID>LongParameterList:PdfReportGenerator.kt$PdfReportGenerator$( context: Context, outStream: OutputStream, historyAbs: List&lt;FloatArray&gt;, historyTtnr: List&lt;FloatArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
     <ID>LongParameterList:PdfReportGenerator.kt$PdfReportGenerator$(history: List&lt;FloatArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0)</ID>
     <ID>LongParameterList:PngExporter.kt$PngExporter.Input$( val history: List&lt;FloatArray&gt;, val telemetryHistory: List&lt;TelemetryData&gt;, val currentTelemetry: TelemetryData, val displayMode: DisplayMode, val minDb: Double, val maxDb: Double, val maxFreq: Int, val sampleRate: Int, val timeWindowSec: Double, val historySize: Int, val pedalPercent: String, val comments: String )</ID>
-    <ID>LongParameterList:ReportModeScreen.kt$( text: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier, fontWeight: androidx.compose.ui.text.font.FontWeight? = null, initialFontSize: androidx.compose.ui.unit.TextUnit = 11.sp, minFontSize: androidx.compose.ui.unit.TextUnit = 8.sp )</ID>
     <ID>LongParameterList:SettingsDialog.kt$( onDismiss: () -&gt; Unit, sampleRateHz: Int, minDb: Double, maxDb: Double, onMinDbChange: (Double) -&gt; Unit, onMaxDbChange: (Double) -&gt; Unit, fftSize: Int, onFftSizeChange: (Int) -&gt; Unit, minFreq: Int = 0, onMinFreqChange: (Int) -&gt; Unit = {}, maxFreq: Int, onMaxFreqChange: (Int) -&gt; Unit = {}, timeWindowSec: Double, onTimeWindowChange: (Double) -&gt; Unit, isDetectorEnabled: Boolean = true, onDetectorEnabledChange: (Boolean) -&gt; Unit = {}, emergenceThresholdDb: Double = 2.5, onEmergenceThresholdChange: (Double) -&gt; Unit = {}, magnitudeGateDbFS: Double = -90.0, onMagnitudeGateChange: (Double) -&gt; Unit = {}, isWavAnalyzerMode: Boolean = false, wavDurationSec: Double = 0.0, activeFilters: List&lt;AudioFilter&gt; = emptyList(), onAddFilter: (AudioFilter) -&gt; Unit = {}, onRemoveFilter: (String) -&gt; Unit = {} )</ID>
     <ID>LongParameterList:SpectrogramColormap.kt$( history: List&lt;FloatArray&gt;, absHistory: List&lt;FloatArray&gt; = emptyList(), ttnrHistory: List&lt;FloatArray&gt; = emptyList(), modifier: Modifier = Modifier, minDb: Double = -120.0, maxDb: Double = 0.0, minFreq: Int = 0, maxFreq: Int = 10000, fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, sampleRate: Int, historySize: Int = 150, displayMode: DisplayMode = DisplayMode.ABSOLUTE, isDetectorEnabled: Boolean = true, emergenceThresholdDb: Double = 2.5, magnitudeGateDbFS: Double = -90.0, trackedHarmonicTags: List&lt;TrackedHarmonicTag&gt; = emptyList(), kinematicsConfig: KinematicsConfig = KinematicsConfig(), isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, showH1Overlay: Boolean = false, projectedOrder: Double = 1.0, telemetryHistory: List&lt;TelemetryData&gt; = emptyList(), activeFilters: List&lt;AudioFilter&gt; = emptyList(), isReportModeActive: Boolean = false, isDrawingMode: Boolean = false, currentUserPoints: List&lt;ManualOrderAnchor&gt; = emptyList(), currentSmartPath: List&lt;ManualOrderAnchor&gt; = emptyList(), manualTrackedOrders: List&lt;SmartTrackedOrder&gt; = emptyList(), selectedManualOrder: SmartTrackedOrder? = null, isBrillanceModeEnabled: Boolean = false, onAddManualPoint: (Int, Int) -&gt; Unit = { _, _ -&gt; } )</ID>
     <ID>LongParameterList:SpectrogramImageProducer.kt$SpectrogramImageProducer$( history: List&lt;FloatArray&gt;, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean, maskBelowBin: Int = 0 )</ID>
@@ -187,7 +185,6 @@
     <ID>MagicNumber:InfoDialog.kt$0xFF00E5FF</ID>
     <ID>MagicNumber:InfoDialog.kt$0xFF101827</ID>
     <ID>MagicNumber:InfoDialog.kt$0xFF38BDF8</ID>
-    <ID>MagicNumber:KinematicsData.kt$CandidateHarmonicTracker$10.0</ID>
     <ID>MagicNumber:KinematicsData.kt$KinematicsConfig$0.01</ID>
     <ID>MagicNumber:KinematicsData.kt$KinematicsConfig$0.0254</ID>
     <ID>MagicNumber:KinematicsData.kt$KinematicsConfig$0.1</ID>
@@ -262,12 +259,7 @@
     <ID>MagicNumber:OrderSelectionDialog.kt$8.0</ID>
     <ID>MagicNumber:OrderTrackingEngine.kt$OrderTrackingEngine.Companion$120.0</ID>
     <ID>MagicNumber:OrderTrackingEngine.kt$OrderTrackingEngine.Companion$8.0</ID>
-    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$0.125f</ID>
-    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$0.375f</ID>
-    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$0.5f</ID>
-    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$0.625f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$0.65</ID>
-    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$0.875f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$1.5f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$100f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$10f</ID>
@@ -282,7 +274,6 @@
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$22f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$230f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$250f</ID>
-    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$255</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$25f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$267f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$28f</ID>
@@ -746,7 +737,6 @@
     <ID>NestedBlockDepth:FFTProcessor.kt$FFTProcessor$fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</ID>
     <ID>NestedBlockDepth:MeasurementSession.kt$MeasurementSession$fun appendLiveFrame( magnitudes: FloatArray, ttnrSpectrum: FloatArray, retroUnmaskBins: List&lt;Int&gt;, retroRawRows: List&lt;FloatArray&gt;, maxHistory: Int )</ID>
     <ID>NestedBlockDepth:OrderTrackingEngine.kt$OrderTrackingEngine$@Synchronized fun step( frame: Frame, nowMs: Long, holdMs: Long, targetOrders: List&lt;Double&gt;, activeTags: List&lt;TrackedHarmonicTag&gt;, report: MutableList&lt;EmergenceReportEntry&gt; ): List&lt;TrackedHarmonicTag&gt;</ID>
-    <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$fun generateReport( context: Context, outStream: OutputStream, historyAbs: List&lt;FloatArray&gt;, historyTtnr: List&lt;FloatArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
     <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;FloatArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0): Bitmap?</ID>
     <ID>NestedBlockDepth:ReportViewModel.kt$ReportViewModel$fun validateCurrentOrder(customName: String? = null)</ID>
     <ID>NestedBlockDepth:SmartPathTracker.kt$SmartPathTracker$fun compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</ID>
