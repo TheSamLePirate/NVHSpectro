@@ -133,6 +133,8 @@ class LiveViewModel(
             val stepSize = audioBuffer.size / 2
             recordedPcmList.add(audioBuffer.copyOfRange(audioBuffer.size - stepSize, audioBuffer.size))
             recordedTelemetryList.add(telemetryForCalc)
+            // [GPS-4.3] The paired audio BOOTTIME goes into the v3 sidecar.
+            recordedFrameTimesNanos.add(frame.centerTimeNanos)
         }
         if (session.isFrozen.value) return
 
@@ -319,6 +321,7 @@ class LiveViewModel(
 
     private val recordedPcmList = java.util.Collections.synchronizedList(mutableListOf<ShortArray>())
     private val recordedTelemetryList = java.util.Collections.synchronizedList(mutableListOf<TelemetryData>())
+    private val recordedFrameTimesNanos = java.util.Collections.synchronizedList(mutableListOf<Long>())
     private var audioRecordingTimerJob: Job? = null
 
     fun toggleAudioRecording() {
@@ -329,6 +332,7 @@ class LiveViewModel(
         if (_isAudioRecording.value) return
         recordedPcmList.clear()
         recordedTelemetryList.clear()
+        recordedFrameTimesNanos.clear()
         _recordingElapsedSec.value = 0
         _isAudioRecording.value = true
 
@@ -360,6 +364,7 @@ class LiveViewModel(
     fun cancelSaveAudioRecording() {
         recordedPcmList.clear()
         recordedTelemetryList.clear()
+        recordedFrameTimesNanos.clear()
         _showSaveRecordingDialog.value = false
     }
 
@@ -395,6 +400,7 @@ class LiveViewModel(
                 withContext(Dispatchers.Main) {
                     recordedPcmList.clear()
                     recordedTelemetryList.clear()
+                    recordedFrameTimesNanos.clear()
                     session.postNotice("✅ Enregistrement sauvegardé : $baseName")
                 }
             } catch (e: Exception) {
@@ -407,16 +413,24 @@ class LiveViewModel(
         }
     }
 
-    /** [S2] Schema v2 via kotlinx-serialization — versioned, escaped, monotonic stamps. */
+    /**
+     * [S2, GPS-4.3] Schema v3: per-sample estimated speed + σ + validity +
+     * paired audio BOOTTIME, estimator identity, capture-time speed status.
+     */
     private fun buildTelemetryJson(baseName: String): String {
         val samples = synchronized(recordedTelemetryList) { recordedTelemetryList.toList() }
-        return com.example.nvhspectro.data.TelemetryCodec.encodeV2(
-            folderName = baseName,
-            durationSec = _recordingElapsedSec.value,
-            sampleRate = AudioConfig.LIVE_SAMPLE_RATE_HZ,
-            captureSource = audioRepository.captureSourceLabel,
-            appVersion = BuildConfig.VERSION_NAME,
+        val audioTimes = synchronized(recordedFrameTimesNanos) { recordedFrameTimesNanos.toList() }
+        return com.example.nvhspectro.data.TelemetryCodec.encodeV3(
+            com.example.nvhspectro.data.TelemetryCodec.EncodeRequest(
+                folderName = baseName,
+                durationSec = _recordingElapsedSec.value,
+                sampleRate = AudioConfig.LIVE_SAMPLE_RATE_HZ,
+                captureSource = audioRepository.captureSourceLabel,
+                appVersion = BuildConfig.VERSION_NAME,
+                speedEstimator = speedProvider.estimatorDescription,
+            ),
             samples = samples,
+            audioTimesNanos = audioTimes,
         )
     }
 

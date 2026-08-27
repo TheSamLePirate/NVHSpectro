@@ -55,6 +55,8 @@ class GnssSpeedSession(
 
     override val lastNis: Double? get() = estimator.lastNis
 
+    override val description: String get() = estimator.description
+
     override fun reset() = estimator.reset()
 
     /**

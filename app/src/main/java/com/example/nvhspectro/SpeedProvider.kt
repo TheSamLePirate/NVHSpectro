@@ -83,6 +83,9 @@ class SpeedProvider(
     /** ~1 Hz updates for the UI card; per-frame consumers use [telemetryAt]. */
     val telemetry: StateFlow<TelemetryData> = _telemetry.asStateFlow()
 
+    /** [GPS-4.3] Estimator identity + parameters, stamped into exports. */
+    val estimatorDescription: String get() = session.description
+
     private val gpsListener =
         object : LocationListener {
             override fun onLocationChanged(location: Location) = onFix(location, source = SpeedSampleSource.GPS)

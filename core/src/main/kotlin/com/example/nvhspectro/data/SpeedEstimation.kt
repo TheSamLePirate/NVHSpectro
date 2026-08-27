@@ -139,6 +139,9 @@ interface SpeedEstimator {
      */
     val lastNis: Double? get() = null
 
+    /** Algorithm identity + parameters, stamped into exports [GPS-4.3]. */
+    val description: String get() = this::class.simpleName ?: "estimator"
+
     /**
      * Evaluate the state at a BOOTTIME instant. GPS-1.2's target call is
      * `estimateAt(audioFrame.centerTimeNanos)` — never "estimate now" [GPS-03].

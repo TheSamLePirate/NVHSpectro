@@ -95,6 +95,9 @@ class KalmanSpeedEstimator(
     override var lastNis: Double? = null
         private set
 
+    /** [GPS-4.3] Full parameter set rides along — traces stay comparable across tunings. */
+    override val description: String = "kalman-va/1 $config"
+
     override fun update(sample: GnssSpeedSample): SampleRejection? {
         val z = sample.speedMps.toDouble().coerceAtLeast(0.0)
         val sigmaDefaulted = sample.speedSigmaMps == null
