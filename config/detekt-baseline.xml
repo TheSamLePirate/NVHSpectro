@@ -5,7 +5,6 @@
     <ID>ComplexCondition:SpectrogramColormap.kt$ttnr &gt;= reqThreshold &amp;&amp; absVal &gt;= reqGate &amp;&amp; (prevTtnr &gt; 0.5 || nextTtnr &gt; 0.5)</ID>
     <ID>ComplexCondition:SpectrogramColormap.kt$w &lt;= 0 || h &lt;= 0 || plotWidth &lt;= 50f || plotHeight &lt;= 50f</ID>
     <ID>ComplexCondition:TelemetryGraph.kt$metric == TelemetryMetric.ORDER &amp;&amp; (!isKinematicsEnabled || (history.isNotEmpty() &amp;&amp; history.none { it.theoreticalSpeedKmh &gt; 1.0f || it.speedKmh &gt; 1.0f }))</ID>
-    <ID>ComplexCondition:WavAnalysis.kt$WavAnalysis$config.isEnabled &amp;&amp; speedKmh &gt; 1.0f &amp;&amp; currentAbs.isNotEmpty() &amp;&amp; ttnr != null &amp;&amp; ttnr.isNotEmpty()</ID>
     <ID>CyclomaticComplexMethod:FFTProcessor.kt$FFTProcessor$fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</ID>
     <ID>CyclomaticComplexMethod:KinematicsDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun KinematicsDialog( currentConfig: KinematicsConfig, onDismiss: () -&gt; Unit, onSave: (KinematicsConfig) -&gt; Unit )</ID>
     <ID>CyclomaticComplexMethod:MainScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppScreen(liveVm: LiveViewModel, analyzerVm: AnalyzerViewModel, reportVm: ReportViewModel)</ID>
@@ -20,7 +19,6 @@
     <ID>CyclomaticComplexMethod:SpectrogramColormap.kt$@Composable fun SpectrogramCanvas( history: List&lt;FloatArray&gt;, absHistory: List&lt;FloatArray&gt; = emptyList(), ttnrHistory: List&lt;FloatArray&gt; = emptyList(), modifier: Modifier = Modifier, minDb: Double = -120.0, maxDb: Double = 0.0, minFreq: Int = 0, maxFreq: Int = 10000, fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, sampleRate: Int, historySize: Int = 150, displayMode: DisplayMode = DisplayMode.ABSOLUTE, isDetectorEnabled: Boolean = true, emergenceThresholdDb: Double = 2.5, magnitudeGateDbFS: Double = -90.0, trackedHarmonicTags: List&lt;TrackedHarmonicTag&gt; = emptyList(), kinematicsConfig: KinematicsConfig = KinematicsConfig(), isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, showH1Overlay: Boolean = false, projectedOrder: Double = 1.0, telemetryHistory: List&lt;TelemetryData&gt; = emptyList(), activeFilters: List&lt;AudioFilter&gt; = emptyList(), isReportModeActive: Boolean = false, isDrawingMode: Boolean = false, currentUserPoints: List&lt;ManualOrderAnchor&gt; = emptyList(), currentSmartPath: List&lt;ManualOrderAnchor&gt; = emptyList(), manualTrackedOrders: List&lt;SmartTrackedOrder&gt; = emptyList(), selectedManualOrder: SmartTrackedOrder? = null, isBrillanceModeEnabled: Boolean = false, onAddManualPoint: (Int, Int) -&gt; Unit = { _, _ -&gt; } )</ID>
     <ID>CyclomaticComplexMethod:TelemetryGraph.kt$@Composable fun TelemetryGraph( history: List&lt;TelemetryData&gt;, metric: TelemetryMetric, timeWindowSec: Double, historySize: Int = 150, ttnrSpectrum: FloatArray = FloatArray(0), minFreq: Int = 0, maxFreq: Int = 10000, sampleRate: Int, isKinematicsEnabled: Boolean = false, selectedOrderName: String = "H18", isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, modifier: Modifier = Modifier )</ID>
     <ID>CyclomaticComplexMethod:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
-    <ID>CyclomaticComplexMethod:WavAnalysis.kt$WavAnalysis$fun cursorStateAt( posMs: Long, durationMs: Long, absList: List&lt;FloatArray&gt;, ttnrList: List&lt;FloatArray&gt;, telemetrySource: List&lt;TelemetryData&gt;, config: KinematicsConfig, sampleRate: Int ): CursorState</ID>
     <ID>FunctionNaming:EmergenceReportDialog.kt$@Composable fun EmergenceReportRow(entry: EmergenceReportEntry)</ID>
     <ID>FunctionNaming:EmergenceReportDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EmergenceReportDialog( entries: List&lt;EmergenceReportEntry&gt;, kinematicsConfig: KinematicsConfig, onDismiss: () -&gt; Unit, onClearReport: () -&gt; Unit )</ID>
     <ID>FunctionNaming:ExportDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ExportDialog( onDismiss: () -&gt; Unit, telemetry: TelemetryData, onExport: (String, String) -&gt; Unit )</ID>
@@ -113,10 +111,8 @@
     <ID>LongParameterList:SpectrogramColormap.kt$( history: List&lt;FloatArray&gt;, absHistory: List&lt;FloatArray&gt; = emptyList(), ttnrHistory: List&lt;FloatArray&gt; = emptyList(), modifier: Modifier = Modifier, minDb: Double = -120.0, maxDb: Double = 0.0, minFreq: Int = 0, maxFreq: Int = 10000, fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, sampleRate: Int, historySize: Int = 150, displayMode: DisplayMode = DisplayMode.ABSOLUTE, isDetectorEnabled: Boolean = true, emergenceThresholdDb: Double = 2.5, magnitudeGateDbFS: Double = -90.0, trackedHarmonicTags: List&lt;TrackedHarmonicTag&gt; = emptyList(), kinematicsConfig: KinematicsConfig = KinematicsConfig(), isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, showH1Overlay: Boolean = false, projectedOrder: Double = 1.0, telemetryHistory: List&lt;TelemetryData&gt; = emptyList(), activeFilters: List&lt;AudioFilter&gt; = emptyList(), isReportModeActive: Boolean = false, isDrawingMode: Boolean = false, currentUserPoints: List&lt;ManualOrderAnchor&gt; = emptyList(), currentSmartPath: List&lt;ManualOrderAnchor&gt; = emptyList(), manualTrackedOrders: List&lt;SmartTrackedOrder&gt; = emptyList(), selectedManualOrder: SmartTrackedOrder? = null, isBrillanceModeEnabled: Boolean = false, onAddManualPoint: (Int, Int) -&gt; Unit = { _, _ -&gt; } )</ID>
     <ID>LongParameterList:SpectrogramImageProducer.kt$SpectrogramImageProducer$( history: List&lt;FloatArray&gt;, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean, maskBelowBin: Int = 0 )</ID>
     <ID>LongParameterList:SpectrogramImageProducer.kt$SpectrogramImageProducer$( latestFrame: FloatArray, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean, maskBelowBin: Int = 0 )</ID>
-    <ID>LongParameterList:TelemetryCodec.kt$TelemetryCodec$( folderName: String, durationSec: Int, sampleRate: Int, captureSource: String, appVersion: String, samples: List&lt;TelemetryData&gt; )</ID>
     <ID>LongParameterList:TelemetryGraph.kt$( history: List&lt;TelemetryData&gt;, metric: TelemetryMetric, timeWindowSec: Double, historySize: Int = 150, ttnrSpectrum: FloatArray = FloatArray(0), minFreq: Int = 0, maxFreq: Int = 10000, sampleRate: Int, isKinematicsEnabled: Boolean = false, selectedOrderName: String = "H18", isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, modifier: Modifier = Modifier )</ID>
     <ID>LongParameterList:VideoPlayerView.kt$( videoUri: Uri?, youtubeUrl: String?, videoTitle: String, isPlaying: Boolean, positionMs: Long, durationMs: Long, onSeekTo: (Long) -&gt; Unit, onTogglePlayPause: () -&gt; Unit, onOpenVideoSelection: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
-    <ID>LongParameterList:WavAnalysis.kt$WavAnalysis$( posMs: Long, durationMs: Long, absList: List&lt;FloatArray&gt;, ttnrList: List&lt;FloatArray&gt;, telemetrySource: List&lt;TelemetryData&gt;, config: KinematicsConfig, sampleRate: Int )</ID>
     <ID>LongParameterList:WavPlayerBar.kt$( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit )</ID>
     <ID>LongParameterList:WavRoundTripTest.kt$WavRoundTripTest$( sampleRate: Int, channels: Int, bits: Int, pcmBytes: ByteArray, extraChunkBeforeData: Boolean = false, audioFormat: Int = 1 )</ID>
     <ID>LoopWithTooManyJumpStatements:AudioRepository.kt$AudioRepository$while</ID>
@@ -194,7 +190,6 @@
     <ID>MagicNumber:LiveAnalysisEngine.kt$LiveAnalysisEngine$10.0</ID>
     <ID>MagicNumber:LiveViewModel.kt$LiveViewModel$0.5</ID>
     <ID>MagicNumber:LiveViewModel.kt$LiveViewModel$1000L</ID>
-    <ID>MagicNumber:LiveViewModel.kt$LiveViewModel$120.0</ID>
     <ID>MagicNumber:LiveViewModel.kt$LiveViewModel$20</ID>
     <ID>MagicNumber:LiveViewModel.kt$LiveViewModel$256</ID>
     <ID>MagicNumber:MainScreen.kt$0.45f</ID>
@@ -492,7 +487,6 @@
     <ID>MagicNumber:WavAnalysis.kt$WavAnalysis$0.5</ID>
     <ID>MagicNumber:WavAnalysis.kt$WavAnalysis$1000.0</ID>
     <ID>MagicNumber:WavAnalysis.kt$WavAnalysis$1000L</ID>
-    <ID>MagicNumber:WavAnalysis.kt$WavAnalysis$120.0</ID>
     <ID>MagicNumber:WavAudioWriter.kt$WavAudioWriter$0x00FF</ID>
     <ID>MagicNumber:WavAudioWriter.kt$WavAudioWriter$0xff</ID>
     <ID>MagicNumber:WavAudioWriter.kt$WavAudioWriter$10</ID>
@@ -713,7 +707,6 @@
     <ID>MaxLineLength:VideoPlayerView.kt$text = "Pas de données vidéo. Cliquez sur [Charger Vidéo] à côté de TTNR pour ouvrir un fichier local ou un lien YouTube (limité à 5 min max)."</ID>
     <ID>MaxLineLength:VideoSelectionDialog.kt$text = "Choisissez la provenance de l'enregistrement vidéo pour l'analyse spectrale synchronisée :"</ID>
     <ID>MaxLineLength:WavAnalysis.kt$WavAnalysis$smoothList[i] = smoothList[i].copy(theoreticalSpeedKmh = startSpeed + fraction * (endSpeed - startSpeed))</ID>
-    <ID>MaxLineLength:WavAnalysis.kt$WavAnalysis$telem = raw.copy(theoreticalSpeedKmh = if (raw.theoreticalSpeedKmh &gt; 0.1f) raw.theoreticalSpeedKmh else raw.speedKmh)</ID>
     <ID>MaxLineLength:WavAnalysis.kt$WavAnalysis$val interpTheo = before.theoreticalSpeedKmh + fraction * (after.theoreticalSpeedKmh - before.theoreticalSpeedKmh)</ID>
     <ID>MaxLineLength:WavAnalysisTest.kt$WavAnalysisTest$assertEquals("every telemetry sample gets tracked-order levels", -40.0, sweep.updatedTelemetry[0].trackedOrderDbFS, 1e-6)</ID>
     <ID>MaxLineLength:WavAnalysisTest.kt$WavAnalysisTest$val pcm = SynthSignals.sine(SynthSignals.binCenteredFreq(bin, fftSize, sampleRate), sampleRate, sampleRate) // 1 s</ID>
@@ -738,7 +731,7 @@
     <ID>ReturnCount:TimelineMapper.kt$TimelineMapper$fun timeToIndex(posMs: Long, durationMs: Long, size: Int): Int</ID>
     <ID>ReturnCount:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
     <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun ByteArray.startsWith(ascii: String): Boolean</ID>
-    <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun parseWavStream(stream: InputStream, jsonText: String?): WavReadResult</ID>
+    <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun parseWavStream( stream: InputStream, jsonText: String?, ): WavReadResult</ID>
     <ID>SwallowedException:AudioRepository.kt$AudioRepository$e: Exception</ID>
     <ID>SwallowedException:PdfReportGenerator.kt$PdfReportGenerator$e: Exception</ID>
     <ID>SwallowedException:PlaybackController.kt$PlaybackController$e: Exception</ID>

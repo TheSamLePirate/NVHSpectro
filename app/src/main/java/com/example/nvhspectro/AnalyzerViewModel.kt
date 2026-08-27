@@ -94,6 +94,14 @@ class AnalyzerViewModel(
     private val _activeFilters = MutableStateFlow<List<AudioFilter>>(emptyList())
     val activeFilters: StateFlow<List<AudioFilter>> = _activeFilters.asStateFlow()
 
+    /**
+     * [GPS-4.4] How the loaded analysis's speeds were produced ("lissée
+     * (RTS)" / "brute (interpolée)"); null = no telemetry. Reports print it
+     * (plan 4.5 stamps the PDF).
+     */
+    private val _speedReconstructionStatus = MutableStateFlow<String?>(null)
+    val speedReconstructionStatus: StateFlow<String?> = _speedReconstructionStatus.asStateFlow()
+
     // ------------------------------------------------------------ kinematics
 
     fun updateKinematicsConfig(config: com.example.nvhspectro.data.KinematicsConfig) {
@@ -326,10 +334,21 @@ class AnalyzerViewModel(
                     } else {
                         session.setWavAnalysis(spectro.absList, spectro.ttnrList)
                         if (data.telemetryList.isNotEmpty()) {
-                            val finalTelemList = WavAnalysis.interpolateTheoreticalSpeed(data.telemetryList)
-                            session.setLoadedWavData(data.copy(telemetryList = finalTelemList))
-                            session.setTelemetryHistory(finalTelemList)
+                            // [GPS-4.4] Deferred replay: RTS smoothing over the
+                            // sidecar's raw fixes (legacy sidecars fall back to
+                            // the historical interpolation); the status label
+                            // is what reports must print.
+                            val recon =
+                                com.example.nvhspectro.data.SpeedReconstruction.reconstruct(
+                                    data.telemetryList,
+                                    data.telemetryAudioTimesNanos,
+                                )
+                            _speedReconstructionStatus.value = recon.statusLabel
+                            session.postNotice("🛰️ Vitesse GNSS : ${recon.statusLabel}")
+                            session.setLoadedWavData(data.copy(telemetryList = recon.telemetry))
+                            session.setTelemetryHistory(recon.telemetry)
                         } else {
+                            _speedReconstructionStatus.value = null
                             session.setTelemetryHistory(List(spectro.absList.size) { TelemetryData(gpsStatus = GpsStatus.NONE) })
                         }
                         recalculateOrderTrackingForWav()
