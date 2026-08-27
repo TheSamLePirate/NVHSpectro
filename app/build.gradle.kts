@@ -66,6 +66,9 @@ dependencies {
   implementation(composeBom)
   androidTestImplementation(composeBom)
 
+  // Settings/kinematics persistence [S1, plan 3.6]
+  implementation(libs.androidx.datastore.preferences)
+
   // Core Android dependencies
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.lifecycle.runtime.ktx)

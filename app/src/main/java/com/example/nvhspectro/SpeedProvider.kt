@@ -154,7 +154,14 @@ class SpeedProvider(context: Context) {
             altitude = fix?.takeIf { it.hasAltitude() }?.altitude ?: 0.0,
             latitude = fix?.latitude ?: 0.0,
             longitude = fix?.longitude ?: 0.0,
-            gpsStatus = qualityOf(fix, nowNanos)
+            gpsStatus = qualityOf(fix, nowNanos),
+            // [S2] Schema-v2 export fields.
+            speedAccuracyMs = if (Build.VERSION.SDK_INT >= 26 && fix?.hasSpeedAccuracy() == true) {
+                fix.speedAccuracyMetersPerSecond
+            } else {
+                0f
+            },
+            elapsedRealtimeNanos = fix?.elapsedRealtimeNanos ?: 0L
         )
     }
 

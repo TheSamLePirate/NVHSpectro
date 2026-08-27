@@ -6,6 +6,8 @@ enum class KinematicsInputMode(val label: String) {
     DETAILED_CHAIN("Chaîne Détaillée")
 }
 
+/** Serializable so the painstakingly-entered chain survives process death [S1, plan 3.6]. */
+@kotlinx.serialization.Serializable
 data class KinematicsConfig(
     val isEnabled: Boolean = false,
     val inputMode: KinematicsInputMode = KinematicsInputMode.V1000,

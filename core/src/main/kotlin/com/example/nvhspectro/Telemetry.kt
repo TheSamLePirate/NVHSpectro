@@ -22,5 +22,9 @@ data class TelemetryData(
      * math — that lives on elapsedRealtimeNanos inside SpeedProvider [audit G1].
      */
     val timestampMs: Long = System.currentTimeMillis(),
-    val theoreticalSpeedKmh: Float = 0f
+    val theoreticalSpeedKmh: Float = 0f,
+    /** 1-σ Doppler speed error of the underlying fix (0 = unknown) [G3, S2]. */
+    val speedAccuracyMs: Float = 0f,
+    /** Monotonic stamp of the underlying fix (0 = none) — telemetry schema v2 [S2]. */
+    val elapsedRealtimeNanos: Long = 0L
 )

@@ -117,6 +117,7 @@
     <ID>LongParameterList:SpectrogramColormap.kt$( history: List&lt;FloatArray&gt;, absHistory: List&lt;FloatArray&gt; = emptyList(), ttnrHistory: List&lt;FloatArray&gt; = emptyList(), modifier: Modifier = Modifier, minDb: Double = -120.0, maxDb: Double = 0.0, minFreq: Int = 0, maxFreq: Int = 10000, fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, sampleRate: Int, historySize: Int = 150, displayMode: DisplayMode = DisplayMode.ABSOLUTE, isDetectorEnabled: Boolean = true, emergenceThresholdDb: Double = 2.5, magnitudeGateDbFS: Double = -90.0, trackedHarmonicTags: List&lt;TrackedHarmonicTag&gt; = emptyList(), kinematicsConfig: KinematicsConfig = KinematicsConfig(), isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, showH1Overlay: Boolean = false, projectedOrder: Double = 1.0, telemetryHistory: List&lt;TelemetryData&gt; = emptyList(), activeFilters: List&lt;AudioFilter&gt; = emptyList(), isReportModeActive: Boolean = false, isDrawingMode: Boolean = false, currentUserPoints: List&lt;ManualOrderAnchor&gt; = emptyList(), currentSmartPath: List&lt;ManualOrderAnchor&gt; = emptyList(), manualTrackedOrders: List&lt;SmartTrackedOrder&gt; = emptyList(), selectedManualOrder: SmartTrackedOrder? = null, isBrillanceModeEnabled: Boolean = false, onAddManualPoint: (Int, Int) -&gt; Unit = { _, _ -&gt; } )</ID>
     <ID>LongParameterList:SpectrogramImageProducer.kt$SpectrogramImageProducer$( history: List&lt;FloatArray&gt;, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean )</ID>
     <ID>LongParameterList:SpectrogramImageProducer.kt$SpectrogramImageProducer$( latestFrame: FloatArray, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean )</ID>
+    <ID>LongParameterList:TelemetryCodec.kt$TelemetryCodec$( folderName: String, durationSec: Int, sampleRate: Int, captureSource: String, appVersion: String, samples: List&lt;TelemetryData&gt; )</ID>
     <ID>LongParameterList:TelemetryGraph.kt$( history: List&lt;TelemetryData&gt;, metric: TelemetryMetric, timeWindowSec: Double, historySize: Int = 150, ttnrSpectrum: FloatArray = FloatArray(0), minFreq: Int = 0, maxFreq: Int = 10000, sampleRate: Int, isKinematicsEnabled: Boolean = false, selectedOrderName: String = "H18", isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, modifier: Modifier = Modifier )</ID>
     <ID>LongParameterList:VideoPlayerView.kt$( videoUri: Uri?, youtubeUrl: String?, videoTitle: String, isPlaying: Boolean, positionMs: Long, durationMs: Long, onSeekTo: (Long) -&gt; Unit, onTogglePlayPause: () -&gt; Unit, onOpenVideoSelection: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
     <ID>LongParameterList:WavAnalysis.kt$WavAnalysis$( posMs: Long, durationMs: Long, absList: List&lt;FloatArray&gt;, ttnrList: List&lt;FloatArray&gt;, telemetrySource: List&lt;TelemetryData&gt;, config: KinematicsConfig, sampleRate: Int )</ID>
@@ -369,6 +370,13 @@
     <ID>MagicNumber:SettingsDialog.kt$4096</ID>
     <ID>MagicNumber:SettingsDialog.kt$512</ID>
     <ID>MagicNumber:SettingsDialog.kt$90.0</ID>
+    <ID>MagicNumber:SettingsStore.kt$SettingsStore$3</ID>
+    <ID>MagicNumber:SettingsStore.kt$SettingsStore$4</ID>
+    <ID>MagicNumber:SettingsStore.kt$SettingsStore$5</ID>
+    <ID>MagicNumber:SettingsStore.kt$SettingsStore$6</ID>
+    <ID>MagicNumber:SettingsStore.kt$SettingsStore$7</ID>
+    <ID>MagicNumber:SettingsStore.kt$SettingsStore$8</ID>
+    <ID>MagicNumber:SettingsStore.kt$SettingsStore$9</ID>
     <ID>MagicNumber:SmartPathTracker.kt$SmartPathTracker$0.5f</ID>
     <ID>MagicNumber:SpectrogramColormap.kt$0.125f</ID>
     <ID>MagicNumber:SpectrogramColormap.kt$0.1f</ID>
@@ -758,7 +766,8 @@
     <ID>SwallowedException:PlaybackController.kt$PlaybackController$e: Exception</ID>
     <ID>SwallowedException:PngExporter.kt$PngExporter$e: Exception</ID>
     <ID>SwallowedException:RecordingStore.kt$RecordingStore$e: Exception</ID>
-    <ID>SwallowedException:WavDataReader.kt$WavDataReader$e: Exception</ID>
+    <ID>SwallowedException:SettingsStore.kt$SettingsStore$e: Exception</ID>
+    <ID>SwallowedException:TelemetryCodec.kt$TelemetryCodec$e: Exception</ID>
     <ID>ThrowsCount:RecordingStore.kt$RecordingStore$fun insertAndWrite(displayName: String, mime: String, write: (java.io.OutputStream) -&gt; Unit): Uri</ID>
     <ID>TooGenericExceptionCaught:AudioRepository.kt$AudioRepository$e: Exception</ID>
     <ID>TooGenericExceptionCaught:FieldLocationLogger.kt$FieldLocationLogger$e: Exception</ID>
@@ -768,7 +777,9 @@
     <ID>TooGenericExceptionCaught:PngExporter.kt$PngExporter$e: Exception</ID>
     <ID>TooGenericExceptionCaught:RecordingStore.kt$RecordingStore$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ReportViewModel.kt$ReportViewModel$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SettingsStore.kt$SettingsStore$e: Exception</ID>
     <ID>TooGenericExceptionCaught:SpeedProvider.kt$SpeedProvider$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:TelemetryCodec.kt$TelemetryCodec$e: Exception</ID>
     <ID>TooGenericExceptionCaught:VideoAudioExtractor.kt$VideoAudioExtractor$e: Exception</ID>
     <ID>TooGenericExceptionCaught:WavDataReader.kt$WavDataReader$e: Exception</ID>
     <ID>TooManyFunctions:AnalyzerViewModel.kt$AnalyzerViewModel : AndroidViewModel</ID>

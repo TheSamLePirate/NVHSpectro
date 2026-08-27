@@ -51,6 +51,16 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
             liveEngine.reset()
             orderEngine.reset()
         }
+        // [S1, plan 3.6] The engine follows session.fftSize wherever it is set
+        // from — the settings dialog or the persisted-value restore at startup.
+        viewModelScope.launch {
+            session.fftSize.collect { size ->
+                if (liveEngine.fftSize != size) {
+                    liveEngine = LiveAnalysisEngine(size, AudioConfig.LIVE_SAMPLE_RATE_HZ)
+                    captureEngine.setFftSize(size)
+                }
+            }
+        }
         startLivePipeline()
         speedProvider.start()
     }
@@ -179,10 +189,8 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
             // [C13] FFT size is fixed at WAV_FFT_SIZE outside LIVE; applying the
             // live setting there wiped the loaded spectrogram with no re-render.
             if (session.audioSourceMode.value != AudioSourceMode.LIVE) return
+            // [C5] The fftSize collector swaps the engine; flatMapLatest restarts capture.
             session.setFftSize(newFftSize)
-            // [C5] flatMapLatest restarts the capture cleanly.
-            liveEngine = LiveAnalysisEngine(newFftSize, AudioConfig.LIVE_SAMPLE_RATE_HZ)
-            captureEngine.setFftSize(newFftSize)
             session.clearStreams()
         }
     }
@@ -313,24 +321,17 @@ class LiveViewModel(application: Application, val session: MeasurementSession) :
         }
     }
 
+    /** [S2] Schema v2 via kotlinx-serialization — versioned, escaped, monotonic stamps. */
     private fun buildTelemetryJson(baseName: String): String {
-        val jsonContent = StringBuilder()
-        jsonContent.append("{\n")
-        jsonContent.append("  \"folderName\": \"$baseName\",\n")
-        jsonContent.append("  \"durationSec\": ${_recordingElapsedSec.value},\n")
-        jsonContent.append("  \"sampleRate\": ${AudioConfig.LIVE_SAMPLE_RATE_HZ},\n")
-        jsonContent.append("  \"captureSource\": \"${audioRepository.captureSourceLabel}\",\n")
-        jsonContent.append("  \"telemetryCount\": ${recordedTelemetryList.size},\n")
-        jsonContent.append("  \"telemetryData\": [\n")
-        synchronized(recordedTelemetryList) {
-            val items = recordedTelemetryList.mapIndexed { idx, item ->
-                "    {\"index\": $idx, \"speedKmh\": ${item.speedKmh}, \"accelerationG\": ${item.accelerationG}, " +
-                    "\"lat\": ${item.latitude}, \"lng\": ${item.longitude}, \"gpsStatus\": \"${item.gpsStatus}\"}"
-            }
-            jsonContent.append(items.joinToString(",\n"))
-        }
-        jsonContent.append("\n  ]\n}")
-        return jsonContent.toString()
+        val samples = synchronized(recordedTelemetryList) { recordedTelemetryList.toList() }
+        return com.example.nvhspectro.data.TelemetryCodec.encodeV2(
+            folderName = baseName,
+            durationSec = _recordingElapsedSec.value,
+            sampleRate = AudioConfig.LIVE_SAMPLE_RATE_HZ,
+            captureSource = audioRepository.captureSourceLabel,
+            appVersion = BuildConfig.VERSION_NAME,
+            samples = samples
+        )
     }
 
     /** [L1] Every owned resource has a release path on ViewModel death. */

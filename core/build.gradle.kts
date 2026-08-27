@@ -6,6 +6,7 @@
 // This module carries the project's line-coverage gate (plan §1: ≥ 90 %).
 plugins {
   alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.kover)
   `java-test-fixtures`
 }
@@ -28,6 +29,8 @@ dependencies {
   implementation(libs.jtransforms)
   // StateFlow-based MeasurementSession [plan 3.3] — pure JVM artifact.
   api(libs.kotlinx.coroutines.core)
+  // Telemetry schema v2 + persisted kinematics [S1/S2, plan 3.6].
+  api(libs.kotlinx.serialization.json)
 
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)

@@ -2,13 +2,10 @@ package com.example.nvhspectro.data
 
 import android.content.Context
 import android.net.Uri
-import com.example.nvhspectro.GpsStatus
-import com.example.nvhspectro.TelemetryData
 import java.io.File
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import org.json.JSONObject
 
 /**
  * Real RIFF parser [audit C2]: walks chunks (tolerates LIST/fact/bext/JUNK…),
@@ -163,40 +160,11 @@ object WavDataReader {
                 pcmSamples = pcm,
                 sampleRate = f.sampleRate,
                 durationMs = durationMs,
-                telemetryList = parseTelemetry(jsonText)
+                // [S2] Schema-aware decode (v2 + legacy v1 sidecars).
+                telemetryList = TelemetryCodec.decode(jsonText)
             ),
             truncatedToCap = truncated
         )
-    }
-
-    private fun parseTelemetry(jsonText: String?): List<TelemetryData> {
-        if (jsonText.isNullOrBlank()) return emptyList()
-        val telemetryList = mutableListOf<TelemetryData>()
-        try {
-            val json = JSONObject(jsonText)
-            if (json.has("telemetryData")) {
-                val arr = json.getJSONArray("telemetryData")
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    telemetryList.add(
-                        TelemetryData(
-                            speedKmh = obj.optDouble("speedKmh", 0.0).toFloat(),
-                            accelerationG = obj.optDouble("accelerationG", 0.0).toFloat(),
-                            latitude = obj.optDouble("lat", 0.0),
-                            longitude = obj.optDouble("lng", 0.0),
-                            gpsStatus = when (obj.optString("gpsStatus", "GOOD")) {
-                                "POOR" -> GpsStatus.POOR
-                                "NONE" -> GpsStatus.NONE
-                                else -> GpsStatus.GOOD
-                            }
-                        )
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            // Telemetry is optional; a bad JSON must not block the audio import.
-        }
-        return telemetryList
     }
 
     private fun readFully(stream: InputStream, buf: ByteArray, len: Int): Boolean {
