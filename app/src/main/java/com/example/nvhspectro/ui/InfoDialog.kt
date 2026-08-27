@@ -111,7 +111,16 @@ fun InfoDialog(onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Application d'analyse acoustique temporelle, spectrogramme d'émergence tonale (TTNR) et télémétrie GPS en temps réel. Construit pour analyse NVH rapide lors de roulage véhicule _ domaine automobile.\n\nElle intègre également le post-traitement synchronisé de vidéos et de fichiers WAV, ainsi qu'un outil de suivi d'ordres dédié à l'extraction des harmoniques pour les Groupes Moto-Propulseurs électriques (GMPe).",
+                    text =
+                        "Application d'analyse acoustique temporelle, spectrogramme d'émergence " +
+                            "tonale et télémétrie GPS en temps réel. Construite pour l'analyse NVH " +
+                            "rapide lors d'un roulage véhicule — domaine automobile.\n\n" +
+                            "Elle intègre également le post-traitement synchronisé de vidéos et de " +
+                            "fichiers WAV, ainsi qu'un outil de suivi d'ordres dédié à l'extraction " +
+                            "des harmoniques pour les Groupes Moto-Propulseurs électriques (GMPe).\n\n" +
+                            "L'indice d'émergence NVH est une méthode interne d'émergence tonale : " +
+                            "il n'implémente pas la norme ECMA-74 / ISO 1996-2 et ne doit pas être " +
+                            "présenté comme tel.",
                     fontSize = 12.sp,
                     color = NvhOnSurfaceVariant,
                     lineHeight = 16.sp,

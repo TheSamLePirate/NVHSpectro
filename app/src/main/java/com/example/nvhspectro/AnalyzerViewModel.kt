@@ -226,6 +226,7 @@ class AnalyzerViewModel(
                 val updatedData = data.copy(durationMs = exactDuration)
                 session.setLoadedWavData(updatedData)
                 _loadedWavFileName.value = fileName
+                session.updateProvenance { it.copy(sourceName = fileName) }
                 player.resetPosition()
                 processFullWavSpectrogram(updatedData)
                 processWavFrameAt(0L)
@@ -281,6 +282,7 @@ class AnalyzerViewModel(
                     val updatedData = data.copy(durationMs = exactDuration)
                     session.setLoadedWavData(updatedData)
                     _loadedWavFileName.value = _loadedVideoTitle.value
+                    session.updateProvenance { it.copy(sourceName = _loadedVideoTitle.value) }
                     player.resetPosition()
                     processFullWavSpectrogram(updatedData)
                     processWavFrameAt(0L)
@@ -335,11 +337,13 @@ class AnalyzerViewModel(
                                     data.telemetryAudioTimesNanos,
                                 )
                             _speedReconstructionStatus.value = recon.statusLabel
+                            session.updateProvenance { it.copy(speedStatusLabel = recon.statusLabel) }
                             session.postNotice("🛰️ Vitesse GNSS : ${recon.statusLabel}")
                             session.setLoadedWavData(data.copy(telemetryList = recon.telemetry))
                             session.setTelemetryHistory(recon.telemetry)
                         } else {
                             _speedReconstructionStatus.value = null
+                            session.updateProvenance { it.copy(speedStatusLabel = null) }
                             session.setTelemetryHistory(List(spectro.absList.size) { TelemetryData(gpsStatus = GpsStatus.NONE) })
                         }
                         recalculateOrderTrackingForWav()

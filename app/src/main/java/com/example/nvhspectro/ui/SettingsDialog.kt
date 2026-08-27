@@ -113,7 +113,7 @@ fun SettingsDialog(
                         if (isDetectorEnabled) {
                             Column {
                                 Text(
-                                    text = "Seuil d'Émergence (TTNR) : ${String.format("%.1f", emergenceThresholdDb)} dB",
+                                    text = "Seuil d'émergence NVH : ${String.format("%.1f", emergenceThresholdDb)} dB",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = NvhOnSurface,
                                 )

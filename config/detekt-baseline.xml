@@ -9,7 +9,7 @@
     <ID>CyclomaticComplexMethod:KinematicsDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun KinematicsDialog( currentConfig: KinematicsConfig, onDismiss: () -&gt; Unit, onSave: (KinematicsConfig) -&gt; Unit, )</ID>
     <ID>CyclomaticComplexMethod:MainScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppScreen( liveVm: LiveViewModel, analyzerVm: AnalyzerViewModel, reportVm: ReportViewModel, permissions: NvhPermissions, )</ID>
     <ID>CyclomaticComplexMethod:OrderTrackingEngine.kt$OrderTrackingEngine$@Synchronized fun step( frame: Frame, nowMs: Long, holdMs: Long, targetOrders: List&lt;Double&gt;, activeTags: List&lt;TrackedHarmonicTag&gt;, report: MutableList&lt;EmergenceReportEntry&gt; ): List&lt;TrackedHarmonicTag&gt;</ID>
-    <ID>CyclomaticComplexMethod:PdfReportGenerator.kt$PdfReportGenerator$fun generateReport( context: Context, outStream: OutputStream, historyAbs: List&lt;FloatArray&gt;, historyTtnr: List&lt;FloatArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
+    <ID>CyclomaticComplexMethod:PdfReportGenerator.kt$PdfReportGenerator$fun generateReport( context: Context, outStream: OutputStream, historyAbs: List&lt;FloatArray&gt;, historyTtnr: List&lt;FloatArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int, stamp: ReportStamp, )</ID>
     <ID>CyclomaticComplexMethod:PngExporter.kt$PngExporter$private fun render(application: Application, input: Input): Bitmap</ID>
     <ID>CyclomaticComplexMethod:ReportModeScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ReportModeScreen( viewModel: ReportViewModel, onBack: () -&gt; Unit, )</ID>
     <ID>CyclomaticComplexMethod:ReportViewModel.kt$ReportViewModel$fun validateCurrentOrder(customName: String? = null)</ID>
@@ -34,7 +34,6 @@
     <ID>ImplicitDefaultLocale:PngExporter.kt$PngExporter$String.format("%.1f", telemetry.speedKmh)</ID>
     <ID>ImplicitDefaultLocale:PngExporter.kt$PngExporter$String.format("%.1fs", tSec)</ID>
     <ID>ImplicitDefaultLocale:PngExporter.kt$PngExporter$String.format("%.2f", telemetry.accelerationG)</ID>
-    <ID>ImplicitDefaultLocale:ReportModeScreen.kt$String.format("%.1f", kinematicsConfig.v1000Kmh)</ID>
     <ID>ImplicitDefaultLocale:SettingsDialog.kt$String.format( "%.1f", wavDurationSec, )</ID>
     <ID>ImplicitDefaultLocale:SettingsDialog.kt$String.format("%.1f Hz", dfHz)</ID>
     <ID>ImplicitDefaultLocale:SettingsDialog.kt$String.format("%.1f ms", dtStepMs)</ID>
@@ -57,8 +56,8 @@
     <ID>LongMethod:KinematicsDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun KinematicsDialog( currentConfig: KinematicsConfig, onDismiss: () -&gt; Unit, onSave: (KinematicsConfig) -&gt; Unit, )</ID>
     <ID>LongMethod:MainScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppScreen( liveVm: LiveViewModel, analyzerVm: AnalyzerViewModel, reportVm: ReportViewModel, permissions: NvhPermissions, )</ID>
     <ID>LongMethod:OrderSelectionDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun OrderSelectionDialog( currentOrder: Double, onOrderSelected: (Double) -&gt; Unit, onDismiss: () -&gt; Unit, )</ID>
-    <ID>LongMethod:PdfReportGenerator.kt$PdfReportGenerator$fun drawColormapBox(canvas: Canvas, bitmap: Bitmap?, x: Float, y: Float, width: Float, height: Float, boxTitle: String, drawBrilliance: Boolean = false)</ID>
-    <ID>LongMethod:PdfReportGenerator.kt$PdfReportGenerator$fun generateReport( context: Context, outStream: OutputStream, historyAbs: List&lt;FloatArray&gt;, historyTtnr: List&lt;FloatArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
+    <ID>LongMethod:PdfReportGenerator.kt$PdfReportGenerator$fun drawColormapBox( canvas: Canvas, bitmap: Bitmap?, x: Float, y: Float, width: Float, height: Float, boxTitle: String, drawBrilliance: Boolean = false, )</ID>
+    <ID>LongMethod:PdfReportGenerator.kt$PdfReportGenerator$fun generateReport( context: Context, outStream: OutputStream, historyAbs: List&lt;FloatArray&gt;, historyTtnr: List&lt;FloatArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int, stamp: ReportStamp, )</ID>
     <ID>LongMethod:Permissions.kt$@Composable private fun MicrophoneRationaleScreen( permanentlyDenied: Boolean, onRequest: () -&gt; Unit, onOpenSettings: () -&gt; Unit, onContinueWithoutMicrophone: () -&gt; Unit, )</ID>
     <ID>LongMethod:PngExporter.kt$PngExporter$private fun render(application: Application, input: Input): Bitmap</ID>
     <ID>LongMethod:ReportModeScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ReportModeScreen( viewModel: ReportViewModel, onBack: () -&gt; Unit, )</ID>
@@ -75,9 +74,10 @@
     <ID>LongParameterList:LiveViewModel.kt$LiveViewModel$( newMinDb: Double, newMaxDb: Double, newFftSize: Int, newMinFreq: Int, newMaxFreq: Int, newTimeWindow: Double, )</ID>
     <ID>LongParameterList:OrderTrackingEngine.kt$OrderTrackingEngine$( frame: Frame, nowMs: Long, holdMs: Long, targetOrders: List&lt;Double&gt;, activeTags: List&lt;TrackedHarmonicTag&gt;, report: MutableList&lt;EmergenceReportEntry&gt; )</ID>
     <ID>LongParameterList:OrderTrackingEngine.kt$OrderTrackingEngine$( report: MutableList&lt;EmergenceReportEntry&gt;, orderValue: Double, orderName: String, freqHz: Int, emergenceDb: Double, frame: Frame, nowMs: Long )</ID>
-    <ID>LongParameterList:PdfReportGenerator.kt$PdfReportGenerator$( context: Context, outStream: OutputStream, historyAbs: List&lt;FloatArray&gt;, historyTtnr: List&lt;FloatArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
-    <ID>LongParameterList:PdfReportGenerator.kt$PdfReportGenerator$(history: List&lt;FloatArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0)</ID>
+    <ID>LongParameterList:PdfReportGenerator.kt$PdfReportGenerator$( context: Context, outStream: OutputStream, historyAbs: List&lt;FloatArray&gt;, historyTtnr: List&lt;FloatArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int, stamp: ReportStamp, )</ID>
+    <ID>LongParameterList:PdfReportGenerator.kt$PdfReportGenerator$( history: List&lt;FloatArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0, )</ID>
     <ID>LongParameterList:PngExporter.kt$PngExporter.Input$( val history: List&lt;FloatArray&gt;, val telemetryHistory: List&lt;TelemetryData&gt;, val currentTelemetry: TelemetryData, val displayMode: DisplayMode, val minDb: Double, val maxDb: Double, val maxFreq: Int, val sampleRate: Int, val timeWindowSec: Double, val historySize: Int, val pedalPercent: String, val comments: String )</ID>
+    <ID>LongParameterList:ReportStamp.kt$ReportStamp.Companion$( appVersion: String, generatedAt: Date, sourceMode: AudioSourceMode, provenance: AnalysisProvenance, sampleRateHz: Int, fftSize: Int, )</ID>
     <ID>LongParameterList:SpectrogramImageProducer.kt$SpectrogramImageProducer$( history: List&lt;FloatArray&gt;, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean, maskBelowBin: Int = 0 )</ID>
     <ID>LongParameterList:SpectrogramImageProducer.kt$SpectrogramImageProducer$( latestFrame: FloatArray, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean, maskBelowBin: Int = 0 )</ID>
     <ID>LongParameterList:WavRoundTripTest.kt$WavRoundTripTest$( sampleRate: Int, channels: Int, bits: Int, pcmBytes: ByteArray, extraChunkBeforeData: Boolean = false, audioFormat: Int = 1 )</ID>
@@ -169,12 +169,12 @@
     <ID>MagicNumber:OrderSelectionDialog.kt$8.0</ID>
     <ID>MagicNumber:OrderTrackingEngine.kt$OrderTrackingEngine.Companion$120.0</ID>
     <ID>MagicNumber:OrderTrackingEngine.kt$OrderTrackingEngine.Companion$8.0</ID>
+    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$0.5f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$0.65</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$1.5f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$100f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$10f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$12f</ID>
-    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$137.5f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$14f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$150f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$15f</ID>
@@ -184,12 +184,13 @@
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$22f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$230f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$250f</ID>
+    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$255</ID>
+    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$255f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$25f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$267f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$28f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$30f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$35f</ID>
-    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$360f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$3f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$40f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$42f</ID>
@@ -201,12 +202,15 @@
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$595f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$5f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$6</ID>
+    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$6.5f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$65f</ID>
+    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$7.5f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$7f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$80f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$842</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$842f</ID>
     <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$90f</ID>
+    <ID>MagicNumber:PdfReportGenerator.kt$PdfReportGenerator$9f</ID>
     <ID>MagicNumber:PngExporter.kt$PngExporter$100</ID>
     <ID>MagicNumber:PngExporter.kt$PngExporter$10f</ID>
     <ID>MagicNumber:PngExporter.kt$PngExporter$1400</ID>
@@ -429,14 +433,10 @@
     <ID>MatchingDeclarationName:Permissions.kt$NvhPermissions</ID>
     <ID>MatchingDeclarationName:SpectrogramColormap.kt$EmergencePeak</ID>
     <ID>MatchingDeclarationName:TelemetryGraph.kt$TelemetryMetric</ID>
-    <ID>MaxLineLength:InfoDialog.kt$text = "Application d'analyse acoustique temporelle, spectrogramme d'émergence tonale (TTNR) et télémétrie GPS en temps réel. Construit pour analyse NVH rapide lors de roulage véhicule _ domaine automobile.\n\nElle intègre également le post-traitement synchronisé de vidéos et de fichiers WAV, ainsi qu'un outil de suivi d'ordres dédié à l'extraction des harmoniques pour les Groupes Moto-Propulseurs électriques (GMPe)."</ID>
     <ID>MaxLineLength:MainScreen.kt$containerColor = if (kinematicsConfig.isEnabled) NvhActiveContainer else MaterialTheme.colorScheme.primary</ID>
     <ID>MaxLineLength:MainScreen.kt$text = "Pas de données WAV chargées\nCliquez sur '📂 Charger WAV' pour ouvrir un fichier (limité à 5 min max)."</ID>
     <ID>MaxLineLength:MainScreen.kt$val analysisSampleRate = if (isWavMode) (loadedWavData?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ) else AudioConfig.LIVE_SAMPLE_RATE_HZ</ID>
     <ID>MaxLineLength:OrderTrackingEngineTest.kt$OrderTrackingEngineTest$tags = engine.step(frame(ttnrDb), nowMs = i * 23L, holdMs = 3000L, targetOrders = targetOrders, activeTags = tags, report = report)</ID>
-    <ID>MaxLineLength:PdfReportGenerator.kt$PdfReportGenerator$drawColormapBox(canvas, ttnrBitmap, brillianceLeftX, currentY + smallMapHeight + 20f, brillianceMapWidth, smallMapHeight, "TTNR (Brillance)", true)</ID>
-    <ID>MaxLineLength:PdfReportGenerator.kt$PdfReportGenerator$fun</ID>
-    <ID>MaxLineLength:PdfReportGenerator.kt$PdfReportGenerator$private</ID>
     <ID>MaxLineLength:PngExporter.kt$PngExporter$drawStackedGraph("Accélération (g)", "g", android.graphics.Color.parseColor("#FF9100"), input.telemetryHistory.map { it.accelerationG.toDouble() })</ID>
     <ID>MaxLineLength:PngExporter.kt$PngExporter$drawStackedGraph("Vitesse (km/h)", "km/h", android.graphics.Color.parseColor("#00E676"), input.telemetryHistory.map { it.speedKmh.toDouble() })</ID>
     <ID>MaxLineLength:ReportModeScreen.kt$val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface</ID>
@@ -445,15 +445,17 @@
     <ID>MaxLineLength:SpectrogramColormap.kt$val visibleMaxTimeSec = if (isReportModeActive) ((-pan.x + plotWidth) / (plotWidth * zoom)) * totalTimeSec else (if (isWavAnalyzerMode) totalTimeSec else 0.0)</ID>
     <ID>MaxLineLength:SpectrogramColormap.kt$val visibleMinTimeSec = if (isReportModeActive) (-pan.x / (plotWidth * zoom)) * totalTimeSec else (if (isWavAnalyzerMode) 0.0 else -totalTimeSec)</ID>
     <ID>NestedBlockDepth:FFTProcessor.kt$FFTProcessor$fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</ID>
-    <ID>NestedBlockDepth:MeasurementSession.kt$MeasurementSession$fun appendLiveFrame( magnitudes: FloatArray, ttnrSpectrum: FloatArray, retroUnmaskBins: List&lt;Int&gt;, retroRawRows: List&lt;FloatArray&gt;, maxHistory: Int )</ID>
+    <ID>NestedBlockDepth:MeasurementSession.kt$MeasurementSession$fun appendLiveFrame( magnitudes: FloatArray, ttnrSpectrum: FloatArray, retroUnmaskBins: List&lt;Int&gt;, retroRawRows: List&lt;FloatArray&gt;, maxHistory: Int, )</ID>
     <ID>NestedBlockDepth:OrderTrackingEngine.kt$OrderTrackingEngine$@Synchronized fun step( frame: Frame, nowMs: Long, holdMs: Long, targetOrders: List&lt;Double&gt;, activeTags: List&lt;TrackedHarmonicTag&gt;, report: MutableList&lt;EmergenceReportEntry&gt; ): List&lt;TrackedHarmonicTag&gt;</ID>
-    <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;FloatArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0): Bitmap?</ID>
+    <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$fun generateReport( context: Context, outStream: OutputStream, historyAbs: List&lt;FloatArray&gt;, historyTtnr: List&lt;FloatArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int, stamp: ReportStamp, )</ID>
+    <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory( history: List&lt;FloatArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0, ): Bitmap?</ID>
     <ID>NestedBlockDepth:ReportViewModel.kt$ReportViewModel$fun validateCurrentOrder(customName: String? = null)</ID>
     <ID>NestedBlockDepth:SmartPathTracker.kt$SmartPathTracker$fun compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</ID>
     <ID>ReturnCount:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$private fun updateInternal( elapsedRealtimeNanos: Long, measuredMps: Float, sigmaMps: Float?, ): SampleRejection?</ID>
     <ID>ReturnCount:OrderTrackingEngine.kt$OrderTrackingEngine$private fun isLocalOrderMax(j: Int): Boolean</ID>
     <ID>ReturnCount:OrderTrackingEngine.kt$OrderTrackingEngine.Companion$private fun scallopingCorrected(absRow: FloatArray, peakBin: Int, peakDb: Double): Double</ID>
-    <ID>ReturnCount:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;FloatArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0): Bitmap?</ID>
+    <ID>ReturnCount:PdfReportGenerator.kt$PdfReportGenerator$internal fun wrapComment( text: String, maxWidth: Float, maxLines: Int, measure: (String) -&gt; Float, ): List&lt;String&gt;</ID>
+    <ID>ReturnCount:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory( history: List&lt;FloatArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0, ): Bitmap?</ID>
     <ID>ReturnCount:PlaybackController.kt$PlaybackController$private suspend fun prepare(file: File?, uri: Uri?): Long?</ID>
     <ID>ReturnCount:SmartPathTracker.kt$SmartPathTracker$fun compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</ID>
     <ID>ReturnCount:SmartPathTracker.kt$SmartPathTracker$fun expectedBinF(globalFrame: Int): Float</ID>

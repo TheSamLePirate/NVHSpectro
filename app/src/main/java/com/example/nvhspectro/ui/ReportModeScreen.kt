@@ -44,6 +44,7 @@ import com.example.nvhspectro.theme.NvhOnSurface
 import com.example.nvhspectro.theme.NvhOutline
 import com.example.nvhspectro.theme.NvhPrimary
 import com.example.nvhspectro.theme.NvhStatusBad
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -170,7 +171,7 @@ fun ReportModeScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     SegmentedToggleButton(
-                        options = listOf("Absolue", "TTNR"),
+                        options = listOf("Absolue", "Émergence"),
                         selectedIndex = if (displayMode == DisplayMode.TTNR) 1 else 0,
                         onOptionSelected = { index ->
                             viewModel.session.setDisplayMode(if (index == 1) DisplayMode.TTNR else DisplayMode.ABSOLUTE)
@@ -224,7 +225,12 @@ fun ReportModeScreen(
                             if (kinematicsConfig.isEnabled) {
                                 val vhName = kinematicsConfig.vehicleName.ifEmpty { "--" }
                                 val motorName = kinematicsConfig.motorName.ifEmpty { "--" }
-                                val v1000 = String.format("%.1f", kinematicsConfig.v1000Kmh)
+                                // [U7, plan 4.5] The EFFECTIVE V1000 — the value the RPM and
+                                // order maths actually use. The report header showed the raw
+                                // `v1000Kmh` field, which the calculation ignores entirely in
+                                // GEAR_RATIO / DETAILED_CHAIN mode: the operator read one
+                                // number while the instrument used another.
+                                val v1000 = String.format(Locale.FRANCE, "%.1f", kinematicsConfig.getEffectiveV1000())
 
                                 val vhText =
                                     buildAnnotatedString {

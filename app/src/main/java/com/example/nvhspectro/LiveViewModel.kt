@@ -71,6 +71,9 @@ class LiveViewModel(
                 }
             }
         }
+        // [C8, plan 4.5] Record which mic route the platform actually granted, so the
+        // report can state it instead of implying a measurement-grade path.
+        session.updateProvenance { it.copy(captureSourceLabel = audioRepository.captureSourceLabel) }
         startLivePipeline()
         applyResourcePolicy(session.audioSourceMode.value)
     }

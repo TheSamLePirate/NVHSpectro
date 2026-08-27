@@ -15,14 +15,41 @@ import kotlinx.coroutines.flow.stateIn
 
 enum class DisplayMode(val label: String) {
     ABSOLUTE("Absolue (dBFS)"),
-    TTNR("TTNR (Emergence)")
+
+    /**
+     * [D1, plan 4.5, decision D5] Named "émergence NVH", NOT "TTNR".
+     *
+     * The metric is an in-house tonal-emergence index. It is NOT ECMA-74's tone-to-noise
+     * ratio and does not implement it (the tone and noise sides are calibrated in different
+     * unit systems, so the ratio carries a fixed bias), so it must not be labelled with a
+     * standard's name on any surface an operator or a customer reads. The enum constant keeps
+     * its historical identifier; only the label — the thing humans read — is honest.
+     */
+    TTNR("Émergence NVH"),
 }
 
 enum class AudioSourceMode {
     LIVE,
     WAV_ANALYZER,
-    VIDEO
+    VIDEO,
 }
+
+/**
+ * Where the numbers on screen (and in the exported report) came from [plan 4.5, U7].
+ *
+ * Whoever knows a fact records it here: the live path knows which microphone route the
+ * platform actually granted, the analyzer knows the file and how its speeds were
+ * reconstructed. A report that prints measurements without saying how they were produced
+ * cannot be defended after the fact.
+ */
+data class AnalysisProvenance(
+    /** Live mic route actually obtained, e.g. "UNPROCESSED" / "VOICE_RECOGNITION" [C8]. */
+    val captureSourceLabel: String? = null,
+    /** Loaded file name in analyzer/video mode; null in live mode. */
+    val sourceName: String? = null,
+    /** [GPS-4.4] "lissée (RTS)" / "brute (interpolée)"; null = no telemetry. */
+    val speedStatusLabel: String? = null,
+)
 
 /**
  * [plan 3.3, audit A1/L7] The shared measurement-session state machine —
@@ -38,8 +65,9 @@ enum class AudioSourceMode {
  * Pure Kotlin: owners register hooks for their Android-side effects
  * (mic enable, player release) instead of the session touching them.
  */
-class MeasurementSession(scope: CoroutineScope) {
-
+class MeasurementSession(
+    scope: CoroutineScope,
+) {
     // ------------------------------------------------------------------ mode
     private val _audioSourceMode = MutableStateFlow(AudioSourceMode.LIVE)
     val audioSourceMode: StateFlow<AudioSourceMode> = _audioSourceMode.asStateFlow()
@@ -68,6 +96,9 @@ class MeasurementSession(scope: CoroutineScope) {
         resetAnalysisState()
         _analysisNotice.value = null
         _loadedWavData.value = null
+        // [plan 4.5] Provenance is per-source: the file and its speed-reconstruction status
+        // must not survive into the next mode, or a report would name the wrong source.
+        _provenance.value = _provenance.value.copy(sourceName = null, speedStatusLabel = null)
         clearStreams()
     }
 
@@ -145,7 +176,7 @@ class MeasurementSession(scope: CoroutineScope) {
         ttnrSpectrum: FloatArray,
         retroUnmaskBins: List<Int>,
         retroRawRows: List<FloatArray>,
-        maxHistory: Int
+        maxHistory: Int,
     ) {
         _latestTTNRSpectrum.value = ttnrSpectrum
 
@@ -175,7 +206,10 @@ class MeasurementSession(scope: CoroutineScope) {
     }
 
     /** Analyzer-mode replace: the full-file sweep result. */
-    fun setWavAnalysis(absList: List<FloatArray>, ttnrList: List<FloatArray>) {
+    fun setWavAnalysis(
+        absList: List<FloatArray>,
+        ttnrList: List<FloatArray>,
+    ) {
         _fftHistoryAbsolute.value = absList
         _fftHistoryTTNR.value = ttnrList
     }
@@ -196,7 +230,10 @@ class MeasurementSession(scope: CoroutineScope) {
     }
 
     /** Chronological, like the spectral histories [plan 3.4]. */
-    fun appendLiveTelemetry(data: TelemetryData, maxHistory: Int) {
+    fun appendLiveTelemetry(
+        data: TelemetryData,
+        maxHistory: Int,
+    ) {
         _telemetryState.value = data
         val cur = _telemetryHistory.value.toMutableList()
         cur.add(data)
@@ -228,6 +265,14 @@ class MeasurementSession(scope: CoroutineScope) {
         _kinematicsConfig.value = config
     }
 
+    // ------------------------------------------------------------ provenance
+    private val _provenance = MutableStateFlow(AnalysisProvenance())
+    val provenance: StateFlow<AnalysisProvenance> = _provenance.asStateFlow()
+
+    fun updateProvenance(transform: (AnalysisProvenance) -> AnalysisProvenance) {
+        _provenance.value = transform(_provenance.value)
+    }
+
     // ---------------------------------------------------------- loaded media
     private val _loadedWavData = MutableStateFlow<LoadedWavData?>(null)
     val loadedWavData: StateFlow<LoadedWavData?> = _loadedWavData.asStateFlow()
@@ -238,11 +283,12 @@ class MeasurementSession(scope: CoroutineScope) {
 
     /** [C1] The rate every axis/order computation must use for the CURRENT source. */
     val analysisSampleRate: Int
-        get() = if (_audioSourceMode.value == AudioSourceMode.LIVE) {
-            AudioConfig.LIVE_SAMPLE_RATE_HZ
-        } else {
-            _loadedWavData.value?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ
-        }
+        get() =
+            if (_audioSourceMode.value == AudioSourceMode.LIVE) {
+                AudioConfig.LIVE_SAMPLE_RATE_HZ
+            } else {
+                _loadedWavData.value?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ
+            }
 
     // -------------------------------------------------------------- settings
     private val _minDb = MutableStateFlow(-120.0)
@@ -271,7 +317,13 @@ class MeasurementSession(scope: CoroutineScope) {
         }
 
     /** [C14] The dynamic range stays valid: min is clamped ≥ 5 dB below max. */
-    fun updateDisplaySettings(newMinDb: Double, newMaxDb: Double, newMinFreq: Int, newMaxFreq: Int, newTimeWindowSec: Double) {
+    fun updateDisplaySettings(
+        newMinDb: Double,
+        newMaxDb: Double,
+        newMinFreq: Int,
+        newMaxFreq: Int,
+        newTimeWindowSec: Double,
+    ) {
         _maxDb.value = newMaxDb
         _minDb.value = minOf(newMinDb, newMaxDb - 5.0)
         _minFreq.value = newMinFreq.coerceAtLeast(0)
@@ -294,7 +346,11 @@ class MeasurementSession(scope: CoroutineScope) {
     private val _magnitudeGateDbFS = MutableStateFlow(-90.0)
     val magnitudeGateDbFS: StateFlow<Double> = _magnitudeGateDbFS.asStateFlow()
 
-    fun updateDetectorSettings(enabled: Boolean, thresholdDb: Double, magnitudeGateDb: Double) {
+    fun updateDetectorSettings(
+        enabled: Boolean,
+        thresholdDb: Double,
+        magnitudeGateDb: Double,
+    ) {
         _isDetectorEnabled.value = enabled
         _emergenceThresholdDb.value = thresholdDb
         _magnitudeGateDbFS.value = magnitudeGateDb

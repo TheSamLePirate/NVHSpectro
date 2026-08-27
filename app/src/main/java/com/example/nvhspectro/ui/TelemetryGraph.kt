@@ -33,7 +33,9 @@ enum class TelemetryMetric(
     SPEED("Vitesse", "km/h"),
     ACCELERATION("Accélération", "g"),
     ORDER("Ordre", "dBFS"),
-    TTNR("TTNR", "dB"),
+
+    // [D1, D5] The metric is named for what it is, not for a standard it does not implement.
+    TTNR("Émergence", "dB"),
 }
 
 @Composable

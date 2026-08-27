@@ -678,7 +678,7 @@ fun AppScreen(
                         // Indication dynamique Min & Max (Police ultra-compacte et discrète)
                         val rangeText =
                             if (displayMode == DisplayMode.TTNR) {
-                                "Dynamique : Min 0 | Max +20 dB (TTNR)"
+                                "Dynamique : Min 0 | Max +20 dB (émergence NVH)"
                             } else {
                                 "Dynamique : Min ${minDb.toInt()} | Max ${maxDb.toInt()} dBFS"
                             }
@@ -740,6 +740,16 @@ fun AppScreen(
                                             color = NvhStatusWarn,
                                         )
                                     }
+
+                                    // [A4, plan 4.6, D6] The Emergence Report's entry point.
+                                    // The accumulation logic never stopped working; the button
+                                    // that opened it was lost in a refactor, so a finished
+                                    // feature has been unreachable ever since. The count makes
+                                    // it obvious there is something to look at.
+                                    EmergenceReportButton(
+                                        entryCount = emergenceReportEntries.size,
+                                        onClick = { showEmergenceReportDialog = true },
+                                    )
                                 }
                             }
 
@@ -1302,6 +1312,34 @@ fun GpsLedIndicator(status: GpsStatus) {
                     .background(color = ledColor, shape = CircleShape),
         )
         Text(text = textLabel, style = MaterialTheme.typography.labelSmall, color = NvhOnSurfaceVariant)
+    }
+}
+
+/**
+ * Opens the harmonic Emergence Report [A4, plan 4.6, decision D6].
+ *
+ * Sits in the GMPe banner because that is the context the report describes: it exists only
+ * while the kinematic chain is engaged, and its badge shows how many harmonics have been
+ * characterised so far.
+ */
+@Composable
+fun EmergenceReportButton(
+    entryCount: Int,
+    onClick: () -> Unit,
+) {
+    Surface(
+        color = if (entryCount > 0) NvhAccent.copy(alpha = 0.22f) else Color.Transparent,
+        shape = RoundedCornerShape(4.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, NvhAccent.copy(alpha = 0.7f)),
+        modifier = Modifier.clickable(onClick = onClick),
+    ) {
+        Text(
+            text = if (entryCount > 0) "📋 Rapport ($entryCount)" else "📋 Rapport",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = NvhAccent,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
     }
 }
 

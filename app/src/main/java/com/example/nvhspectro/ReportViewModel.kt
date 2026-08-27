@@ -10,6 +10,7 @@ import com.example.nvhspectro.data.SmartTrackedOrder
 import com.example.nvhspectro.data.TimelineMapper
 import com.example.nvhspectro.export.PdfReportGenerator
 import com.example.nvhspectro.export.PngExporter
+import com.example.nvhspectro.export.ReportStamp
 import com.example.nvhspectro.theme.NvhOrderTrace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Date
 
 /**
  * [plan 3.3] The report third of the historical MainViewModel: report-mode
@@ -24,8 +26,10 @@ import kotlinx.coroutines.withContext
  * SmartPathTracker) and the PNG/PDF exports (rendered off the UI thread in
  * the export/ package). Shared state lives in [session].
  */
-class ReportViewModel(application: Application, val session: MeasurementSession) : AndroidViewModel(application) {
-
+class ReportViewModel(
+    application: Application,
+    val session: MeasurementSession,
+) : AndroidViewModel(application) {
     private val _isReportModeActive = MutableStateFlow(false)
     val isReportModeActive: StateFlow<Boolean> = _isReportModeActive.asStateFlow()
 
@@ -85,17 +89,21 @@ class ReportViewModel(application: Application, val session: MeasurementSession)
         }
     }
 
-    fun addManualTrackPoint(frameIndex: Int, binIndex: Int) {
+    fun addManualTrackPoint(
+        frameIndex: Int,
+        binIndex: Int,
+    ) {
         val currentPoints = _currentUserPoints.value.toMutableList()
         currentPoints.add(ManualOrderAnchor(frameIndex, binIndex, isUserPlaced = true))
         currentPoints.sortBy { it.frameIndex }
         _currentUserPoints.value = currentPoints
 
-        val historyToUse = if (session.displayMode.value == DisplayMode.TTNR) {
-            _reportFftHistoryTTNR.value
-        } else {
-            _reportFftHistoryAbsolute.value
-        }
+        val historyToUse =
+            if (session.displayMode.value == DisplayMode.TTNR) {
+                _reportFftHistoryTTNR.value
+            } else {
+                _reportFftHistoryAbsolute.value
+            }
         _currentSmartPath.value = SmartPathTracker.compute(currentPoints, historyToUse)
     }
 
@@ -150,53 +158,62 @@ class ReportViewModel(application: Application, val session: MeasurementSession)
         if (maxFreqHz == Int.MIN_VALUE) maxFreqHz = 0
 
         val count = _manualTrackedOrders.value.size
-        _manualTrackedOrders.value = _manualTrackedOrders.value + SmartTrackedOrder(
-            name = customName?.takeIf { it.isNotBlank() } ?: "Ordre ${count + 1}",
-            color = ORDER_COLORS[count % ORDER_COLORS.size],
-            path = path,
-            minRpm = minRpm,
-            maxRpm = maxRpm,
-            minSpeedKmh = minSpeed,
-            maxSpeedKmh = maxSpeed,
-            minFreqHz = minFreqHz,
-            maxFreqHz = maxFreqHz,
-            maxEmergenceDb = maxEmergence
-        )
+        _manualTrackedOrders.value = _manualTrackedOrders.value +
+            SmartTrackedOrder(
+                name = customName?.takeIf { it.isNotBlank() } ?: "Ordre ${count + 1}",
+                color = ORDER_COLORS[count % ORDER_COLORS.size],
+                path = path,
+                minRpm = minRpm,
+                maxRpm = maxRpm,
+                minSpeedKmh = minSpeed,
+                maxSpeedKmh = maxSpeed,
+                minFreqHz = minFreqHz,
+                maxFreqHz = maxFreqHz,
+                maxEmergenceDb = maxEmergence,
+            )
         clearCurrentPoints()
     }
 
     // --------------------------------------------------------------- exports
 
     /** [C6-export] PNG snapshot rendered on Default, written via MediaStore. */
-    fun exportData(pedalPercent: String, comments: String) {
+    fun exportData(
+        pedalPercent: String,
+        comments: String,
+    ) {
         // [U10, plan 3.4] The export scale follows the ACTUAL data: a loaded
         // file spans its own duration/sample count, not the live scroll window.
         val isFileMode = session.audioSourceMode.value != AudioSourceMode.LIVE
         val telemHistory = session.telemetryHistory.value
-        val input = PngExporter.Input(
-            history = session.fftHistory.value,
-            telemetryHistory = telemHistory,
-            currentTelemetry = session.telemetryState.value,
-            displayMode = session.displayMode.value,
-            minDb = session.minDb.value,
-            maxDb = session.maxDb.value,
-            maxFreq = session.maxFreq.value,
-            sampleRate = session.analysisSampleRate,
-            timeWindowSec = if (isFileMode) {
-                (session.loadedWavData.value?.durationMs ?: 0L) / 1000.0
-            } else {
-                session.timeWindowSec.value
-            },
-            historySize = if (isFileMode) telemHistory.size.coerceAtLeast(2) else session.historySize,
-            pedalPercent = pedalPercent,
-            comments = comments
-        )
+        val input =
+            PngExporter.Input(
+                history = session.fftHistory.value,
+                telemetryHistory = telemHistory,
+                currentTelemetry = session.telemetryState.value,
+                displayMode = session.displayMode.value,
+                minDb = session.minDb.value,
+                maxDb = session.maxDb.value,
+                maxFreq = session.maxFreq.value,
+                sampleRate = session.analysisSampleRate,
+                timeWindowSec =
+                    if (isFileMode) {
+                        (session.loadedWavData.value?.durationMs ?: 0L) / 1000.0
+                    } else {
+                        session.timeWindowSec.value
+                    },
+                historySize = if (isFileMode) telemHistory.size.coerceAtLeast(2) else session.historySize,
+                pedalPercent = pedalPercent,
+                comments = comments,
+            )
         viewModelScope.launch(Dispatchers.Default) {
             PngExporter.export(getApplication(), input)
         }
     }
 
-    fun savePdfToUri(context: Context, uri: Uri) {
+    fun savePdfToUri(
+        context: Context,
+        uri: Uri,
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 context.contentResolver.openOutputStream(uri)?.use { outStream ->
@@ -210,7 +227,18 @@ class ReportViewModel(application: Application, val session: MeasurementSession)
                         trackedOrders = _manualTrackedOrders.value,
                         kinematicsConfig = session.kinematicsConfig.value,
                         globalMaxFreq = session.maxFreq.value.toFloat(),
-                        sampleRate = session.analysisSampleRate
+                        sampleRate = session.analysisSampleRate,
+                        // [U7, plan 4.5] Traceability block: build, instant, source, speed
+                        // reconstruction and the order-confidence level actually used.
+                        stamp =
+                            ReportStamp.build(
+                                appVersion = BuildConfig.VERSION_NAME,
+                                generatedAt = Date(),
+                                sourceMode = session.audioSourceMode.value,
+                                provenance = session.provenance.value,
+                                sampleRateHz = session.analysisSampleRate,
+                                fftSize = session.fftSize.value,
+                            ),
                     )
                 }
             } catch (e: Exception) {
