@@ -54,49 +54,53 @@ fun TelemetryGraph(
     wavPlaybackProgress: Float = 0f,
     modifier: Modifier = Modifier,
 ) {
+    // [U3, plan 4.2] Same dp/sp source as the spectrogram: this canvas's axis labels used to
+    // be raw 20 px, i.e. ~5 sp on a high-density phone and immune to the user's font scale.
+    val dimens = rememberPlotDimens()
+
     val textPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = android.graphics.Color.WHITE
-                textSize = 20f
+                textSize = dimens.labelTextSize
                 typeface = Typeface.DEFAULT_BOLD
                 isAntiAlias = true
             }
         }
 
     val warningTextPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = android.graphics.Color.parseColor("#FF9100")
-                textSize = 24f
+                textSize = dimens.labelTextSize
                 typeface = Typeface.DEFAULT_BOLD
                 isAntiAlias = true
             }
         }
 
     val tickTextPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = android.graphics.Color.LTGRAY
-                textSize = 20f
+                textSize = dimens.axisTextSize
                 isAntiAlias = true
             }
         }
 
     val axisPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = android.graphics.Color.GRAY
-                strokeWidth = 2.5f
+                strokeWidth = dimens.hairline
                 isAntiAlias = true
             }
         }
 
     val fineGridPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = android.graphics.Color.parseColor("#334155")
-                strokeWidth = 1.5f
+                strokeWidth = dimens.hairline * 0.6f
                 isAntiAlias = true
             }
         }
@@ -110,20 +114,20 @@ fun TelemetryGraph(
         }
 
     val badgeBorderPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = android.graphics.Color.parseColor("#00E5FF")
                 style = Paint.Style.STROKE
-                strokeWidth = 2.5f
+                strokeWidth = dimens.hairline
                 isAntiAlias = true
             }
         }
 
     val badgeTextPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = android.graphics.Color.parseColor("#00E5FF")
-                textSize = 22f
+                textSize = dimens.badgeTextSize
                 typeface = Typeface.DEFAULT_BOLD
                 isAntiAlias = true
             }
@@ -133,13 +137,12 @@ fun TelemetryGraph(
         val w = size.width
         val h = size.height
 
-        val marginLeft = 190f
-        val marginRight = 30f
-        val marginTop = 20f
-        val marginBottom = 45f
-
-        val plotWidth = w - marginLeft - marginRight
-        val plotHeight = h - marginTop - marginBottom
+        // [U3] One geometry, from the shared dp source.
+        val geo = dimens.graphGeometry(w, h)
+        val marginLeft = geo.left
+        val marginTop = geo.top
+        val plotWidth = geo.plotWidth
+        val plotHeight = geo.plotHeight
 
         if (metric == TelemetryMetric.TTNR) {
             // =========================================================================
@@ -170,7 +173,7 @@ fun TelemetryGraph(
                         } else {
                             "+${dbVal.toInt()} dB"
                         }
-                    native.drawText(label, 15f, y + 8f, tickTextPaint)
+                    native.drawText(label, dimens.markerRadius, y + dimens.axisTextSize * 0.35f, tickTextPaint)
                 }
 
                 // 2. Grille Verticale de Fréquence
@@ -184,7 +187,7 @@ fun TelemetryGraph(
                     val labelW = tickTextPaint.measureText(label)
                     var labelX = x - (labelW / 2f)
                     labelX = labelX.coerceIn(marginLeft, marginLeft + plotWidth - labelW)
-                    native.drawText(label, labelX, marginTop + plotHeight + 35f, tickTextPaint)
+                    native.drawText(label, labelX, marginTop + plotHeight + dimens.axisTextSize * 1.4f, tickTextPaint)
                 }
 
                 native.drawLine(marginLeft, marginTop, marginLeft, marginTop + plotHeight, axisPaint)
@@ -239,7 +242,7 @@ fun TelemetryGraph(
                 drawPath(
                     path = path,
                     color = NvhSpectrum,
-                    style = Stroke(width = 3.5f),
+                    style = Stroke(width = dimens.traceStroke),
                 )
 
                 if (maxEmergence >= 3.0 && maxEmergenceBin >= minBin) {
@@ -253,13 +256,13 @@ fun TelemetryGraph(
                         color = NvhAccent,
                         start = Offset(peakX, marginTop),
                         end = Offset(peakX, marginTop + plotHeight),
-                        strokeWidth = 2.5f,
+                        strokeWidth = dimens.hairline,
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
                     )
 
                     drawCircle(
                         color = NvhAccent,
-                        radius = 6f,
+                        radius = dimens.markerRadius * 1.5f,
                         center = Offset(peakX, peakY),
                     )
 
@@ -278,7 +281,12 @@ fun TelemetryGraph(
                         val rect = android.graphics.RectF(badgeLeft, badgeTop, badgeRight, badgeBottom)
                         native.drawRoundRect(rect, 12f, 12f, badgeBgPaint)
                         native.drawRoundRect(rect, 12f, 12f, badgeBorderPaint)
-                        native.drawText(badgeText, badgeLeft + 16f, badgeTop + 26f, badgeTextPaint)
+                        native.drawText(
+                            badgeText,
+                            badgeLeft + dimens.badgeTextSize * 0.6f,
+                            badgeTop + dimens.badgeTextSize * 1.1f,
+                            badgeTextPaint,
+                        )
                     }
                 }
             }
@@ -341,8 +349,8 @@ fun TelemetryGraph(
 
                 val maxStr = String.format("%.1f %s", maxVal, metric.unit)
                 val minStr = String.format("%.1f %s", minVal, metric.unit)
-                native.drawText(maxStr, 12f, marginTop + 22f, textPaint)
-                native.drawText(minStr, 12f, marginTop + plotHeight - 4f, textPaint)
+                native.drawText(maxStr, dimens.markerRadius, marginTop + dimens.labelTextSize, textPaint)
+                native.drawText(minStr, dimens.markerRadius, marginTop + plotHeight - dimens.hairline * 2f, textPaint)
             }
 
             if (values.size > 1) {
@@ -381,7 +389,7 @@ fun TelemetryGraph(
                             color = segColor,
                             start = Offset(x1, y1),
                             end = Offset(x2, y2),
-                            strokeWidth = 4f,
+                            strokeWidth = dimens.traceStroke,
                         )
                     }
                 } else {
@@ -417,7 +425,7 @@ fun TelemetryGraph(
                     drawPath(
                         path = path,
                         color = strokeColor,
-                        style = Stroke(width = 4f),
+                        style = Stroke(width = dimens.traceStroke),
                     )
                 }
             }
@@ -433,7 +441,7 @@ fun TelemetryGraph(
                 )
                 drawCircle(
                     color = NvhModeWavAccent,
-                    radius = 7f,
+                    radius = dimens.markerRadius,
                     center = Offset(xCursor, marginTop),
                 )
             }

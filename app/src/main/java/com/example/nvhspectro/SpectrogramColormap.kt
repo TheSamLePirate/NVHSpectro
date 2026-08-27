@@ -31,6 +31,8 @@ import com.example.nvhspectro.data.TrackedHarmonicTag
 import com.example.nvhspectro.data.AudioFilter
 import com.example.nvhspectro.data.FilterType
 import com.example.nvhspectro.theme.NvhCanvas
+import com.example.nvhspectro.ui.rememberPlotDimens
+import com.example.nvhspectro.ui.spectroGeometry
 import com.example.nvhspectro.theme.NvhModeWavAccent
 import com.example.nvhspectro.theme.NvhOnSurface
 import com.example.nvhspectro.theme.NvhStatusBad
@@ -124,6 +126,11 @@ fun SpectrogramCanvas(
     isBrillanceModeEnabled: Boolean = false,
     onAddManualPoint: (Int, Int) -> Unit = { _, _ -> },
 ) {
+    // [U3, plan 4.2] Margins, canvas text and strokes come from ONE dp/sp source, converted
+    // for this device's density and font scale — never from raw pixel literals, and never
+    // duplicated between the touch handlers and the draw pass.
+    val dimens = rememberPlotDimens()
+
     if (history.isEmpty()) {
         Canvas(modifier = modifier.fillMaxSize()) {}
         return
@@ -233,47 +240,49 @@ fun SpectrogramCanvas(
         }
     }
 
+    // [U3, P2] Paints hoisted out of the 43 Hz draw loop AND sized from dp/sp: canvas text
+    // ignored the user's font scale entirely while every other label honoured it.
     val textPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = AndroidColor.WHITE
-                textSize = 32f
+                textSize = dimens.labelTextSize
                 typeface = Typeface.DEFAULT_BOLD
                 isAntiAlias = true
             }
         }
 
     val tickPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = AndroidColor.WHITE
-                strokeWidth = 3f
+                strokeWidth = dimens.hairline
                 isAntiAlias = true
             }
         }
 
     // Peinture très visible pour le curseur (ligne blanche avec ombre noire)
     val cursorLinePaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = AndroidColor.WHITE // Blanc pur
                 style = Paint.Style.STROKE
-                strokeWidth = 3.0f
-                pathEffect = DashPathEffect(floatArrayOf(12f, 8f), 0f)
-                setShadowLayer(4.0f, 0f, 0f, AndroidColor.BLACK)
+                strokeWidth = dimens.cursorStroke
+                pathEffect = DashPathEffect(floatArrayOf(dimens.markerRadius * 4f, dimens.markerRadius * 2.5f), 0f)
+                setShadowLayer(dimens.hairline * 4f, 0f, 0f, AndroidColor.BLACK)
                 isAntiAlias = true
             }
         }
 
     // Peinture pour la courbe H1 (Violet vif, trait épais, légèrement transparent)
     val h1LinePaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = AndroidColor.parseColor("#D500F9")
                 alpha = 178 // ~70% opaque (30% transparent)
                 style = Paint.Style.STROKE
-                strokeWidth = 5.0f
-                pathEffect = DashPathEffect(floatArrayOf(15f, 10f), 0f)
+                strokeWidth = dimens.traceStroke * 2f
+                pathEffect = DashPathEffect(floatArrayOf(dimens.markerRadius * 5f, dimens.markerRadius * 3.5f), 0f)
                 isAntiAlias = true
             }
         }
@@ -288,10 +297,10 @@ fun SpectrogramCanvas(
         }
 
     val cursorBadgeTextPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = AndroidColor.parseColor("#00E5FF")
-                textSize = 30f
+                textSize = dimens.badgeTextSize
                 typeface = Typeface.DEFAULT_BOLD
                 isAntiAlias = true
             }
@@ -299,10 +308,10 @@ fun SpectrogramCanvas(
 
     // Peintures pour les Balises d'Émergence
     val beaconPulsePaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 style = Paint.Style.STROKE
-                strokeWidth = 4f
+                strokeWidth = dimens.traceStroke
                 isAntiAlias = true
             }
         }
@@ -325,15 +334,14 @@ fun SpectrogramCanvas(
         }
 
     val beaconBadgeTextPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
-                textSize = 26f
+                textSize = dimens.tagTextSize
                 typeface = Typeface.DEFAULT_BOLD
                 isAntiAlias = true
             }
         }
 
-    // [P2, plan 3.5] Paints hoisted out of the 43 Hz draw loop.
     val filterFillPaint =
         remember {
             Paint().apply {
@@ -343,10 +351,10 @@ fun SpectrogramCanvas(
             }
         }
     val filterStrokePaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 style = Paint.Style.STROKE
-                strokeWidth = 5f
+                strokeWidth = dimens.traceStroke * 2f
                 isAntiAlias = true
             }
         }
@@ -358,19 +366,19 @@ fun SpectrogramCanvas(
             }
         }
     val manualTagTextPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = AndroidColor.WHITE
-                textSize = 28f
+                textSize = dimens.tagTextSize
                 typeface = Typeface.DEFAULT_BOLD
                 isAntiAlias = true
             }
         }
     val manualTagLeaderPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = AndroidColor.WHITE
-                strokeWidth = 2f
+                strokeWidth = dimens.hairline
                 isAntiAlias = true
                 alpha = 150
             }
@@ -383,18 +391,18 @@ fun SpectrogramCanvas(
             }
         }
     val harmonicTagBorderPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 style = Paint.Style.STROKE
-                strokeWidth = 2.5f
+                strokeWidth = dimens.hairline
                 isAntiAlias = true
             }
         }
     val harmonicTagTextPaint =
-        remember {
+        remember(dimens) {
             Paint().apply {
                 color = AndroidColor.WHITE
-                textSize = 22f
+                textSize = dimens.tagTextSize
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 isAntiAlias = true
             }
@@ -460,105 +468,58 @@ fun SpectrogramCanvas(
         modifier =
             modifier
                 .fillMaxSize()
-                .pointerInput(isReportModeActive, isDrawingMode, bitmapWidth, bitmapHeight) {
+                .pointerInput(isReportModeActive, isDrawingMode, bitmapWidth, bitmapHeight, dimens) {
                     if (isReportModeActive && isDrawingMode) {
                         detectTapGestures { offset ->
-                            val w = size.width.toFloat()
-                            val h = size.height.toFloat()
-                            val marginLeft = 150f
-                            val marginTop = 60f
-                            val marginBottom = 120f
-                            val marginRight = 40f
-                            val plotWidth = w - marginLeft - marginRight
-                            val plotHeight = h - marginTop - marginBottom
-                            if (w <= 0 || h <= 0 || plotWidth <= 50f || plotHeight <= 50f) return@detectTapGestures
-
-                            val touchX = offset.x
-                            val touchY = offset.y
+                            // [U3] The SAME geometry the draw pass uses — touch and paint can
+                            // no longer disagree about where the plot is.
+                            val geo = dimens.spectroGeometry(size.width.toFloat(), size.height.toFloat(), zoom, pan)
+                            if (!geo.isUsable) return@detectTapGestures
                             // modifier.pointerInput is AFTER graphicsLayer, so the framework already inverse-transforms the offset.
-                            val inverseTouchX = touchX
-                            val inverseTouchY = touchY
+                            if (!geo.containsPlot(offset.x, offset.y)) return@detectTapGestures
 
-                            if (inverseTouchX in marginLeft..(w - marginRight) && inverseTouchY in marginTop..(h - marginBottom)) {
-                                val x = inverseTouchX - marginLeft
-                                val y = inverseTouchY - marginTop
+                            val bitmapX = geo.fractionForX(offset.x) * bitmapWidth
+                            val bitmapY = geo.fractionForY(offset.y) * bitmapHeight
 
-                                val vX = (x - pan.x) / zoom
-                                val vY = (y - pan.y) / zoom
+                            val numFrames = history.size
+                            val frameIndex =
+                                if (bitmapWidth > 0) {
+                                    ((bitmapX / bitmapWidth) * (numFrames - 1)).toInt().coerceIn(0, numFrames - 1)
+                                } else {
+                                    0
+                                }
 
-                                val bitmapX = if (plotWidth > 0) (vX / plotWidth) * bitmapWidth else 0f
-                                val bitmapY = if (plotHeight > 0) (vY / plotHeight) * bitmapHeight else 0f
+                            val displayedBins = (maxBin - minBin).coerceAtLeast(1)
+                            val binIndex =
+                                (maxBin - 1) - if (bitmapHeight > 0) ((bitmapY / bitmapHeight) * (displayedBins - 1)).toInt() else 0
 
-                                val numFrames = history.size
-                                val frameIndex =
-                                    if (bitmapWidth >
-                                        0
-                                    ) {
-                                        ((bitmapX / bitmapWidth) * (numFrames - 1)).toInt().coerceIn(0, numFrames - 1)
-                                    } else {
-                                        0
-                                    }
-
-                                val displayedBinCount = (maxBin - minBin).coerceAtLeast(1)
-                                val binIndex =
-                                    (maxBin - 1) - if (bitmapHeight > 0) ((bitmapY / bitmapHeight) * (displayedBinCount - 1)).toInt() else 0
-
-                                onAddManualPoint(frameIndex, binIndex.coerceIn(minBin, maxBin - 1))
-                            }
+                            onAddManualPoint(frameIndex, binIndex.coerceIn(minBin, maxBin - 1))
                         }
                     } else {
                         detectTransformGestures { centroid, panChange, zoomChange, _ ->
-                            val w = size.width.toFloat()
-                            val h = size.height.toFloat()
-                            val marginLeft = 150f
-                            val marginTop = 60f
-                            val marginBottom = 120f
-                            val marginRight = 40f
-                            val plotWidth = w - marginLeft - marginRight
-                            val plotHeight = h - marginTop - marginBottom
+                            val geo = dimens.spectroGeometry(size.width.toFloat(), size.height.toFloat(), zoom, pan)
+                            if (!geo.isUsable) return@detectTransformGestures
 
-                            if (w <= 0 || h <= 0 || plotWidth <= 50f || plotHeight <= 50f) return@detectTransformGestures
-
-                            // Zoom on Y axis primarily (frequencies), but we'll zoom uniformly for now
-                            val newZoom = (zoom * zoomChange).coerceIn(1f, 20f)
-
-                            // Adjust pan to zoom around the centroid
-                            // The pan offset is relative to the top-left of the plot area
-                            val plotCentroidX = centroid.x - marginLeft
-                            val plotCentroidY = centroid.y - marginTop
-
-                            var newPanX = pan.x * zoomChange + plotCentroidX * (1 - zoomChange) + panChange.x
-                            var newPanY = pan.y * zoomChange + plotCentroidY * (1 - zoomChange) + panChange.y
-
-                            // Clamp pan so the image doesn't fly off screen
-                            val maxPanX = 0f
-                            val minPanX = plotWidth - (plotWidth * newZoom)
-                            val maxPanY = 0f
-                            val minPanY = plotHeight - (plotHeight * newZoom)
-
-                            newPanX = newPanX.coerceIn(minPanX, maxPanX)
-                            newPanY = newPanY.coerceIn(minPanY, maxPanY)
-
-                            zoom = newZoom
+                            // [U4] One transform for zoom+pan, shared with the draw pass and
+                            // unit-tested in PlotGeometryTest.
+                            val next = geo.zoomedAround(zoomChange, centroid.x, centroid.y, panChange.x, panChange.y)
+                            zoom = next.zoom
                             pan =
                                 androidx.compose.ui.geometry
-                                    .Offset(newPanX, newPanY)
+                                    .Offset(next.panXPx, next.panYPx)
                         }
                     }
-                }.pointerInput(isDrawingMode) {
+                }.pointerInput(isDrawingMode, dimens) {
                     if (!isDrawingMode) {
                         awaitPointerEventScope {
                             while (true) {
                                 val event = awaitPointerEvent()
                                 val pointer = event.changes.firstOrNull { it.pressed }
-                                if (pointer != null && pointer.position.x < 150f) {
-                                    val marginTop = 60f
-                                    val marginBottom = 120f
-                                    val plotHeight = size.height - marginTop - marginBottom
-                                    if (plotHeight > 0) {
-                                        val relativeY = (pointer.position.y - marginTop).coerceIn(0f, plotHeight)
-                                        cursorYRatio = relativeY / plotHeight
-                                    }
+                                val geo = dimens.spectroGeometry(size.width.toFloat(), size.height.toFloat(), zoom, pan)
+                                // The frequency cursor is dragged from the left gutter.
+                                if (pointer != null && pointer.position.x < geo.left && geo.plotHeight > 0) {
+                                    val relativeY = (pointer.position.y - geo.top).coerceIn(0f, geo.plotHeight)
+                                    cursorYRatio = relativeY / geo.plotHeight
                                     pointer.consume()
                                 }
                             }
@@ -569,13 +530,31 @@ fun SpectrogramCanvas(
         val w = size.width
         val h = size.height
 
-        val marginLeft = 150f
-        val marginTop = 60f
-        val marginBottom = 120f
-        val marginRight = 40f
+        val geo = dimens.spectroGeometry(w, h, zoom, pan)
+        val marginLeft = geo.left
+        val marginTop = geo.top
+        val plotWidth = geo.plotWidth
+        val plotHeight = geo.plotHeight
 
-        val plotWidth = w - marginLeft - marginRight
-        val plotHeight = h - marginTop - marginBottom
+        // [U4, plan 4.2] Every overlay places itself through the SAME transform the bitmap
+        // crop uses. Before this, zooming cropped the image but left the playhead, beacons,
+        // tags and the H1 curve in unzoomed coordinates — they detached from the measurement
+        // the instant a user pinched.
+        fun yForBin(binIndex: Float): Float {
+            val binFraction = (binIndex - minBin) / displayedBinCount.toFloat().coerceAtLeast(1f)
+            return geo.yForFraction(1f - binFraction)
+        }
+
+        fun yForFreq(freqHz: Float): Float {
+            val span = (actualMaxFreq - actualMinFreq).toFloat()
+            if (span <= 0f) return geo.top
+            return geo.yForFraction(((actualMaxFreq - freqHz) / span).coerceIn(0f, 1f))
+        }
+
+        fun xForFrame(
+            frameIndex: Float,
+            frameCount: Int,
+        ): Float = geo.xForFraction(if (frameCount > 1) frameIndex / (frameCount - 1) else 0f)
 
         // 1. Dessiner le spectrogramme
         // Calculate the visible portion of the bitmap based on zoom and pan
@@ -605,18 +584,22 @@ fun SpectrogramCanvas(
 
         // 1b. Curseur temporel de lecture en mode Analyseur WAV
         if (isWavAnalyzerMode) {
-            val xCursor = marginLeft + (wavPlaybackProgress.coerceIn(0f, 1f) * plotWidth)
-            drawLine(
-                color = NvhModeWavAccent,
-                start = Offset(xCursor, marginTop),
-                end = Offset(xCursor, marginTop + plotHeight),
-                strokeWidth = 4f,
-            )
-            drawCircle(
-                color = NvhModeWavAccent,
-                radius = 7f,
-                center = Offset(xCursor, marginTop),
-            )
+            // [U4] Zoom-aware: the playhead tracks the image, and is hidden when the moment
+            // it marks is scrolled outside the zoomed viewport.
+            val xCursor = geo.xForFraction(wavPlaybackProgress.coerceIn(0f, 1f))
+            if (geo.containsX(xCursor)) {
+                drawLine(
+                    color = NvhModeWavAccent,
+                    start = Offset(xCursor, geo.top),
+                    end = Offset(xCursor, geo.bottom),
+                    strokeWidth = dimens.cursorStroke,
+                )
+                drawCircle(
+                    color = NvhModeWavAccent,
+                    radius = dimens.markerRadius,
+                    center = Offset(xCursor, geo.top),
+                )
+            }
         }
 
         drawIntoCanvas { canvas ->
@@ -673,21 +656,23 @@ fun SpectrogramCanvas(
                     val fMax = filter.maxFreq.toFloat()
 
                     // Fonction locale pour calculer la coordonnée Y d'une fréquence
-                    fun getFreqY(freqHz: Float): Float {
-                        if (freqHz <= actualMinFreq) return plotBottom
-                        if (freqHz >= actualMaxFreq) return marginTop
-                        val fraction = (freqHz - actualMinFreq) / (actualMaxFreq - actualMinFreq)
-                        return plotBottom - (fraction * plotHeight)
-                    }
+                    // [U4] Filter bands follow the zoomed frequency axis.
+                    fun getFreqY(freqHz: Float): Float = yForFreq(freqHz)
 
                     fun drawFilterBand(
-                        yTop: Float,
-                        yBottom: Float,
+                        yTopRaw: Float,
+                        yBottomRaw: Float,
                     ) {
+                        // Clip to the viewport so a band whose edge is off-screen still
+                        // shades the part of the spectrum that IS visible.
+                        val yTop = yTopRaw.coerceIn(geo.top, geo.bottom)
+                        val yBottom = yBottomRaw.coerceIn(geo.top, geo.bottom)
                         if (yBottom > yTop) {
                             native.drawRect(marginLeft, yTop, plotRight, yBottom, filterFillPaint)
-                            native.drawLine(marginLeft, yTop, plotRight, yTop, filterStrokePaint)
-                            native.drawLine(marginLeft, yBottom, plotRight, yBottom, filterStrokePaint)
+                            if (yTopRaw >= geo.top) native.drawLine(marginLeft, yTop, plotRight, yTop, filterStrokePaint)
+                            if (yBottomRaw <= geo.bottom) {
+                                native.drawLine(marginLeft, yBottom, plotRight, yBottom, filterStrokePaint)
+                            }
                         }
                     }
 
@@ -724,15 +709,18 @@ fun SpectrogramCanvas(
             // --- DESSIN DES BALISES CLIGNOTANTES D'ÉMERGENCE (Option A: LED Pulsante BORD DROIT pure sans texte) ---
             if (isDetectorEnabled && detectedPeaks.isNotEmpty()) {
                 for (peak in detectedPeaks) {
-                    val binFraction = (peak.binIndex - minBin).toFloat() / displayedBinCount.coerceAtLeast(1)
-                    val peakY = marginTop + ((1f - binFraction) * plotHeight).coerceIn(0f, plotHeight)
+                    // [U4] Beacons sit at the frequency they were detected at, in the zoomed
+                    // axis; one outside the viewport is not drawn rather than being pinned to
+                    // an edge where it would point at the wrong frequency.
+                    val peakY = yForBin(peak.binIndex.toFloat())
+                    if (!geo.containsY(peakY)) continue
 
                     // Couleur : Rouge Néon si TTNR >= 6.0 dB, Jaune/Ambre si TTNR < 6.0 dB
                     val isCritical = peak.ttnrDb >= 6.0
                     val baseColor = if (isCritical) AndroidColor.parseColor("#FF1744") else AndroidColor.parseColor("#FFC107")
 
                     // Rayon et Alpha pulsants
-                    val pulseRadius = 10f + pulsePhase * 14f
+                    val pulseRadius = dimens.markerRadius * (2.5f + pulsePhase * 3f)
                     val alphaPulse = (230 - pulsePhase * 150).toInt().coerceIn(40, 255)
 
                     beaconPulsePaint.color = baseColor
@@ -741,12 +729,12 @@ fun SpectrogramCanvas(
                     beaconCenterPaint.alpha = 255
 
                     // Position X : bord droit extrême
-                    val beaconX = plotRight - 6f
+                    val beaconX = plotRight - dimens.markerRadius * 1.5f
 
                     // 1. Halo pulsant extérieur (LED Aura)
                     native.drawCircle(beaconX, peakY, pulseRadius, beaconPulsePaint)
                     // 2. Centre lumineux solide
-                    native.drawCircle(beaconX, peakY, 6f, beaconCenterPaint)
+                    native.drawCircle(beaconX, peakY, dimens.markerRadius * 1.5f, beaconCenterPaint)
                 }
             }
 
@@ -754,15 +742,13 @@ fun SpectrogramCanvas(
 
             // --- MANUAL SMART TRACKING OVERLAYS ---
             if (isReportModeActive) {
-                fun mapAnchorToScreen(anchor: ManualOrderAnchor): Offset {
-                    val numFrames = history.size
-                    val vX = (anchor.frameIndex.toFloat() / (numFrames - 1).coerceAtLeast(1)) * plotWidth
-                    val vY = ((maxBin - 1 - anchor.exactBinF) / (displayedBinCount - 1).coerceAtLeast(1)) * plotHeight
-
-                    val screenX = marginLeft + vX * zoom + pan.x
-                    val screenY = marginTop + vY * zoom + pan.y
-                    return Offset(screenX, screenY)
-                }
+                fun mapAnchorToScreen(anchor: ManualOrderAnchor): Offset =
+                    Offset(
+                        xForFrame(anchor.frameIndex.toFloat(), history.size),
+                        geo.yForFraction(
+                            (maxBin - 1 - anchor.exactBinF) / (displayedBinCount - 1).coerceAtLeast(1).toFloat(),
+                        ),
+                    )
 
                 // On s'assure que le dessin est clippé à la zone du plot !
                 clipRect(
@@ -794,10 +780,10 @@ fun SpectrogramCanvas(
                                 color = order.color.copy(alpha = 0.6f),
                                 style =
                                     androidx.compose.ui.graphics.drawscope.Stroke(
-                                        width = 14f,
+                                        width = dimens.traceStroke * 4f,
                                         pathEffect =
                                             androidx.compose.ui.graphics.PathEffect
-                                                .cornerPathEffect(10f),
+                                                .cornerPathEffect(dimens.markerRadius * 3f),
                                     ),
                             )
                             // Ligne centrale surbrillance
@@ -806,10 +792,10 @@ fun SpectrogramCanvas(
                                 color = order.color,
                                 style =
                                     androidx.compose.ui.graphics.drawscope.Stroke(
-                                        width = 6f,
+                                        width = dimens.traceStroke * 1.6f,
                                         pathEffect =
                                             androidx.compose.ui.graphics.PathEffect
-                                                .cornerPathEffect(10f),
+                                                .cornerPathEffect(dimens.markerRadius * 3f),
                                     ),
                             )
                         } else {
@@ -819,10 +805,10 @@ fun SpectrogramCanvas(
                                 color = NvhCanvas.copy(alpha = 0.5f),
                                 style =
                                     androidx.compose.ui.graphics.drawscope.Stroke(
-                                        width = 5.5f,
+                                        width = dimens.traceStroke * 1.5f,
                                         pathEffect =
                                             androidx.compose.ui.graphics.PathEffect
-                                                .cornerPathEffect(10f),
+                                                .cornerPathEffect(dimens.markerRadius * 3f),
                                     ),
                             )
                             // Ligne centrale de couleur, épaisseur moyenne, semi-transparente
@@ -831,10 +817,10 @@ fun SpectrogramCanvas(
                                 color = order.color.copy(alpha = 0.6f),
                                 style =
                                     androidx.compose.ui.graphics.drawscope.Stroke(
-                                        width = 3f,
+                                        width = dimens.traceStroke,
                                         pathEffect =
                                             androidx.compose.ui.graphics.PathEffect
-                                                .cornerPathEffect(10f),
+                                                .cornerPathEffect(dimens.markerRadius * 3f),
                                     ),
                             )
                         }
@@ -855,13 +841,13 @@ fun SpectrogramCanvas(
                                 val pt = mapAnchorToScreen(lastAnchor)
                                 val text = order.name
                                 val textWidth = textPaint.measureText(text)
-                                val paddingX = 16f
-                                val paddingY = 10f
+                                val paddingX = dimens.tagTextSize * 0.6f
+                                val paddingY = dimens.tagTextSize * 0.35f
 
                                 val boxWidth = textWidth + paddingX * 2
-                                val boxHeight = 35f + paddingY * 2
+                                val boxHeight = dimens.tagTextSize * 1.3f + paddingY * 2
 
-                                var tx = pt.x + 15f
+                                var tx = pt.x + dimens.markerRadius * 4f
                                 var ty = pt.y
                                 if (tx + boxWidth > plotRight) {
                                     tx = pt.x - boxWidth - 15f
@@ -885,7 +871,7 @@ fun SpectrogramCanvas(
 
                                     offsetStep++
                                     val direction = if (offsetStep % 2 == 1) -1 else 1
-                                    val shift = ((offsetStep + 1) / 2) * 20f * direction
+                                    val shift = ((offsetStep + 1) / 2) * dimens.tagTextSize * direction
 
                                     val newTy = ty + shift
                                     currentRect = android.graphics.RectF(tx, newTy - 25f - paddingY, tx + boxWidth, newTy + 10f + paddingY)
@@ -913,16 +899,16 @@ fun SpectrogramCanvas(
                                     )
                                 bgPaint.color = orderColorInt
 
-                                nativeCanvas.drawRoundRect(currentRect, 12f, 12f, bgPaint)
+                                nativeCanvas.drawRoundRect(currentRect, dimens.markerRadius, dimens.markerRadius, bgPaint)
 
                                 bgPaint.style = android.graphics.Paint.Style.STROKE
-                                bgPaint.strokeWidth = 2f
+                                bgPaint.strokeWidth = dimens.hairline
                                 bgPaint.color = android.graphics.Color.WHITE
-                                nativeCanvas.drawRoundRect(currentRect, 12f, 12f, bgPaint)
+                                nativeCanvas.drawRoundRect(currentRect, dimens.markerRadius, dimens.markerRadius, bgPaint)
                                 bgPaint.style = android.graphics.Paint.Style.FILL
 
                                 val distY = Math.abs(currentRect.centerY() - pt.y)
-                                if (distY > 20f) {
+                                if (distY > dimens.tagTextSize) {
                                     val boxEdgeX = if (tx > pt.x) currentRect.left else currentRect.right
                                     nativeCanvas.drawLine(pt.x, pt.y, boxEdgeX, currentRect.centerY(), manualTagLeaderPaint)
                                 }
@@ -952,10 +938,13 @@ fun SpectrogramCanvas(
                             color = NvhOnSurface.copy(alpha = 0.9f),
                             style =
                                 androidx.compose.ui.graphics.drawscope.Stroke(
-                                    width = 3f,
+                                    width = dimens.traceStroke,
                                     pathEffect =
                                         androidx.compose.ui.graphics.PathEffect
-                                            .dashPathEffect(floatArrayOf(10f, 10f), 0f),
+                                            .dashPathEffect(
+                                                floatArrayOf(dimens.markerRadius * 3f, dimens.markerRadius * 3f),
+                                                0f,
+                                            ),
                                 ),
                         )
                     }
@@ -972,19 +961,19 @@ fun SpectrogramCanvas(
                         // Bordure extérieure noire pour le contraste
                         drawCircle(
                             color = NvhCanvas,
-                            radius = 7f,
+                            radius = dimens.markerRadius * 1.8f,
                             center = pt,
                         )
                         // Point rouge central (plus grand)
                         drawCircle(
                             color = NvhStatusBad,
-                            radius = 6f,
+                            radius = dimens.markerRadius * 1.5f,
                             center = pt,
                         )
                         // Cœur blanc
                         drawCircle(
                             color = NvhOnSurface,
-                            radius = 3.5f,
+                            radius = dimens.markerRadius * 0.9f,
                             center = pt,
                         )
                     }
@@ -999,7 +988,16 @@ fun SpectrogramCanvas(
                 for (x in 0 until plotWidth.toInt()) {
                     // [plan 3.4] One chronological mapping for every mode:
                     // left = oldest, right = newest.
-                    val exactIdx = (x.toFloat() * (numFrames - 1)) / maxOf(1f, plotWidth - 1f)
+                    // [U4] The screen column is converted to a DATA fraction through the
+                    // shared transform, so the curve stays on its own trace when zoomed —
+                    // it used to be drawn against the unzoomed axis.
+                    val xPos = marginLeft + x
+                    val dataFraction = geo.fractionForX(xPos)
+                    if (dataFraction < 0f || dataFraction > 1f) {
+                        isFirst = true
+                        continue
+                    }
+                    val exactIdx = dataFraction * (numFrames - 1)
                     val idxBefore = exactIdx.toInt().coerceIn(0, numFrames - 1)
                     val idxAfter = (idxBefore + 1).coerceIn(0, numFrames - 1)
                     val fraction = exactIdx - idxBefore
@@ -1029,16 +1027,13 @@ fun SpectrogramCanvas(
                     if (speed > 1.0f) {
                         val h1Freq = kinematicsConfig.calculateH1FreqHz(speed)
                         val projectedFreq = h1Freq * projectedOrder
-                        if (projectedFreq >= actualMinFreq && projectedFreq <= actualMaxFreq) {
-                            val freqFraction = (projectedFreq - actualMinFreq) / (actualMaxFreq - actualMinFreq)
-                            val y = plotBottom - (freqFraction * plotHeight)
-                            val xPos = marginLeft + x
-
+                        val y = yForFreq(projectedFreq.toFloat())
+                        if (projectedFreq >= actualMinFreq && projectedFreq <= actualMaxFreq && geo.containsY(y)) {
                             if (isFirst) {
-                                path.moveTo(xPos, y.toFloat())
+                                path.moveTo(xPos, y)
                                 isFirst = false
                             } else {
-                                path.lineTo(xPos, y.toFloat())
+                                path.lineTo(xPos, y)
                             }
                         } else {
                             isFirst = true
@@ -1068,8 +1063,12 @@ fun SpectrogramCanvas(
                     val binFraction = (tag.binIndex - minBin).toFloat() / displayedBinCount.coerceAtLeast(1)
                     if (binFraction !in 0f..1f) continue
 
-                    val basePeakY = marginTop + ((1f - binFraction) * plotHeight).coerceIn(0f, plotHeight)
-                    val peakY = basePeakY.coerceIn(marginTop, plotBottom - 30f)
+                    // [U4] Tags follow the zoomed frequency axis; one whose harmonic is
+                    // scrolled out of view is dropped rather than parked at an edge, where it
+                    // would label a frequency that is not there.
+                    val basePeakY = yForBin(tag.binIndex.toFloat())
+                    if (!geo.containsY(basePeakY)) continue
+                    val peakY = basePeakY.coerceIn(marginTop, plotBottom - dimens.tagTextSize)
 
                     val isCritical = tag.ttnrDb >= 6.0
                     val primaryColor = if (isCritical) AndroidColor.parseColor("#FF1744") else AndroidColor.parseColor("#FFC107")
@@ -1086,17 +1085,19 @@ fun SpectrogramCanvas(
 
                     val label = "${tag.orderName} (+%.1fdB)".format(tag.ttnrDb)
                     val textWidth = tagTextPaint.measureText(label)
-                    val badgeH = 32f
-                    val badgeW = textWidth + 18f
+                    val padH = dimens.tagTextSize * 0.5f
+                    val badgeH = dimens.tagTextSize * 1.9f
+                    val badgeW = textWidth + padH * 2f
+                    val corner = dimens.markerRadius
 
                     // Position X : bord droit décalé
-                    val tagX = plotRight - badgeW - 15f
+                    val tagX = plotRight - badgeW - dimens.markerRadius * 2f
                     val tagYTop = (peakY - badgeH / 2f).coerceIn(marginTop, plotBottom - badgeH)
 
                     // Dessin du badge d'harmonique
-                    native.drawRoundRect(tagX, tagYTop, tagX + badgeW, tagYTop + badgeH, 6f, 6f, tagBgPaint)
-                    native.drawRoundRect(tagX, tagYTop, tagX + badgeW, tagYTop + badgeH, 6f, 6f, tagBorderPaint)
-                    native.drawText(label, tagX + 9f, tagYTop + 22f, tagTextPaint)
+                    native.drawRoundRect(tagX, tagYTop, tagX + badgeW, tagYTop + badgeH, corner, corner, tagBgPaint)
+                    native.drawRoundRect(tagX, tagYTop, tagX + badgeW, tagYTop + badgeH, corner, corner, tagBorderPaint)
+                    native.drawText(label, tagX + padH, tagYTop + badgeH * 0.7f, tagTextPaint)
                 }
             }
 
@@ -1111,16 +1112,17 @@ fun SpectrogramCanvas(
 
                 val freqStr = String.format(java.util.Locale.US, "%.1f Hz", selectedFreqHz)
                 val badgeTextWidth = cursorBadgeTextPaint.measureText(freqStr)
-                val badgePaddingHorizontal = 12f
-                val badgeHeight = 38f
+                val badgePaddingHorizontal = dimens.badgeTextSize * 0.5f
+                val badgeHeight = dimens.badgeTextSize * 2f
+                val corner = dimens.markerRadius
 
-                val badgeLeft = marginLeft + 10f
+                val badgeLeft = marginLeft + dimens.markerRadius * 2f
                 val badgeTop = (cursorY - badgeHeight / 2f).coerceIn(marginTop, plotBottom - badgeHeight)
                 val badgeRight = badgeLeft + badgeTextWidth + (badgePaddingHorizontal * 2f)
                 val badgeBottom = badgeTop + badgeHeight
 
-                native.drawRoundRect(badgeLeft, badgeTop, badgeRight, badgeBottom, 8f, 8f, cursorBadgeBgPaint)
-                native.drawText(freqStr, badgeLeft + badgePaddingHorizontal, badgeTop + 28f, cursorBadgeTextPaint)
+                native.drawRoundRect(badgeLeft, badgeTop, badgeRight, badgeBottom, corner, corner, cursorBadgeBgPaint)
+                native.drawText(freqStr, badgeLeft + badgePaddingHorizontal, badgeTop + badgeHeight * 0.72f, cursorBadgeTextPaint)
             }
 
             // --- AXE X (Temps en secondes) ---
@@ -1157,7 +1159,7 @@ fun SpectrogramCanvas(
             // Titre Axe X
             val xTitle = "Temps (s)"
             val xTitleWidth = textPaint.measureText(xTitle)
-            native.drawText(xTitle, marginLeft + (plotWidth - xTitleWidth) / 2f, h - 20f, textPaint)
+            native.drawText(xTitle, marginLeft + (plotWidth - xTitleWidth) / 2f, h - dimens.labelTextSize * 0.4f, textPaint)
 
             // --- LÉGENDE (Affichée désormais de manière fluide en UI Compose sous les boutons) ---
         }
