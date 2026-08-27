@@ -10,11 +10,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.nvhspectro.R
 import com.example.nvhspectro.theme.NvhCanvas
 import com.example.nvhspectro.theme.NvhModeVideo
 import com.example.nvhspectro.theme.NvhModeVideoAccent
@@ -90,15 +94,13 @@ private fun NoVideoLoaded(onOpenVideoSelection: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = "🎬 Mode Analyse Vidéo Synchronisé",
+                text = stringResource(R.string.video_mode_title),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = NvhOnSurface,
             )
             Text(
-                text =
-                    "Pas de données vidéo. Ouvrez un fichier vidéo local : sa piste audio est " +
-                        "extraite puis analysée en synchronisation avec l'image (limité à 5 min).",
+                text = stringResource(R.string.video_none_loaded),
                 fontSize = 13.sp,
                 color = NvhOnSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -113,7 +115,7 @@ private fun NoVideoLoaded(onOpenVideoSelection: () -> Unit) {
                         contentColor = NvhOnSurface,
                     ),
             ) {
-                Text(text = "📂 Charger une vidéo (MP4, MKV, AVI…)", fontWeight = FontWeight.Bold)
+                Text(text = stringResource(R.string.video_load), fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -147,7 +149,7 @@ private fun LoadedVideo(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "📹 $videoTitle",
+                text = stringResource(R.string.video_title, videoTitle),
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
                 color = NvhOnSurface,
@@ -192,7 +194,12 @@ private fun VideoTransportRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        IconButton(onClick = onTogglePlayPause, modifier = Modifier.size(48.dp)) {
+        val playPauseLabel = stringResource(if (state.isPlaying) R.string.cd_pause else R.string.cd_play)
+        val positionLabel = stringResource(R.string.cd_playback_position)
+        IconButton(
+            onClick = onTogglePlayPause,
+            modifier = Modifier.size(VIDEO_TOUCH_TARGET).semantics { contentDescription = playPauseLabel },
+        ) {
             Text(
                 text = if (state.isPlaying) "⏸" else "▶",
                 fontSize = 18.sp,
@@ -203,7 +210,7 @@ private fun VideoTransportRow(
             value = state.positionMs.toFloat(),
             onValueChange = { onSeekTo(it.toLong()) },
             valueRange = 0f..state.durationMs.toFloat().coerceAtLeast(1f),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).semantics { contentDescription = positionLabel },
             colors =
                 SliderDefaults.colors(
                     thumbColor = NvhModeVideoAccent,
@@ -257,3 +264,6 @@ private fun formatTime(ms: Long): String {
     // Locale.ROOT: a technical timecode must read the same on every device [C11 class].
     return String.format(Locale.ROOT, "%02d:%02d", totalSec / SECONDS_PER_MINUTE, totalSec % SECONDS_PER_MINUTE)
 }
+
+/** 48 dp minimum interactive size [§12, plan 4.4]. */
+private val VIDEO_TOUCH_TARGET = 48.dp

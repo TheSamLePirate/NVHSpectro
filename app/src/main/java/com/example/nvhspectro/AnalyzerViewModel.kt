@@ -15,6 +15,7 @@ import com.example.nvhspectro.data.VideoAudioExtractor
 import com.example.nvhspectro.data.WavAudioWriter
 import com.example.nvhspectro.data.WavDataReader
 import com.example.nvhspectro.data.WavReadResult
+import com.example.nvhspectro.data.messageIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -51,6 +52,14 @@ class AnalyzerViewModel(
     private var wavPlaybackJob: Job? = null
     private var wavLoadGeneration = 0
     private var wavTagsByFrame = emptyMap<Int, List<TrackedHarmonicTag>>()
+
+    private val app: Application get() = getApplication()
+
+    /** Every user-facing notice comes from strings.xml [§12, plan 4.4]. */
+    private fun res(
+        id: Int,
+        vararg args: Any,
+    ): String = app.getString(id, *args)
 
     private val unregisterHook: () -> Unit
     private val unregisterResettable: () -> Unit
@@ -204,7 +213,7 @@ class AnalyzerViewModel(
         _loadedVideoUri.value = null
         session.clearStreams()
         _isProcessingVideo.value = true
-        _processingEstimateMessage.value = "⏳ Chargement du fichier audio..."
+        _processingEstimateMessage.value = res(R.string.notice_loading_audio)
         return ++wavLoadGeneration
     }
 
@@ -221,7 +230,7 @@ class AnalyzerViewModel(
                 // [C3] The playback timeline never exceeds the analyzed PCM range.
                 val exactDuration = minOf(mediaDuration ?: data.durationMs, data.durationMs)
                 if (result.truncatedToCap) {
-                    session.postNotice("⏱️ Analyse limitée aux ${WavDataReader.MAX_DURATION_SEC / 60} premières minutes du fichier")
+                    session.postNotice(res(R.string.notice_truncated_wav, WavDataReader.MAX_DURATION_SEC / SECONDS_PER_MINUTE))
                 }
                 val updatedData = data.copy(durationMs = exactDuration)
                 session.setLoadedWavData(updatedData)
@@ -234,12 +243,12 @@ class AnalyzerViewModel(
             is WavReadResult.Unsupported -> {
                 _isProcessingVideo.value = false
                 _processingEstimateMessage.value = null
-                session.postNotice("⚠️ ${result.message}")
+                session.postNotice(res(R.string.notice_warning, result.reason.messageIn(app, result.detail)))
             }
             is WavReadResult.Error -> {
                 _isProcessingVideo.value = false
                 _processingEstimateMessage.value = null
-                session.postNotice("❌ ${result.message}")
+                session.postNotice(res(R.string.notice_error, result.reason.messageIn(app, result.detail)))
             }
         }
     }
@@ -252,11 +261,11 @@ class AnalyzerViewModel(
         player.stopAndRewind()
         session.dismissNotice()
         _loadedVideoUri.value = uri
-        _loadedVideoTitle.value = uri.lastPathSegment?.substringAfterLast("/") ?: "Vidéo locale"
+        _loadedVideoTitle.value = uri.lastPathSegment?.substringAfterLast("/") ?: res(R.string.video_default_title)
         session.forceMode(AudioSourceMode.VIDEO)
         session.clearStreams()
         _isProcessingVideo.value = true
-        _processingEstimateMessage.value = "⏳ Extraction de l'audio de la vidéo…"
+        _processingEstimateMessage.value = res(R.string.notice_extracting_video)
 
         viewModelScope.launch(Dispatchers.Default) {
             // [C12, plan 4.8] Real progress, not an indeterminate spinner: a 5-minute video
@@ -264,20 +273,20 @@ class AnalyzerViewModel(
             val result =
                 VideoAudioExtractor.extractAudioFromVideoUri(context, uri) { progress ->
                     _processingEstimateMessage.value =
-                        "⏳ Extraction de l'audio de la vidéo… ${(progress * PERCENT).toInt()} %"
+                        res(R.string.notice_extracting_video_progress, (progress * PERCENT).toInt())
                 }
             withContext(Dispatchers.Main) {
                 if (result is VideoAudioExtractor.Result.Failure) {
                     _isProcessingVideo.value = false
                     _processingEstimateMessage.value = null
-                    session.postNotice("❌ ${result.message}")
+                    session.postNotice(res(R.string.notice_error, result.message))
                 } else {
                     val data = (result as VideoAudioExtractor.Result.Success).data
                     val mediaDuration = playback.setOriginalSource(context, null, uri)
                     // [C3] Analyzed PCM bounds the timeline; a longer container means the cap was hit.
                     val exactDuration = minOf(mediaDuration ?: data.durationMs, data.durationMs)
                     if (mediaDuration != null && mediaDuration > data.durationMs + 1500L) {
-                        session.postNotice("⏱️ Analyse limitée aux ${WavDataReader.MAX_DURATION_SEC / 60} premières minutes de la vidéo")
+                        session.postNotice(res(R.string.notice_truncated_video, WavDataReader.MAX_DURATION_SEC / SECONDS_PER_MINUTE))
                     }
                     val updatedData = data.copy(durationMs = exactDuration)
                     session.setLoadedWavData(updatedData)
@@ -305,7 +314,7 @@ class AnalyzerViewModel(
                 val min = (durationSec / 60).toInt()
                 val sec = (durationSec % 60).toInt()
                 val estimatedSec = String.format("%.1f", durationSec * 0.002).replace(",", ".")
-                "⏳ Traitement du spectrogramme en cours...\nVidéo (${min}m ${sec}s) | Temps estimé: ~$estimatedSec s"
+                res(R.string.notice_processing_spectrogram, min, sec, estimatedSec)
             } else {
                 null
             }
@@ -338,7 +347,7 @@ class AnalyzerViewModel(
                                 )
                             _speedReconstructionStatus.value = recon.statusLabel
                             session.updateProvenance { it.copy(speedStatusLabel = recon.statusLabel) }
-                            session.postNotice("🛰️ Vitesse GNSS : ${recon.statusLabel}")
+                            session.postNotice(res(R.string.notice_speed_source, recon.statusLabel))
                             session.setLoadedWavData(data.copy(telemetryList = recon.telemetry))
                             session.setTelemetryHistory(recon.telemetry)
                         } else {
@@ -409,3 +418,5 @@ class AnalyzerViewModel(
         const val PERCENT = 100f
     }
 }
+
+private const val SECONDS_PER_MINUTE = 60

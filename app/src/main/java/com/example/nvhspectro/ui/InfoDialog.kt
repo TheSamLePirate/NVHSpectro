@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -29,6 +30,7 @@ import com.example.nvhspectro.theme.NvhSectionContainer
 @Composable
 fun InfoDialog(onDismiss: () -> Unit) {
     val uriHandler = LocalUriHandler.current
+    val websiteUrl = stringResource(R.string.about_website_url)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -38,10 +40,10 @@ fun InfoDialog(onDismiss: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("NVH Spectro", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text(stringResource(R.string.app_title), fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 Image(
                     painter = painterResource(id = R.drawable.logo_vibratec),
-                    contentDescription = "Logo Vibratec",
+                    contentDescription = stringResource(R.string.cd_logo_vibratec),
                     modifier = Modifier.height(28.dp),
                     contentScale = ContentScale.Fit,
                 )
@@ -65,11 +67,14 @@ fun InfoDialog(onDismiss: () -> Unit) {
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        InfoDetailRow("👤 Auteur", "Louis BARTHELEMY")
-                        InfoDetailRow("🏢 Société", "VIBRATEAM [Vibratec (Everenn Group)]")
-                        InfoDetailRow("📱 Application", "NVH Spectro")
-                        InfoDetailRow("🏷️ Version", "v${BuildConfig.VERSION_NAME}")
-                        InfoDetailRow("✉️ Contact", "louis.barthelemy@vibrateam.fr")
+                        InfoDetailRow(stringResource(R.string.about_author_label), stringResource(R.string.about_author))
+                        InfoDetailRow(stringResource(R.string.about_company_label), stringResource(R.string.about_company))
+                        InfoDetailRow(stringResource(R.string.about_app_label), stringResource(R.string.app_title))
+                        InfoDetailRow(
+                            stringResource(R.string.about_version_label),
+                            stringResource(R.string.about_version, BuildConfig.VERSION_NAME),
+                        )
+                        InfoDetailRow(stringResource(R.string.about_contact_label), stringResource(R.string.about_contact))
 
                         // Site Web VIBRATEC (Lien cliquable)
                         Column(
@@ -77,11 +82,11 @@ fun InfoDialog(onDismiss: () -> Unit) {
                                 Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        uriHandler.openUri("https://vibratec.fr/")
+                                        uriHandler.openUri(websiteUrl)
                                     },
                         ) {
                             Text(
-                                text = "🌐 Site Web VIBRATEC",
+                                text = stringResource(R.string.about_website_label),
                                 color = NvhAccent,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -91,7 +96,7 @@ fun InfoDialog(onDismiss: () -> Unit) {
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Text(
-                                    text = "https://vibratec.fr/",
+                                    text = websiteUrl,
                                     color = NvhPrimary,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
@@ -111,22 +116,13 @@ fun InfoDialog(onDismiss: () -> Unit) {
                 DiagnosticsSection()
 
                 Text(
-                    text = "📜 Description / Métier :",
+                    text = stringResource(R.string.about_description_label),
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text =
-                        "Application d'analyse acoustique temporelle, spectrogramme d'émergence " +
-                            "tonale et télémétrie GPS en temps réel. Construite pour l'analyse NVH " +
-                            "rapide lors d'un roulage véhicule — domaine automobile.\n\n" +
-                            "Elle intègre également le post-traitement synchronisé de vidéos et de " +
-                            "fichiers WAV, ainsi qu'un outil de suivi d'ordres dédié à l'extraction " +
-                            "des harmoniques pour les Groupes Moto-Propulseurs électriques (GMPe).\n\n" +
-                            "L'indice d'émergence NVH est une méthode interne d'émergence tonale : " +
-                            "il n'implémente pas la norme ECMA-74 / ISO 1996-2 et ne doit pas être " +
-                            "présenté comme tel.",
+                    text = stringResource(R.string.about_description),
                     fontSize = 12.sp,
                     color = NvhOnSurfaceVariant,
                     lineHeight = 16.sp,
@@ -135,7 +131,7 @@ fun InfoDialog(onDismiss: () -> Unit) {
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Fermer", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.action_close), fontWeight = FontWeight.Bold)
             }
         },
     )

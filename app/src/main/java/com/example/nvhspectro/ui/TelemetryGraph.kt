@@ -2,6 +2,7 @@ package com.example.nvhspectro.ui
 
 import android.graphics.Paint
 import android.graphics.Typeface
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -15,6 +16,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.res.stringResource
+import com.example.nvhspectro.R
 import com.example.nvhspectro.TelemetryData
 import com.example.nvhspectro.theme.NvhAccent
 import com.example.nvhspectro.theme.NvhModeWavAccent
@@ -27,15 +30,15 @@ import kotlin.math.max
 import kotlin.math.min
 
 enum class TelemetryMetric(
-    val label: String,
+    @StringRes val labelRes: Int,
     val unit: String,
 ) {
-    SPEED("Vitesse", "km/h"),
-    ACCELERATION("Accélération", "g"),
-    ORDER("Ordre", "dBFS"),
+    SPEED(R.string.metric_speed, "km/h"),
+    ACCELERATION(R.string.metric_acceleration, "g"),
+    ORDER(R.string.metric_order, "dBFS"),
 
     // [D1, D5] The metric is named for what it is, not for a standard it does not implement.
-    TTNR("Émergence", "dB"),
+    TTNR(R.string.metric_emergence, "dB"),
 }
 
 @Composable
@@ -57,6 +60,12 @@ fun TelemetryGraph(
     // [U3, plan 4.2] Same dp/sp source as the spectrogram: this canvas's axis labels used to
     // be raw 20 px, i.e. ~5 sp on a high-density phone and immune to the user's font scale.
     val dimens = rememberPlotDimens()
+    // Draw-scope labels: patterns read in composition, formatted per frame.
+    val dbAxisFormat = stringResource(R.string.axis_db_positive)
+    val hzAxisFormat = stringResource(R.string.axis_hz)
+    val peakBadgeFormat = stringResource(R.string.peak_badge)
+    val needsGmpeText = stringResource(R.string.graph_needs_gmpe)
+    val orderIdleText = stringResource(R.string.graph_order_idle)
 
     val textPaint =
         remember(dimens) {
@@ -171,7 +180,7 @@ fun TelemetryGraph(
                         } else if (step == 0) {
                             "0 dB"
                         } else {
-                            "+${dbVal.toInt()} dB"
+                            String.format(java.util.Locale.getDefault(), dbAxisFormat, dbVal.toInt())
                         }
                     native.drawText(label, dimens.markerRadius, y + dimens.axisTextSize * 0.35f, tickTextPaint)
                 }
@@ -183,7 +192,7 @@ fun TelemetryGraph(
                     val x = marginLeft + fraction * plotWidth
                     val freqVal = minFreq + (fraction * (maxFreq - minFreq)).toInt()
                     native.drawLine(x, marginTop, x, marginTop + plotHeight, fineGridPaint)
-                    val label = "$freqVal Hz"
+                    val label = String.format(java.util.Locale.getDefault(), hzAxisFormat, freqVal)
                     val labelW = tickTextPaint.measureText(label)
                     var labelX = x - (labelW / 2f)
                     labelX = labelX.coerceIn(marginLeft, marginLeft + plotWidth - labelW)
@@ -268,7 +277,7 @@ fun TelemetryGraph(
 
                     drawIntoCanvas { canvas ->
                         val native = canvas.nativeCanvas
-                        val badgeText = "$peakFreq Hz | +${String.format("%.1f", maxEmergence)} dB"
+                        val badgeText = String.format(java.util.Locale.getDefault(), peakBadgeFormat, peakFreq, maxEmergence)
                         val textWidth = badgeTextPaint.measureText(badgeText)
 
                         var badgeLeft = peakX - (textWidth / 2f) - 16f
@@ -300,9 +309,9 @@ fun TelemetryGraph(
 
                 val msg =
                     if (!isKinematicsEnabled) {
-                        "⚠️ Disponible uniquement en mode étude GMPe activé"
+                        needsGmpeText
                     } else {
-                        "⚠️ Suivi d'Ordre inactif (< 1 km/h)"
+                        orderIdleText
                     }
                 val textW = warningTextPaint.measureText(msg)
                 val msgX = marginLeft + (plotWidth - textW) / 2f

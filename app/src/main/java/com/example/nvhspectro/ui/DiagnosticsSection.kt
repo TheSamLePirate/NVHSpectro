@@ -21,12 +21,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import com.example.nvhspectro.R
 import com.example.nvhspectro.data.DiagnosticLog
 import com.example.nvhspectro.theme.NvhOnSurfaceVariant
 import com.example.nvhspectro.theme.NvhSectionContainer
@@ -44,6 +46,7 @@ import com.example.nvhspectro.theme.NvhStatusWarn
 fun DiagnosticsSection() {
     val context = LocalContext.current
     var sizeBytes by remember { mutableLongStateOf(DiagnosticLog.sizeBytes()) }
+    val shareLabel = stringResource(R.string.cd_diagnostics_share)
 
     Card(
         modifier =
@@ -57,17 +60,13 @@ fun DiagnosticsSection() {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = "🩺 Journal de diagnostic",
+                text = stringResource(R.string.diagnostics_title),
                 color = NvhStatusWarn,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
             )
             Text(
-                text =
-                    "Les messages d'erreur et d'état de l'application sont enregistrés " +
-                        "localement (${formatSize(sizeBytes)}). Aucun envoi automatique : " +
-                        "l'application n'a pas d'accès réseau. Vous seul décidez de partager " +
-                        "ce fichier.",
+                text = stringResource(R.string.diagnostics_explanation, formatSize(sizeBytes)),
                 fontSize = 11.sp,
                 color = NvhOnSurfaceVariant,
                 lineHeight = 15.sp,
@@ -76,9 +75,9 @@ fun DiagnosticsSection() {
                 OutlinedButton(
                     onClick = { context.shareDiagnosticLog() },
                     enabled = sizeBytes > 0,
-                    modifier = Modifier.semantics { contentDescription = "Partager le journal de diagnostic" },
+                    modifier = Modifier.semantics { contentDescription = shareLabel },
                 ) {
-                    Text("Partager", fontSize = 12.sp)
+                    Text(stringResource(R.string.diagnostics_share), fontSize = 12.sp)
                 }
                 TextButton(
                     onClick = {
@@ -87,19 +86,22 @@ fun DiagnosticsSection() {
                     },
                     enabled = sizeBytes > 0,
                 ) {
-                    Text("Effacer", fontSize = 12.sp)
+                    Text(stringResource(R.string.diagnostics_clear), fontSize = 12.sp)
                 }
             }
         }
     }
 }
 
+@Composable
 private fun formatSize(bytes: Long): String =
     when {
-        bytes <= 0 -> "vide"
-        bytes < 1024 -> "$bytes o"
-        else -> "${bytes / 1024} ko"
+        bytes <= 0 -> stringResource(R.string.diagnostics_size_empty)
+        bytes < BYTES_PER_KB -> stringResource(R.string.diagnostics_size_bytes, bytes)
+        else -> stringResource(R.string.diagnostics_size_kb, bytes / BYTES_PER_KB)
     }
+
+private const val BYTES_PER_KB = 1024L
 
 /** Explicit, user-initiated share of the local log — the only way it leaves the device. */
 private fun Context.shareDiagnosticLog() {
@@ -110,9 +112,11 @@ private fun Context.shareDiagnosticLog() {
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "NVH Spectro — journal de diagnostic")
+                putExtra(Intent.EXTRA_SUBJECT, getString(R.string.diagnostics_share_subject))
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-        startActivity(Intent.createChooser(send, "Partager le journal").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        startActivity(
+            Intent.createChooser(send, getString(R.string.diagnostics_share_title)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
     }.onFailure { DiagnosticLog.w("Diagnostics", "share failed", it) }
 }

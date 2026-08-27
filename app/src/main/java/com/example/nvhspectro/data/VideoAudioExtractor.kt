@@ -8,6 +8,7 @@ import android.media.MediaFormat
 import android.net.Uri
 import android.util.Log
 import com.example.nvhspectro.AudioConfig
+import com.example.nvhspectro.R
 import java.nio.ByteOrder
 
 /**
@@ -187,7 +188,7 @@ object VideoAudioExtractor {
 
             val track =
                 extractor.findAudioTrack()
-                    ?: return Result.Failure("Cette vidéo ne contient aucune piste audio")
+                    ?: return Result.Failure(context.getString(R.string.notice_video_no_audio_track))
             val inputFormat = track.format
             extractor.selectTrack(track.index)
             // Container duration drives the progress bar only; the analyzed duration is
@@ -206,7 +207,7 @@ object VideoAudioExtractor {
             }
 
             if (state.pcmSize == 0) {
-                Result.Failure("Aucun échantillon audio décodable dans cette vidéo")
+                Result.Failure(context.getString(R.string.notice_video_no_decodable))
             } else {
                 onProgress(1f)
                 val pcmArray = state.pcm.copyOf(state.pcmSize)
@@ -223,7 +224,7 @@ object VideoAudioExtractor {
             }
         } catch (e: Exception) {
             DiagnosticLog.w(TAG, "audio extraction failed", e)
-            Result.Failure("Extraction audio impossible : ${e.message ?: e.javaClass.simpleName}")
+            Result.Failure(context.getString(R.string.notice_video_extraction_failed, e.message ?: e.javaClass.simpleName))
         } finally {
             runCatching { codec?.stop() }
             runCatching { codec?.release() }

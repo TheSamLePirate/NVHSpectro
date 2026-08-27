@@ -98,13 +98,13 @@ class SpeedProvider(
             ) = Unit
 
             override fun onProviderEnabled(provider: String) {
-                onNotice?.invoke("📡 GPS réactivé — acquisition en cours")
+                onNotice?.invoke(appContext.getString(R.string.notice_gps_enabled))
                 setFusedFallback(false)
             }
 
             override fun onProviderDisabled(provider: String) {
                 if (!started) return
-                onNotice?.invoke("📡 GPS désactivé — vitesse GNSS indisponible")
+                onNotice?.invoke(appContext.getString(R.string.notice_gps_disabled))
                 // [GPS-3.2 gate] No ghost values: the session forgets the old
                 // speed immediately instead of waiting for the horizon to expire.
                 reset()
@@ -133,7 +133,7 @@ class SpeedProvider(
         try {
             subscribeGps()
             if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                onNotice?.invoke("📡 GPS désactivé — vitesse GNSS indisponible")
+                onNotice?.invoke(appContext.getString(R.string.notice_gps_disabled))
                 setFusedFallback(true)
             }
             diagnostics.register()
@@ -141,7 +141,7 @@ class SpeedProvider(
             // [GPS-12, GPS-3.2] Approximate-only permission cannot feed a
             // metrological speed chain — say so instead of silently degrading.
             DiagnosticLog.w(TAG, "location permission missing", e)
-            onNotice?.invoke("⚠️ Localisation précise requise pour la vitesse GNSS")
+            onNotice?.invoke(appContext.getString(R.string.notice_precise_location_required))
             started = false
         }
     }

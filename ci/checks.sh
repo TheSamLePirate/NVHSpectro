@@ -61,6 +61,25 @@ if [ "$COLOR_HITS" -gt 0 ]; then
   grep -RIn --include='*.kt' -E 'Color\(0x' app/src/main core/src/main | grep -v 'theme/Color.kt' | head -20
 fi
 
+# --- [ARMED] user-facing text lives in strings.xml [§12, plan 4.4] --------
+# Android lint's HardcodedText only inspects XML layouts, so in a Compose-only app
+# it proves nothing. This is the equivalent gate: a Kotlin string literal that
+# contains a run of letters AND lands in a `text = ` / `Text("…")` / label position
+# inside a @Composable file is user-facing text and belongs in strings.xml.
+COMPOSE_FILES=$(grep -rl '@Composable' app/src/main --include='*.kt' 2>/dev/null || true)
+TEXT_HITS=0
+if [ -n "$COMPOSE_FILES" ]; then
+  # shellcheck disable=SC2086
+  TEXT_HITS=$(grep -nE '(text = |Text\(|label = \{ Text\()"[^"]*[A-Za-zÀ-ÿ]{3,}' $COMPOSE_FILES \
+    | grep -v 'stringResource' | grep -v 'getString' | wc -l | tr -d ' ')
+  if [ "$TEXT_HITS" -gt 0 ]; then
+    violation "hard-coded user-facing text in Compose ($TEXT_HITS) — use stringResource [§12, plan 4.4]:"
+    # shellcheck disable=SC2086
+    grep -nE '(text = |Text\(|label = \{ Text\()"[^"]*[A-Za-zÀ-ÿ]{3,}' $COMPOSE_FILES \
+      | grep -v 'stringResource' | grep -v 'getString' | head -20
+  fi
+fi
+
 # --- [ARMED] purged dead code must not return [A3/A4/D5, plan 3.8] --------
 # The regex-patch era resurrected deleted code more than once. These symbols
 # and files were deliberately removed; any reappearance fails the build.

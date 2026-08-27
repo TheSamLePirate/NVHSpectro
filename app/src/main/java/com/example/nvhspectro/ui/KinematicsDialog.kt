@@ -10,11 +10,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.nvhspectro.R
 import com.example.nvhspectro.data.KinematicsConfig
 import com.example.nvhspectro.data.KinematicsInputMode
 import com.example.nvhspectro.data.toFlexibleDoubleOrNull
@@ -115,7 +117,7 @@ fun KinematicsDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "⚙️ Paramètres GMPe & Cinématique",
+                        text = stringResource(R.string.kin_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp,
@@ -129,18 +131,18 @@ fun KinematicsDialog(
                 Divider()
 
                 // Section Identifiants Véhicule & Moteur
-                Text("🚘 Identification du Test Véhicule", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(stringResource(R.string.kin_vehicle_section), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 OutlinedTextField(
                     value = vehicleName,
                     onValueChange = { vehicleName = it },
-                    label = { Text("Nom / Modèle Véhicule") },
+                    label = { Text(stringResource(R.string.kin_vehicle_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = motorName,
                     onValueChange = { motorName = it },
-                    label = { Text("Nom Moteur / GMPe") },
+                    label = { Text(stringResource(R.string.kin_motor_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -148,7 +150,7 @@ fun KinematicsDialog(
                 Divider()
 
                 // Mode de Saisie Cinématique
-                Text("📐 Méthode de Calcul V1000 & Cinématique", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(stringResource(R.string.kin_method_section), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -169,13 +171,13 @@ fun KinematicsDialog(
                         OutlinedTextField(
                             value = v1000Text,
                             onValueChange = { v1000Text = it },
-                            label = { Text("V1000 (km/h pour 1000 RPM)") },
+                            label = { Text(stringResource(R.string.kin_v1000_label)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             singleLine = true,
                             isError = v1000Text.toFlexibleDoubleOrNull() == null,
                             supportingText = {
                                 if (v1000Text.toFlexibleDoubleOrNull() == null) {
-                                    Text("Nombre invalide (ex : 9.5 ou 9,5)")
+                                    Text(stringResource(R.string.kin_invalid_number))
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -185,7 +187,7 @@ fun KinematicsDialog(
                         OutlinedTextField(
                             value = globalRatioText,
                             onValueChange = { globalRatioText = it },
-                            label = { Text("Rapport Global de Démultiplication Total") },
+                            label = { Text(stringResource(R.string.kin_gear_ratio_label)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             singleLine = true,
                             isError = globalRatioText.toFlexibleDoubleOrNull() == null,
@@ -193,7 +195,7 @@ fun KinematicsDialog(
                         )
 
                         // Dimensions Pneu Vendeur (ex: 205 / 55 R 16)
-                        Text("🛞 Dimension Pneu (Marquage Flanc)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(stringResource(R.string.kin_tyre_section), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -202,7 +204,7 @@ fun KinematicsDialog(
                             OutlinedTextField(
                                 value = tireWidthText,
                                 onValueChange = { tireWidthText = it },
-                                label = { Text("Largeur", fontSize = 9.sp) },
+                                label = { Text(stringResource(R.string.kin_tyre_width), fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 modifier = Modifier.weight(1.1f),
@@ -211,7 +213,7 @@ fun KinematicsDialog(
                             OutlinedTextField(
                                 value = tireAspectRatioText,
                                 onValueChange = { tireAspectRatioText = it },
-                                label = { Text("Ratio %", fontSize = 9.sp) },
+                                label = { Text(stringResource(R.string.kin_tyre_ratio), fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
@@ -220,7 +222,7 @@ fun KinematicsDialog(
                             OutlinedTextField(
                                 value = rimDiameterText,
                                 onValueChange = { rimDiameterText = it },
-                                label = { Text("Jante (\")", fontSize = 9.sp) },
+                                label = { Text(stringResource(R.string.kin_tyre_rim), fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
@@ -228,7 +230,7 @@ fun KinematicsDialog(
                         }
                         val computedR = tempConfig.calculateWheelRadiusMeters()
                         Text(
-                            text = "📏 Rayon calculé : %.3f m (Circonférence = %.2f m)".format(computedR, 2.0 * Math.PI * computedR),
+                            text = stringResource(R.string.kin_tyre_radius, computedR, 2.0 * Math.PI * computedR),
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold,
@@ -239,7 +241,7 @@ fun KinematicsDialog(
                             OutlinedTextField(
                                 value = reductionRatioText,
                                 onValueChange = { reductionRatioText = it },
-                                label = { Text("Réducteur / Descente") },
+                                label = { Text(stringResource(R.string.kin_reducer)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true,
                                 isError = reductionRatioText.toFlexibleDoubleOrNull() == null,
@@ -248,7 +250,7 @@ fun KinematicsDialog(
                             OutlinedTextField(
                                 value = axleRatioText,
                                 onValueChange = { axleRatioText = it },
-                                label = { Text("Rapport Pont") },
+                                label = { Text(stringResource(R.string.kin_final_drive)) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 singleLine = true,
                                 isError = axleRatioText.toFlexibleDoubleOrNull() == null,
@@ -257,7 +259,7 @@ fun KinematicsDialog(
                         }
 
                         // Dimensions Pneu Vendeur (ex: 205 / 55 R 16)
-                        Text("🛞 Dimension Pneu (Marquage Flanc)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(stringResource(R.string.kin_tyre_section), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -266,7 +268,7 @@ fun KinematicsDialog(
                             OutlinedTextField(
                                 value = tireWidthText,
                                 onValueChange = { tireWidthText = it },
-                                label = { Text("Largeur", fontSize = 9.sp) },
+                                label = { Text(stringResource(R.string.kin_tyre_width), fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 modifier = Modifier.weight(1.1f),
@@ -275,7 +277,7 @@ fun KinematicsDialog(
                             OutlinedTextField(
                                 value = tireAspectRatioText,
                                 onValueChange = { tireAspectRatioText = it },
-                                label = { Text("Ratio %", fontSize = 9.sp) },
+                                label = { Text(stringResource(R.string.kin_tyre_ratio), fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
@@ -284,7 +286,7 @@ fun KinematicsDialog(
                             OutlinedTextField(
                                 value = rimDiameterText,
                                 onValueChange = { rimDiameterText = it },
-                                label = { Text("Jante (\")", fontSize = 9.sp) },
+                                label = { Text(stringResource(R.string.kin_tyre_rim), fontSize = 9.sp) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
@@ -292,7 +294,7 @@ fun KinematicsDialog(
                         }
                         val computedR = tempConfig.calculateWheelRadiusMeters()
                         Text(
-                            text = "📏 Rayon calculé : %.3f m (Circonférence = %.2f m)".format(computedR, 2.0 * Math.PI * computedR),
+                            text = stringResource(R.string.kin_tyre_radius, computedR, 2.0 * Math.PI * computedR),
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold,
@@ -310,16 +312,16 @@ fun KinematicsDialog(
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = "📐 Synthèse V1000 & Fondamental H1 :",
+                            text = stringResource(R.string.kin_summary_section),
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
                         )
                         Text(
-                            text = "• V1000 équivalente : %.2f km/h / 1000 RPM".format(effectiveV1000),
+                            text = stringResource(R.string.kin_summary_v1000, effectiveV1000),
                             fontSize = 12.sp,
                         )
                         Text(
-                            text = "• À 50 km/h : %d RPM ➔ H1 = %.2f Hz".format(rpmAt50Kmh, h1At50KmhHz),
+                            text = stringResource(R.string.kin_summary_h1, rpmAt50Kmh, h1At50KmhHz),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary,
@@ -330,19 +332,19 @@ fun KinematicsDialog(
                 Divider()
 
                 // Harmoniques Attendues / Liste Blanche
-                Text("🎯 Harmoniques Attendues (Filtrage Rapport & Spectro)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(stringResource(R.string.kin_targets_section), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 OutlinedTextField(
                     value = targetHarmonicsText,
                     onValueChange = { targetHarmonicsText = it },
-                    label = { Text("Harmoniques cibles (ex: 7.4, 18, 22.2, 36)") },
-                    placeholder = { Text("Ex: 7.4, 18, 22.2, 36") },
+                    label = { Text(stringResource(R.string.kin_targets_label)) },
+                    placeholder = { Text(stringResource(R.string.kin_targets_hint)) },
                     supportingText = {
                         Text(
                             text =
                                 if (targetHarmonicsText.isNotBlank()) {
-                                    "✓ Seules les harmoniques renseignées apparaîtront dans le rapport et sur le spectrogramme."
+                                    stringResource(R.string.kin_targets_active)
                                 } else {
-                                    "Laisser vide pour tout détecter. Saisissez des ordres séparés par des virgules (ex: 7.4, 18, 22.2)."
+                                    stringResource(R.string.kin_targets_empty)
                                 },
                             fontSize = 11.sp,
                             color = if (targetHarmonicsText.isNotBlank()) NvhAccent else NvhOnSurfaceVariant,
@@ -358,7 +360,7 @@ fun KinematicsDialog(
                     OutlinedTextField(
                         value = holdTimeText,
                         onValueChange = { holdTimeText = it },
-                        label = { Text("Rémanence Tags (sec)") },
+                        label = { Text(stringResource(R.string.kin_hold_time)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
                         isError = holdTimeText.toFlexibleDoubleOrNull() == null,
@@ -369,7 +371,7 @@ fun KinematicsDialog(
                 OutlinedTextField(
                     value = comments,
                     onValueChange = { comments = it },
-                    label = { Text("Commentaires libres d'essai") },
+                    label = { Text(stringResource(R.string.kin_comments)) },
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -381,11 +383,11 @@ fun KinematicsDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Annuler")
+                        Text(stringResource(R.string.action_cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = { onSave(tempConfig) }) {
-                        Text("Enregistrer")
+                        Text(stringResource(R.string.action_save))
                     }
                 }
             }

@@ -451,13 +451,18 @@ class LiveViewModel(
                     recordedPcmList.clear()
                     recordedTelemetryList.clear()
                     recordedFrameTimesNanos.clear()
-                    session.postNotice("✅ Enregistrement sauvegardé : $baseName")
+                    session.postNotice(getApplication<Application>().getString(R.string.notice_recording_saved, baseName))
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     // PCM is kept so the user can retry the save.
                     _showSaveRecordingDialog.value = true
-                    session.postNotice("❌ Sauvegarde impossible : ${e.message ?: e.javaClass.simpleName}")
+                    session.postNotice(
+                        getApplication<Application>().getString(
+                            R.string.notice_save_failed,
+                            e.message ?: e.javaClass.simpleName,
+                        ),
+                    )
                 }
             }
         }

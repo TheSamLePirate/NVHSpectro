@@ -51,6 +51,17 @@ android {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
       }
     }
+
+    lint {
+      // [§12, plan 4.4] Localisation and accessibility are build failures, not warnings.
+      // HardcodedText only inspects XML layouts, so in this Compose-only app the equivalent
+      // check for Kotlin literals lives in ci/checks.sh; this arms the XML side and the
+      // checks that DO cover Compose.
+      error += listOf("HardcodedText", "ContentDescription", "SetTextI18n", "StringFormatMatches")
+      // The project has run with zero lint errors and NO baseline since Phase 0 [DEV-6].
+      abortOnError = true
+      warningsAsErrors = false
+    }
 }
 
 kotlin {

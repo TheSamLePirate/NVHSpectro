@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -78,6 +79,8 @@ fun ReportModeScreen(
     var isDrawingMode by remember { mutableStateOf(false) }
     var showNameDialog by remember { mutableStateOf(false) }
     var orderNameInput by remember { mutableStateOf("") }
+    val pdfFileName = stringResource(R.string.report_pdf_filename)
+    val orderNamePrefix = stringResource(R.string.report_order_name_prefix, "%s")
 
     val pdfExportLauncher =
         rememberLauncherForActivityResult(
@@ -91,10 +94,10 @@ fun ReportModeScreen(
     if (showNameDialog) {
         AlertDialog(
             onDismissRequest = { showNameDialog = false },
-            title = { Text("Nom de l'ordre", color = MaterialTheme.colorScheme.onSurface) },
+            title = { Text(stringResource(R.string.report_order_name_title), color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 Column {
-                    Text("Saisissez la valeur de l'ordre (ex: 29 pour H29) :", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.report_order_name_help), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = orderNameInput,
@@ -113,19 +116,19 @@ fun ReportModeScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val finalName = if (orderNameInput.isNotBlank()) "Ordre ${orderNameInput.trim()}" else null
+                        val finalName = if (orderNameInput.isNotBlank()) orderNamePrefix.format(orderNameInput.trim()) else null
                         viewModel.validateCurrentOrder(finalName)
                         showNameDialog = false
                         orderNameInput = ""
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 ) {
-                    Text("Valider", color = MaterialTheme.colorScheme.onPrimary)
+                    Text(stringResource(R.string.action_validate), color = MaterialTheme.colorScheme.onPrimary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showNameDialog = false }) {
-                    Text("Annuler", color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.action_cancel), color = MaterialTheme.colorScheme.primary)
                 }
             },
             containerColor = MaterialTheme.colorScheme.surface,
@@ -135,11 +138,11 @@ fun ReportModeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("NVH Spectro - Rapport Manuel", fontSize = 16.sp, fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.report_title), fontSize = 16.sp, fontWeight = FontWeight.Bold) },
                 actions = {
                     Image(
                         painter = painterResource(id = R.drawable.logo_vibratec),
-                        contentDescription = "Logo",
+                        contentDescription = stringResource(R.string.cd_logo_vibratec),
                         modifier = Modifier.height(28.dp).padding(end = 6.dp),
                         contentScale = ContentScale.Fit,
                     )
@@ -172,7 +175,7 @@ fun ReportModeScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     SegmentedToggleButton(
-                        options = listOf("Absolue", "Émergence"),
+                        options = listOf(stringResource(R.string.report_mode_absolute), stringResource(R.string.report_mode_emergence)),
                         selectedIndex = if (displayMode == DisplayMode.TTNR) 1 else 0,
                         onOptionSelected = { index ->
                             viewModel.session.setDisplayMode(if (index == 1) DisplayMode.TTNR else DisplayMode.ABSOLUTE)
@@ -201,9 +204,9 @@ fun ReportModeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp).fillMaxWidth(),
                     ) {
-                        // Toujours afficher "Info GMPe" à gauche, fixe, en italique
+                        // Toujours afficher stringResource(R.string.report_gmpe_info) à gauche, fixe, en italique
                         Text(
-                            text = "Info GMPe",
+                            text = stringResource(R.string.report_gmpe_info),
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
@@ -235,7 +238,9 @@ fun ReportModeScreen(
 
                                 val vhText =
                                     buildAnnotatedString {
-                                        withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) { append("Vh: ") }
+                                        withStyle(
+                                            style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
+                                        ) { append(stringResource(R.string.report_vehicle_prefix)) }
                                         withStyle(
                                             style = SpanStyle(color = onSurfaceColor, fontWeight = FontWeight.Medium),
                                         ) { append(vhName) }
@@ -244,7 +249,7 @@ fun ReportModeScreen(
                                     buildAnnotatedString {
                                         withStyle(
                                             style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
-                                        ) { append("GMPe: ") }
+                                        ) { append(stringResource(R.string.report_motor_prefix)) }
                                         withStyle(
                                             style = SpanStyle(color = onSurfaceColor, fontWeight = FontWeight.Medium),
                                         ) { append(motorName) }
@@ -253,10 +258,10 @@ fun ReportModeScreen(
                                     buildAnnotatedString {
                                         withStyle(
                                             style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
-                                        ) { append("V1000: ") }
+                                        ) { append(stringResource(R.string.report_v1000_prefix)) }
                                         withStyle(
                                             style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
-                                        ) { append("$v1000 km/h") }
+                                        ) { append(stringResource(R.string.report_v1000_value, v1000)) }
                                     }
 
                                 AutoResizedText(text = vhText, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))
@@ -277,21 +282,23 @@ fun ReportModeScreen(
                             } else {
                                 val vhText =
                                     buildAnnotatedString {
-                                        withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) { append("Vh: ") }
+                                        withStyle(
+                                            style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
+                                        ) { append(stringResource(R.string.report_vehicle_prefix)) }
                                         withStyle(style = SpanStyle(color = onSurfaceVariantColor)) { append("--") }
                                     }
                                 val gmpeText =
                                     buildAnnotatedString {
                                         withStyle(
                                             style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
-                                        ) { append("GMPe: ") }
+                                        ) { append(stringResource(R.string.report_motor_prefix)) }
                                         withStyle(style = SpanStyle(color = onSurfaceVariantColor)) { append("--") }
                                     }
                                 val v1000Text =
                                     buildAnnotatedString {
                                         withStyle(
                                             style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
-                                        ) { append("V1000: ") }
+                                        ) { append(stringResource(R.string.report_v1000_prefix)) }
                                         withStyle(style = SpanStyle(color = onSurfaceVariantColor)) { append("--") }
                                     }
 
@@ -388,7 +395,7 @@ fun ReportModeScreen(
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             )
                             Text(
-                                "Régime",
+                                stringResource(R.string.report_col_rpm),
                                 modifier = Modifier.weight(1.3f),
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 11.sp,
@@ -396,7 +403,7 @@ fun ReportModeScreen(
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             )
                             Text(
-                                "Fréq",
+                                stringResource(R.string.report_col_freq),
                                 modifier = Modifier.weight(1.2f),
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 11.sp,
@@ -452,7 +459,11 @@ fun ReportModeScreen(
                                         if (order.minSpeedKmh != null &&
                                             order.maxSpeedKmh != null
                                         ) {
-                                            "${order.minSpeedKmh.toInt()}-${order.maxSpeedKmh.toInt()} km/h"
+                                            stringResource(
+                                                R.string.report_speed_range,
+                                                order.minSpeedKmh.toInt(),
+                                                order.maxSpeedKmh.toInt(),
+                                            )
                                         } else {
                                             "-"
                                         }
@@ -470,7 +481,7 @@ fun ReportModeScreen(
                                         if (order.minRpm != null &&
                                             order.maxRpm != null
                                         ) {
-                                            "${order.minRpm}-${order.maxRpm} RpM"
+                                            stringResource(R.string.report_rpm_range, order.minRpm ?: 0, order.maxRpm ?: 0)
                                         } else {
                                             "-"
                                         }
@@ -485,7 +496,7 @@ fun ReportModeScreen(
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                     )
                                     Text(
-                                        text = "${order.minFreqHz}-${order.maxFreqHz} Hz",
+                                        text = stringResource(R.string.report_freq_range, order.minFreqHz, order.maxFreqHz),
                                         color = textColor,
                                         fontWeight = fontW,
                                         fontSize = 11.sp,
@@ -505,7 +516,7 @@ fun ReportModeScreen(
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
                                 ) {
                                     Text(
-                                        text = "Brouillon en cours (${currentUserPoints.size} pts)",
+                                        text = stringResource(R.string.report_draft, currentUserPoints.size),
                                         color = MaterialTheme.colorScheme.primary,
                                         fontSize = 11.sp,
                                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
@@ -532,12 +543,17 @@ fun ReportModeScreen(
                 ) {
                     Button(
                         onClick = { showNameDialog = true },
-                        modifier = Modifier.weight(1f).height(36.dp),
+                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
                         colors = ButtonDefaults.buttonColors(containerColor = NvhActiveContainer),
                         shape = RoundedCornerShape(50),
                         contentPadding = PaddingValues(2.dp),
                     ) {
-                        Text("Valider ordre", color = NvhOnSurface, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text(
+                            stringResource(R.string.report_validate_order),
+                            color = NvhOnSurface,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                        )
                     }
 
                     val brillanceBg = if (isBrillanceModeEnabled) NvhEmergenceMarginal else Color.Transparent
@@ -546,14 +562,14 @@ fun ReportModeScreen(
 
                     Button(
                         onClick = { viewModel.toggleBrillanceMode() },
-                        modifier = Modifier.weight(1f).height(36.dp),
+                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
                         colors = ButtonDefaults.buttonColors(containerColor = brillanceBg),
                         shape = RoundedCornerShape(50),
                         border = BorderStroke(1.dp, brillanceBorder),
                         contentPadding = PaddingValues(2.dp),
                     ) {
                         Text(
-                            "Brillance ordre",
+                            stringResource(R.string.report_brightness),
                             color = brillanceText,
                             fontSize = 11.sp,
                             fontWeight = if (isBrillanceModeEnabled) FontWeight.Bold else FontWeight.Normal,
@@ -567,22 +583,32 @@ fun ReportModeScreen(
                 ) {
                     Button(
                         onClick = { viewModel.clearCurrentPoints() },
-                        modifier = Modifier.weight(1f).height(36.dp),
+                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
                         colors = ButtonDefaults.buttonColors(containerColor = NvhExport),
                         shape = RoundedCornerShape(50),
                         contentPadding = PaddingValues(2.dp),
                     ) {
-                        Text("Supprime points", color = NvhOnSurface, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text(
+                            stringResource(R.string.report_clear_points),
+                            color = NvhOnSurface,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                        )
                     }
 
                     Button(
                         onClick = { selectedValidatedOrder?.let { viewModel.removeValidatedOrder(it) } },
-                        modifier = Modifier.weight(1f).height(36.dp),
+                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
                         colors = ButtonDefaults.buttonColors(containerColor = NvhModeLive),
                         shape = RoundedCornerShape(50),
                         contentPadding = PaddingValues(2.dp),
                     ) {
-                        Text("Supprime ordre", color = NvhOnSurface, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text(
+                            stringResource(R.string.report_remove_order),
+                            color = NvhOnSurface,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                        )
                     }
                 }
             }
@@ -596,25 +622,25 @@ fun ReportModeScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedButton(
-                    onClick = { pdfExportLauncher.launch("Rapport_Emergences_NVHSpectro.pdf") },
-                    modifier = Modifier.weight(1f).height(36.dp),
+                    onClick = { pdfExportLauncher.launch(pdfFileName) },
+                    modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = NvhPrimary),
                     border = BorderStroke(1.dp, NvhPrimary),
                     shape = RoundedCornerShape(50),
                     contentPadding = PaddingValues(2.dp),
                 ) {
-                    Text("Export PDF", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(stringResource(R.string.report_export_pdf), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
 
                 OutlinedButton(
                     onClick = { onBack() },
-                    modifier = Modifier.weight(1f).height(36.dp),
+                    modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = NvhStatusBad),
                     border = BorderStroke(1.dp, NvhStatusBad),
                     shape = RoundedCornerShape(50),
                     contentPadding = PaddingValues(2.dp),
                 ) {
-                    Text("Quitte rapport", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(stringResource(R.string.report_quit), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
         }
@@ -631,7 +657,7 @@ fun SegmentedToggleButton(
 ) {
     val cornerRadius = 50.dp
     Surface(
-        modifier = modifier.height(36.dp),
+        modifier = modifier.height(REPORT_TOUCH_TARGET),
         shape = RoundedCornerShape(cornerRadius),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
@@ -714,3 +740,6 @@ fun AutoResizedText(
         },
     )
 }
+
+/** Minimum interactive size for the report-mode controls [§12, plan 4.4]. */
+private val REPORT_TOUCH_TARGET = 48.dp

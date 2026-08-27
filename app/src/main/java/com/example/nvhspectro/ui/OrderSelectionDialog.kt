@@ -13,10 +13,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.nvhspectro.R
 import com.example.nvhspectro.theme.NvhAccent
 import com.example.nvhspectro.theme.NvhCanvas
 import com.example.nvhspectro.theme.NvhOnSurface
@@ -58,7 +60,7 @@ fun OrderSelectionDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "⚙️ Sélection de l'Ordre Traqué",
+                        text = stringResource(R.string.order_dialog_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
@@ -66,7 +68,7 @@ fun OrderSelectionDialog(
                 }
 
                 Text(
-                    text = "Choisissez une harmonique standard ou saisissez une valeur personnalisée (ex: 22.5) :",
+                    text = stringResource(R.string.order_dialog_help),
                     fontSize = 12.sp,
                     color = Color.LightGray,
                 )
@@ -80,7 +82,12 @@ fun OrderSelectionDialog(
                 ) {
                     items(presets) { ord ->
                         val isSelected = (ord == selectedVal) && customOrderText.isEmpty()
-                        val ordName = if (ord % 1.0 == 0.0) "H${ord.toInt()}" else "H%.1f".format(ord)
+                        val ordName =
+                            if (ord % 1.0 == 0.0) {
+                                stringResource(R.string.order_integer, ord.toInt())
+                            } else {
+                                stringResource(R.string.order_fractional, ord)
+                            }
 
                         Surface(
                             shape = RoundedCornerShape(6.dp),
@@ -121,7 +128,7 @@ fun OrderSelectionDialog(
                             selectedVal = parsed
                         }
                     },
-                    label = { Text("Ordre Personnalisé (ex: 22.5)", fontSize = 11.sp) },
+                    label = { Text(stringResource(R.string.order_dialog_custom_label), fontSize = 11.sp) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors =
@@ -138,7 +145,7 @@ fun OrderSelectionDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Annuler", color = NvhOnSurfaceVariant)
+                        Text(stringResource(R.string.action_cancel), color = NvhOnSurfaceVariant)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
@@ -148,7 +155,11 @@ fun OrderSelectionDialog(
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = NvhAccent),
                     ) {
-                        Text("Appliquer (H%.1f)".format(selectedVal), color = NvhCanvas, fontWeight = FontWeight.Bold)
+                        Text(
+                            stringResource(R.string.order_dialog_apply, selectedVal),
+                            color = NvhCanvas,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                 }
             }

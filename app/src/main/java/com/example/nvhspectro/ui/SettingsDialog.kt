@@ -10,9 +10,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.nvhspectro.AudioConfig
+import com.example.nvhspectro.R
 import com.example.nvhspectro.data.AudioFilter
 import com.example.nvhspectro.data.FilterType
 import com.example.nvhspectro.theme.NvhAccent
@@ -68,10 +73,11 @@ fun SettingsDialog(
 
     val scrollState = rememberScrollState()
     var showFilterDialog by remember { mutableStateOf(false) }
+    val addFilterLabel = stringResource(R.string.cd_add_filter)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Paramètres NVH & DSP", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.settings_title), fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier =
@@ -99,7 +105,7 @@ fun SettingsDialog(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = "⚡ DÉTECTEUR DE BALISES CLIGNOTANTES",
+                                text = stringResource(R.string.settings_detector_title),
                                 color = NvhDetectorAccent,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
@@ -113,7 +119,7 @@ fun SettingsDialog(
                         if (isDetectorEnabled) {
                             Column {
                                 Text(
-                                    text = "Seuil d'émergence NVH : ${String.format("%.1f", emergenceThresholdDb)} dB",
+                                    text = stringResource(R.string.settings_emergence_threshold, emergenceThresholdDb),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = NvhOnSurface,
                                 )
@@ -126,7 +132,7 @@ fun SettingsDialog(
 
                             Column {
                                 Text(
-                                    text = "Porte d'Amplitude Absolue : ${magnitudeGateDbFS.toInt()} dBFS",
+                                    text = stringResource(R.string.settings_magnitude_gate, magnitudeGateDbFS.toInt()),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = NvhOnSurface,
                                 )
@@ -144,16 +150,13 @@ fun SettingsDialog(
                 if (isWavAnalyzerMode) {
                     Column {
                         Text(
-                            text = "Temps d'affichage (Auto WAV) : ${String.format("%.1f", wavDurationSec)} s",
+                            text = stringResource(R.string.settings_time_window_wav, wavDurationSec),
                             style = MaterialTheme.typography.bodyMedium,
                             color = NvhModeWavAccent,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = "💡 En mode Analyseur WAV, la durée d'affichage est automatique et calée sur la durée réelle de l'enregistrement audio (${String.format(
-                                "%.1f",
-                                wavDurationSec,
-                            )} s).",
+                            text = stringResource(R.string.settings_time_window_wav_help, wavDurationSec),
                             fontSize = 11.sp,
                             color = NvhOnSurfaceVariant,
                         )
@@ -161,7 +164,7 @@ fun SettingsDialog(
                 } else {
                     Column {
                         Text(
-                            "Temps d'affichage (Direct) : ${String.format("%.1f", timeWindowSec)} s",
+                            stringResource(R.string.settings_time_window_live, timeWindowSec),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Slider(
@@ -178,7 +181,7 @@ fun SettingsDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Min : ${minDb.toInt()} dBFS", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.settings_min_db, minDb.toInt()), style = MaterialTheme.typography.bodySmall)
                         Slider(
                             value = minDb.toFloat(),
                             onValueChange = { onMinDbChange(it.toDouble()) },
@@ -186,7 +189,7 @@ fun SettingsDialog(
                         )
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Max : ${maxDb.toInt()} dBFS", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.settings_max_db, maxDb.toInt()), style = MaterialTheme.typography.bodySmall)
                         Slider(
                             value = maxDb.toFloat(),
                             onValueChange = { onMaxDbChange(it.toDouble()) },
@@ -199,21 +202,25 @@ fun SettingsDialog(
                 if (isWavAnalyzerMode) {
                     Column {
                         Text(
-                            text = "Résolution FFT (Auto Mode Vidéo/WAV) : 2048 pts",
+                            text = stringResource(R.string.settings_fft_auto, AudioConfig.WAV_FFT_SIZE),
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.bodyMedium,
                             color = NvhTheoretical,
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "💡 En mode Vidéo/Analyseur, la taille FFT est automatiquement fixée à 2048 points pour offrir la meilleure précision acoustique NVH (~10,7 Hz) tout en garantissant une réactivité instantanée.",
+                            text = stringResource(R.string.settings_fft_auto_help, AudioConfig.WAV_FFT_SIZE),
                             fontSize = 11.sp,
                             color = NvhOnSurfaceVariant,
                         )
                     }
                 } else {
                     Column {
-                        Text("Résolution FFT (Taille N)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            stringResource(R.string.settings_fft_title),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Row(
@@ -226,7 +233,7 @@ fun SettingsDialog(
                                         selected = (fftSize == size),
                                         onClick = { onFftSizeChange(size) },
                                     )
-                                    Text("$size pts", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Text(stringResource(R.string.settings_fft_points, size), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -241,7 +248,7 @@ fun SettingsDialog(
                                         selected = (fftSize == size),
                                         onClick = { onFftSizeChange(size) },
                                     )
-                                    Text("$size pts", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Text(stringResource(R.string.settings_fft_points, size), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -262,18 +269,18 @@ fun SettingsDialog(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
-                            text = "INDICATEURS SIGNAL (N = $fftSize)",
+                            text = stringResource(R.string.settings_dsp_title, fftSize),
                             color = NvhAccent,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp)
 
-                        DspInfoRow("Recouvrement (Overlap)", "50 %")
-                        DspInfoRow("Incrément (Pas Δt)", String.format("%.1f ms", dtStepMs))
-                        DspInfoRow("Bloc Temporel (1/Δf)", String.format("%.1f ms", tBlockMs))
-                        DspInfoRow("Cadence d'affichage", String.format("%.1f trames/s", fps))
-                        DspInfoRow("Résolution Fréq (Δf)", String.format("%.1f Hz", dfHz))
+                        DspInfoRow(stringResource(R.string.settings_dsp_overlap), stringResource(R.string.settings_dsp_overlap_value))
+                        DspInfoRow(stringResource(R.string.settings_dsp_step), stringResource(R.string.settings_value_ms, dtStepMs))
+                        DspInfoRow(stringResource(R.string.settings_dsp_block), stringResource(R.string.settings_value_ms, tBlockMs))
+                        DspInfoRow(stringResource(R.string.settings_dsp_fps), stringResource(R.string.settings_value_fps, fps))
+                        DspInfoRow(stringResource(R.string.settings_dsp_df), stringResource(R.string.settings_value_hz, dfHz))
                     }
                 }
 
@@ -287,7 +294,7 @@ fun SettingsDialog(
                         colors = CardDefaults.cardColors(containerColor = NvhSectionContainer),
                         shape = RoundedCornerShape(8.dp),
                     ) {
-                    Column(
+                        Column(
                             modifier = Modifier.padding(10.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
@@ -297,7 +304,7 @@ fun SettingsDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
-                                    text = "🎛️ FILTRES AUDIO DSP",
+                                    text = stringResource(R.string.settings_filters_title),
                                     color = NvhFilterAccent,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp,
@@ -307,7 +314,10 @@ fun SettingsDialog(
                                     enabled = activeFilters.size < 3,
                                     modifier =
                                         Modifier
-                                            .size(28.dp)
+                                            // [§12, plan 4.4] 48 dp target with a spoken label:
+                                            // "+" alone tells TalkBack nothing.
+                                            .size(DIALOG_TOUCH_TARGET)
+                                            .semantics { contentDescription = addFilterLabel }
                                             .background(
                                                 if (activeFilters.size <
                                                     3
@@ -325,7 +335,7 @@ fun SettingsDialog(
 
                             if (activeFilters.isEmpty()) {
                                 Text(
-                                    "Aucun filtre actif. Le signal brut est analysé.",
+                                    stringResource(R.string.settings_filters_empty),
                                     color = NvhOnSurfaceVariant,
                                     fontSize = 11.sp,
                                     style = MaterialTheme.typography.bodySmall,
@@ -334,6 +344,7 @@ fun SettingsDialog(
                                 // Liste des filtres sous forme de chips
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     activeFilters.forEach { filter ->
+                                        val removeLabel = stringResource(R.string.cd_remove_filter, filter.type.getDisplayName())
                                         Row(
                                             modifier =
                                                 Modifier
@@ -353,16 +364,35 @@ fun SettingsDialog(
                                                 )
                                                 val freqText =
                                                     when (filter.type) {
-                                                        FilterType.LOW_PASS -> "Coupe au-dessus de ${filter.maxFreq} Hz"
-                                                        FilterType.HIGH_PASS -> "Coupe en-dessous de ${filter.minFreq} Hz"
-                                                        FilterType.BAND_PASS -> "Garde [${filter.minFreq} - ${filter.maxFreq} Hz]"
-                                                        FilterType.BAND_STOP -> "Coupe [${filter.minFreq} - ${filter.maxFreq} Hz]"
+                                                        FilterType.LOW_PASS -> stringResource(R.string.filter_low_pass_desc, filter.maxFreq)
+                                                        FilterType.HIGH_PASS ->
+                                                            stringResource(
+                                                                R.string.filter_high_pass_desc,
+                                                                filter.minFreq,
+                                                            )
+                                                        FilterType.BAND_PASS ->
+                                                            stringResource(
+                                                                R.string.filter_band_pass_desc,
+                                                                filter.minFreq,
+                                                                filter.maxFreq,
+                                                            )
+                                                        FilterType.BAND_STOP ->
+                                                            stringResource(
+                                                                R.string.filter_band_stop_desc,
+                                                                filter.minFreq,
+                                                                filter.maxFreq,
+                                                            )
                                                     }
                                                 Text(freqText, color = NvhOnSurfaceVariant, fontSize = 10.sp)
                                             }
                                             IconButton(
                                                 onClick = { onRemoveFilter(filter.id) },
-                                                modifier = Modifier.size(24.dp),
+                                                modifier =
+                                                    Modifier
+                                                        .size(DIALOG_TOUCH_TARGET)
+                                                        .semantics {
+                                                            contentDescription = removeLabel
+                                                        },
                                             ) {
                                                 Text("X", color = NvhOnSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                             }
@@ -380,7 +410,7 @@ fun SettingsDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Fréq Min : $minFreq Hz", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.settings_freq_min, minFreq), style = MaterialTheme.typography.bodySmall)
                         Slider(
                             value = minFreq.toFloat(),
                             onValueChange = { onMinFreqChange(it.toInt()) },
@@ -388,7 +418,7 @@ fun SettingsDialog(
                         )
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Fréq Max : $maxFreq Hz", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.settings_freq_max, maxFreq), style = MaterialTheme.typography.bodySmall)
                         Slider(
                             value = maxFreq.toFloat(),
                             onValueChange = { onMaxFreqChange(it.toInt()) },
@@ -400,7 +430,7 @@ fun SettingsDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Valider", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.action_validate), fontWeight = FontWeight.Bold)
             }
         },
     )
@@ -453,11 +483,11 @@ fun AddFilterDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Ajouter un Filtre DSP", fontWeight = FontWeight.Bold, color = NvhOnSurface) },
+        title = { Text(stringResource(R.string.filter_dialog_title), fontWeight = FontWeight.Bold, color = NvhOnSurface) },
         containerColor = NvhSurfaceVariant,
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Type de filtre :", color = NvhOnSurfaceVariant, fontSize = 12.sp)
+                Text(stringResource(R.string.filter_dialog_type), color = NvhOnSurfaceVariant, fontSize = 12.sp)
 
                 // Dropdown or Radio buttons for type
                 Column {
@@ -477,7 +507,7 @@ fun AddFilterDialog(
                     OutlinedTextField(
                         value = minFreqText,
                         onValueChange = { minFreqText = it },
-                        label = { Text("Fréquence Min (Hz)") },
+                        label = { Text(stringResource(R.string.filter_dialog_min)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         colors =
@@ -493,7 +523,7 @@ fun AddFilterDialog(
                     OutlinedTextField(
                         value = maxFreqText,
                         onValueChange = { maxFreqText = it },
-                        label = { Text("Fréquence Max (Hz)") },
+                        label = { Text(stringResource(R.string.filter_dialog_max)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         colors =
@@ -526,13 +556,16 @@ fun AddFilterDialog(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = NvhFilter),
             ) {
-                Text("Ajouter", fontWeight = FontWeight.Bold, color = NvhOnSurface)
+                Text(stringResource(R.string.action_add), fontWeight = FontWeight.Bold, color = NvhOnSurface)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Annuler", color = NvhOnSurfaceVariant)
+                Text(stringResource(R.string.action_cancel), color = NvhOnSurfaceVariant)
             }
         },
     )
 }
+
+/** 48 dp minimum interactive size for the settings controls [§12, plan 4.4]. */
+private val DIALOG_TOUCH_TARGET = 48.dp

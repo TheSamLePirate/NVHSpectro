@@ -17,6 +17,7 @@
     <ID>CyclomaticComplexMethod:SmartPathTracker.kt$SmartPathTracker$fun compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</ID>
     <ID>CyclomaticComplexMethod:SpectrogramColormap.kt$@Composable fun SpectrogramCanvas( history: List&lt;FloatArray&gt;, absHistory: List&lt;FloatArray&gt; = emptyList(), ttnrHistory: List&lt;FloatArray&gt; = emptyList(), modifier: Modifier = Modifier, minDb: Double = -120.0, maxDb: Double = 0.0, minFreq: Int = 0, maxFreq: Int = 10000, fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, sampleRate: Int, historySize: Int = 150, displayMode: DisplayMode = DisplayMode.ABSOLUTE, isDetectorEnabled: Boolean = true, emergenceThresholdDb: Double = 2.5, magnitudeGateDbFS: Double = -90.0, trackedHarmonicTags: List&lt;TrackedHarmonicTag&gt; = emptyList(), kinematicsConfig: KinematicsConfig = KinematicsConfig(), isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, showH1Overlay: Boolean = false, projectedOrder: Double = 1.0, telemetryHistory: List&lt;TelemetryData&gt; = emptyList(), activeFilters: List&lt;AudioFilter&gt; = emptyList(), isReportModeActive: Boolean = false, isDrawingMode: Boolean = false, currentUserPoints: List&lt;ManualOrderAnchor&gt; = emptyList(), currentSmartPath: List&lt;ManualOrderAnchor&gt; = emptyList(), manualTrackedOrders: List&lt;SmartTrackedOrder&gt; = emptyList(), selectedManualOrder: SmartTrackedOrder? = null, isBrillanceModeEnabled: Boolean = false, onAddManualPoint: (Int, Int) -&gt; Unit = { _, _ -&gt; }, )</ID>
     <ID>CyclomaticComplexMethod:TelemetryGraph.kt$@Composable fun TelemetryGraph( history: List&lt;TelemetryData&gt;, metric: TelemetryMetric, timeWindowSec: Double, historySize: Int = 150, ttnrSpectrum: FloatArray = FloatArray(0), minFreq: Int = 0, maxFreq: Int = 10000, sampleRate: Int, isKinematicsEnabled: Boolean = false, selectedOrderName: String = "H18", isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, modifier: Modifier = Modifier, )</ID>
+    <ID>CyclomaticComplexMethod:WavReadMessages.kt$fun WavReadError.messageIn( context: Context, detail: String, ): String</ID>
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$a0_t: Double</ID>
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$a1_t: Double</ID>
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$a2_t: Double</ID>
@@ -24,31 +25,17 @@
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$b1_t: Double</ID>
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$b2_t: Double</ID>
     <ID>ImplicitDefaultLocale:AnalyzerViewModel.kt$AnalyzerViewModel$String.format("%.1f", durationSec * 0.002)</ID>
-    <ID>ImplicitDefaultLocale:ExportDialog.kt$String.format("%.1f", telemetry.speedKmh)</ID>
-    <ID>ImplicitDefaultLocale:MainScreen.kt$String.format("%.1f dBFS", throttledOrderDbFS)</ID>
-    <ID>ImplicitDefaultLocale:MainScreen.kt$String.format("%.2f g", telemetry.accelerationG)</ID>
-    <ID>ImplicitDefaultLocale:MainScreen.kt$String.format("%02d:%02d", recordingElapsedSec / 60, recordingElapsedSec % 60)</ID>
     <ID>ImplicitDefaultLocale:PngExporter.kt$PngExporter$String.format("%.1f %s", maxV, unit)</ID>
     <ID>ImplicitDefaultLocale:PngExporter.kt$PngExporter$String.format("%.1f %s", minV, unit)</ID>
     <ID>ImplicitDefaultLocale:PngExporter.kt$PngExporter$String.format("%.1f", telemetry.speedKmh)</ID>
     <ID>ImplicitDefaultLocale:PngExporter.kt$PngExporter$String.format("%.1fs", tSec)</ID>
     <ID>ImplicitDefaultLocale:PngExporter.kt$PngExporter$String.format("%.2f", telemetry.accelerationG)</ID>
-    <ID>ImplicitDefaultLocale:SettingsDialog.kt$String.format( "%.1f", wavDurationSec, )</ID>
-    <ID>ImplicitDefaultLocale:SettingsDialog.kt$String.format("%.1f Hz", dfHz)</ID>
-    <ID>ImplicitDefaultLocale:SettingsDialog.kt$String.format("%.1f ms", dtStepMs)</ID>
-    <ID>ImplicitDefaultLocale:SettingsDialog.kt$String.format("%.1f ms", tBlockMs)</ID>
-    <ID>ImplicitDefaultLocale:SettingsDialog.kt$String.format("%.1f trames/s", fps)</ID>
-    <ID>ImplicitDefaultLocale:SettingsDialog.kt$String.format("%.1f", emergenceThresholdDb)</ID>
-    <ID>ImplicitDefaultLocale:SettingsDialog.kt$String.format("%.1f", timeWindowSec)</ID>
-    <ID>ImplicitDefaultLocale:SettingsDialog.kt$String.format("%.1f", wavDurationSec)</ID>
     <ID>ImplicitDefaultLocale:SpectrogramColormap.kt$String.format("%.1fs", tSec)</ID>
     <ID>ImplicitDefaultLocale:TelemetryGraph.kt$String.format("%.1f %s", maxVal, metric.unit)</ID>
     <ID>ImplicitDefaultLocale:TelemetryGraph.kt$String.format("%.1f %s", minVal, metric.unit)</ID>
-    <ID>ImplicitDefaultLocale:TelemetryGraph.kt$String.format("%.1f", maxEmergence)</ID>
-    <ID>ImplicitDefaultLocale:WavPlayerBar.kt$String.format("%02d:%02d", currentSec / 60, currentSec % 60)</ID>
-    <ID>ImplicitDefaultLocale:WavPlayerBar.kt$String.format("%02d:%02d", totalSec / 60, totalSec % 60)</ID>
     <ID>InstanceOfCheckForException:RecordingStore.kt$RecordingStore$e is IOException</ID>
     <ID>LongMethod:BiQuadFilter.kt$BiQuadFilter$private fun calculateCoefficients()</ID>
+    <ID>LongMethod:EmergenceReportDialog.kt$@Composable fun EmergenceReportRow(entry: EmergenceReportEntry)</ID>
     <ID>LongMethod:EmergenceReportDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EmergenceReportDialog( entries: List&lt;EmergenceReportEntry&gt;, kinematicsConfig: KinematicsConfig, onDismiss: () -&gt; Unit, onClearReport: () -&gt; Unit, )</ID>
     <ID>LongMethod:FFTProcessor.kt$FFTProcessor$fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</ID>
     <ID>LongMethod:InfoDialog.kt$@Composable fun InfoDialog(onDismiss: () -&gt; Unit)</ID>
@@ -60,6 +47,7 @@
     <ID>LongMethod:Permissions.kt$@Composable private fun MicrophoneRationaleScreen( permanentlyDenied: Boolean, onRequest: () -&gt; Unit, onOpenSettings: () -&gt; Unit, onContinueWithoutMicrophone: () -&gt; Unit, )</ID>
     <ID>LongMethod:PngExporter.kt$PngExporter$private fun render(application: Application, input: Input): Bitmap</ID>
     <ID>LongMethod:ReportModeScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ReportModeScreen( viewModel: ReportViewModel, onBack: () -&gt; Unit, )</ID>
+    <ID>LongMethod:SaveRecordingDialog.kt$@Composable fun SaveRecordingDialog( durationSec: Int, onSave: (String) -&gt; Unit, onDismiss: () -&gt; Unit, )</ID>
     <ID>LongMethod:SettingsDialog.kt$@Composable fun SettingsDialog( onDismiss: () -&gt; Unit, sampleRateHz: Int, minDb: Double, maxDb: Double, onMinDbChange: (Double) -&gt; Unit, onMaxDbChange: (Double) -&gt; Unit, fftSize: Int, onFftSizeChange: (Int) -&gt; Unit, minFreq: Int = 0, onMinFreqChange: (Int) -&gt; Unit = {}, maxFreq: Int, onMaxFreqChange: (Int) -&gt; Unit = {}, timeWindowSec: Double, onTimeWindowChange: (Double) -&gt; Unit, isDetectorEnabled: Boolean = true, onDetectorEnabledChange: (Boolean) -&gt; Unit = {}, emergenceThresholdDb: Double = 2.5, onEmergenceThresholdChange: (Double) -&gt; Unit = {}, magnitudeGateDbFS: Double = -90.0, onMagnitudeGateChange: (Double) -&gt; Unit = {}, isWavAnalyzerMode: Boolean = false, wavDurationSec: Double = 0.0, activeFilters: List&lt;AudioFilter&gt; = emptyList(), onAddFilter: (AudioFilter) -&gt; Unit = {}, onRemoveFilter: (String) -&gt; Unit = {}, )</ID>
     <ID>LongMethod:SettingsDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AddFilterDialog( existingCount: Int, onDismiss: () -&gt; Unit, onAddFilter: (AudioFilter) -&gt; Unit, )</ID>
     <ID>LongMethod:SmartPathTracker.kt$SmartPathTracker$fun compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</ID>
@@ -78,7 +66,7 @@
     <ID>LongParameterList:ReportStamp.kt$ReportStamp.Companion$( appVersion: String, generatedAt: Date, sourceMode: AudioSourceMode, provenance: AnalysisProvenance, sampleRateHz: Int, fftSize: Int, )</ID>
     <ID>LongParameterList:SpectrogramImageProducer.kt$SpectrogramImageProducer$( history: List&lt;FloatArray&gt;, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean, maskBelowBin: Int = 0 )</ID>
     <ID>LongParameterList:SpectrogramImageProducer.kt$SpectrogramImageProducer$( latestFrame: FloatArray, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean, maskBelowBin: Int = 0 )</ID>
-    <ID>LongParameterList:WavRoundTripTest.kt$WavRoundTripTest$( sampleRate: Int, channels: Int, bits: Int, pcmBytes: ByteArray, extraChunkBeforeData: Boolean = false, audioFormat: Int = 1 )</ID>
+    <ID>LongParameterList:WavRoundTripTest.kt$WavRoundTripTest$( sampleRate: Int, channels: Int, bits: Int, pcmBytes: ByteArray, extraChunkBeforeData: Boolean = false, audioFormat: Int = 1, )</ID>
     <ID>LoopWithTooManyJumpStatements:AudioRepository.kt$AudioRepository$while</ID>
     <ID>LoopWithTooManyJumpStatements:FFTProcessor.kt$FFTProcessor$for</ID>
     <ID>LoopWithTooManyJumpStatements:OrderTrackingEngine.kt$OrderTrackingEngine$for</ID>
@@ -90,7 +78,6 @@
     <ID>MagicNumber:AnalyzerViewModel.kt$AnalyzerViewModel$60</ID>
     <ID>MagicNumber:AnalyzerViewModel.kt$AnalyzerViewModel$60.0</ID>
     <ID>MagicNumber:BiQuadFilter.kt$BiQuadFilter$2.0</ID>
-    <ID>MagicNumber:DiagnosticsSection.kt$1024</ID>
     <ID>MagicNumber:EmergenceReportDialog.kt$0.85f</ID>
     <ID>MagicNumber:EmergenceReportDialog.kt$0.9f</ID>
     <ID>MagicNumber:EmergenceReportDialog.kt$1.1f</ID>
@@ -398,20 +385,17 @@
     <ID>MagicNumber:WavPlaybackCoordinator.kt$WavPlaybackCoordinator$1000.0</ID>
     <ID>MagicNumber:WavPlaybackCoordinator.kt$WavPlaybackCoordinator$1000L</ID>
     <ID>MagicNumber:WavPlaybackCoordinator.kt$WavPlaybackCoordinator$15L</ID>
-    <ID>MagicNumber:WavPlayerBar.kt$10</ID>
     <ID>MagicNumber:WavPlayerBar.kt$1000L</ID>
     <ID>MagicNumber:WavPlayerBar.kt$60</ID>
     <ID>MatchingDeclarationName:Permissions.kt$NvhPermissions</ID>
     <ID>MatchingDeclarationName:SpectrogramColormap.kt$EmergencePeak</ID>
     <ID>MatchingDeclarationName:TelemetryGraph.kt$TelemetryMetric</ID>
     <ID>MaxLineLength:MainScreen.kt$containerColor = if (kinematicsConfig.isEnabled) NvhActiveContainer else MaterialTheme.colorScheme.primary</ID>
-    <ID>MaxLineLength:MainScreen.kt$text = "Pas de données WAV chargées\nCliquez sur '📂 Charger WAV' pour ouvrir un fichier (limité à 5 min max)."</ID>
     <ID>MaxLineLength:MainScreen.kt$val analysisSampleRate = if (isWavMode) (loadedWavData?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ) else AudioConfig.LIVE_SAMPLE_RATE_HZ</ID>
     <ID>MaxLineLength:OrderTrackingEngineTest.kt$OrderTrackingEngineTest$tags = engine.step(frame(ttnrDb), nowMs = i * 23L, holdMs = 3000L, targetOrders = targetOrders, activeTags = tags, report = report)</ID>
     <ID>MaxLineLength:PngExporter.kt$PngExporter$drawStackedGraph("Accélération (g)", "g", android.graphics.Color.parseColor("#FF9100"), input.telemetryHistory.map { it.accelerationG.toDouble() })</ID>
     <ID>MaxLineLength:PngExporter.kt$PngExporter$drawStackedGraph("Vitesse (km/h)", "km/h", android.graphics.Color.parseColor("#00E676"), input.telemetryHistory.map { it.speedKmh.toDouble() })</ID>
     <ID>MaxLineLength:ReportModeScreen.kt$val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface</ID>
-    <ID>MaxLineLength:SettingsDialog.kt$text = "💡 En mode Vidéo/Analyseur, la taille FFT est automatiquement fixée à 2048 points pour offrir la meilleure précision acoustique NVH (~10,7 Hz) tout en garantissant une réactivité instantanée."</ID>
     <ID>MaxLineLength:SmartPathTracker.kt$SmartPathTracker$rawPath.add(ManualOrderAnchor(globalFrame, userPoint.binIndex, isUserPlaced = true, exactBinF = userPoint.binIndex.toFloat()))</ID>
     <ID>MaxLineLength:SpectrogramColormap.kt$val visibleMaxTimeSec = if (isReportModeActive) ((-pan.x + plotWidth) / (plotWidth * zoom)) * totalTimeSec else (if (isWavAnalyzerMode) totalTimeSec else 0.0)</ID>
     <ID>MaxLineLength:SpectrogramColormap.kt$val visibleMinTimeSec = if (isReportModeActive) (-pan.x / (plotWidth * zoom)) * totalTimeSec else (if (isWavAnalyzerMode) 0.0 else -totalTimeSec)</ID>
@@ -441,7 +425,7 @@
     <ID>SwallowedException:RecordingStore.kt$RecordingStore$e: Exception</ID>
     <ID>SwallowedException:SettingsStore.kt$SettingsStore$e: Exception</ID>
     <ID>SwallowedException:TelemetryCodec.kt$TelemetryCodec$e: Exception</ID>
-    <ID>ThrowsCount:RecordingStore.kt$RecordingStore$fun insertAndWrite(displayName: String, mime: String, write: (java.io.OutputStream) -&gt; Unit): Uri</ID>
+    <ID>ThrowsCount:RecordingStore.kt$RecordingStore$fun insertAndWrite( displayName: String, mime: String, write: (java.io.OutputStream) -&gt; Unit, ): Uri</ID>
     <ID>TooGenericExceptionCaught:AudioRepository.kt$AudioRepository$e: Exception</ID>
     <ID>TooGenericExceptionCaught:FieldLocationLogger.kt$FieldLocationLogger$e: Exception</ID>
     <ID>TooGenericExceptionCaught:LiveViewModel.kt$LiveViewModel$e: Exception</ID>
@@ -465,6 +449,7 @@
     <ID>UnusedPrivateProperty:SpectrogramColormap.kt$val beaconBadgeBgPaint = remember { Paint().apply { color = AndroidColor.parseColor("#EE1A1A2E") // Sombre translucide style = Paint.Style.FILL isAntiAlias = true } }</ID>
     <ID>UnusedPrivateProperty:SpectrogramColormap.kt$val beaconBadgeTextPaint = remember(dimens) { Paint().apply { textSize = dimens.tagTextSize typeface = Typeface.DEFAULT_BOLD isAntiAlias = true } }</ID>
     <ID>UnusedPrivateProperty:SpectrogramColormap.kt$val boxHeight = dimens.tagTextSize * 1.3f + paddingY * 2</ID>
+    <ID>UnusedPrivateProperty:SpectrogramColormap.kt$val context = LocalContext.current</ID>
     <ID>VariableNaming:BiQuadFilter.kt$BiQuadFilter$val a0_temp = 1.0 + alpha</ID>
     <ID>VariableNaming:BiQuadFilter.kt$BiQuadFilter$val a1_temp = -2.0 * cosW0</ID>
     <ID>VariableNaming:BiQuadFilter.kt$BiQuadFilter$val a2_temp = 1.0 - alpha</ID>

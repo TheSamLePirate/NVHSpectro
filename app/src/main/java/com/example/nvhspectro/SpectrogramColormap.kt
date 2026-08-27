@@ -22,6 +22,10 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.example.nvhspectro.data.KinematicsConfig
@@ -130,6 +134,7 @@ fun SpectrogramCanvas(
     // for this device's density and font scale — never from raw pixel literals, and never
     // duplicated between the touch handlers and the draw pass.
     val dimens = rememberPlotDimens()
+    val context = LocalContext.current
 
     if (history.isEmpty()) {
         Canvas(modifier = modifier.fillMaxSize()) {}
@@ -464,10 +469,44 @@ fun SpectrogramCanvas(
             }
         }
 
+    // [§12, plan 4.4] The canvas is the app's central measurement surface and exposed NO
+    // semantics at all — a screen-reader user got silence where the numbers are. It cannot
+    // speak a spectrogram, but it can speak what an operator would read off it: the strongest
+    // line right now, and the axis ranges.
+    val peak =
+        remember(history, minBin, maxBin, totalBinCount) {
+            val latest = history.lastOrNull()
+            if (latest == null || totalBinCount <= 0) {
+                null
+            } else {
+                var bestBin = minBin
+                var bestVal = Double.NEGATIVE_INFINITY
+                for (b in minBin until maxBin) {
+                    val v = latest.getOrNull(b)?.toDouble() ?: continue
+                    if (v > bestVal) {
+                        bestVal = v
+                        bestBin = b
+                    }
+                }
+                ((bestBin.toLong() * nyquistFreq) / totalBinCount).toInt() to bestVal
+            }
+        }
+    // Draw-scope labels: the raw patterns are read in composition; only String.format runs
+    // per frame [lint LocalContextGetResourceValueCall].
+    val tagLabelFormat = stringResource(R.string.tag_order_with_level)
+    val timeAxisTitle = stringResource(R.string.axis_time)
+    val peakSummary =
+        if (peak == null) {
+            stringResource(R.string.cd_spectrogram_empty)
+        } else {
+            stringResource(R.string.cd_spectrogram, actualMinFreq, actualMaxFreq, peak.first, peak.second)
+        }
+
     Canvas(
         modifier =
             modifier
                 .fillMaxSize()
+                .semantics { contentDescription = peakSummary }
                 .pointerInput(isReportModeActive, isDrawingMode, bitmapWidth, bitmapHeight, dimens) {
                     if (isReportModeActive && isDrawingMode) {
                         detectTapGestures { offset ->
@@ -1083,7 +1122,7 @@ fun SpectrogramCanvas(
                     tagTextPaint.color = primaryColor
                     tagTextPaint.alpha = alphaInt
 
-                    val label = "${tag.orderName} (+%.1fdB)".format(tag.ttnrDb)
+                    val label = String.format(java.util.Locale.getDefault(), tagLabelFormat, tag.orderName, tag.ttnrDb)
                     val textWidth = tagTextPaint.measureText(label)
                     val padH = dimens.tagTextSize * 0.5f
                     val badgeH = dimens.tagTextSize * 1.9f
@@ -1157,7 +1196,7 @@ fun SpectrogramCanvas(
             }
 
             // Titre Axe X
-            val xTitle = "Temps (s)"
+            val xTitle = timeAxisTitle
             val xTitleWidth = textPaint.measureText(xTitle)
             native.drawText(xTitle, marginLeft + (plotWidth - xTitleWidth) / 2f, h - dimens.labelTextSize * 0.4f, textPaint)
 

@@ -36,12 +36,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.example.nvhspectro.R
 import com.example.nvhspectro.theme.NvhOnSurface
 import com.example.nvhspectro.theme.NvhOnSurfaceVariant
 import com.example.nvhspectro.theme.NvhSectionContainer
@@ -206,16 +208,13 @@ private fun MicrophoneRationaleScreen(
             ) {
                 Text("🎙️", fontSize = 40.sp)
                 Text(
-                    text = "Accès au microphone",
+                    text = stringResource(R.string.perm_mic_title),
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
                     color = NvhOnSurface,
                 )
                 Text(
-                    text =
-                        "NVH Spectro mesure le bruit capté par le microphone : sans cette " +
-                            "autorisation, l'analyse en direct est impossible. Aucun son ne " +
-                            "quitte l'appareil — l'application n'a pas d'accès réseau.",
+                    text = stringResource(R.string.perm_mic_rationale),
                     fontSize = 13.sp,
                     color = NvhOnSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -223,10 +222,7 @@ private fun MicrophoneRationaleScreen(
                 )
                 if (permanentlyDenied) {
                     Text(
-                        text =
-                            "⚠️ L'autorisation a été refusée définitivement. Elle ne peut " +
-                                "plus être demandée depuis l'application : activez « Micro » " +
-                                "dans les réglages Android.",
+                        text = stringResource(R.string.perm_mic_permanently_denied),
                         fontSize = 12.sp,
                         color = NvhStatusWarn,
                         textAlign = TextAlign.Center,
@@ -238,22 +234,18 @@ private fun MicrophoneRationaleScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (permanentlyDenied) {
-                        Button(
-                            onClick = onOpenSettings,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(contentColor = NvhOnSurface),
-                        ) {
-                            Text("Ouvrir les réglages", fontWeight = FontWeight.Bold)
-                        }
-                    } else {
-                        Button(
-                            onClick = onRequest,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(contentColor = NvhOnSurface),
-                        ) {
-                            Text("Autoriser", fontWeight = FontWeight.Bold)
-                        }
+                    Button(
+                        onClick = if (permanentlyDenied) onOpenSettings else onRequest,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(contentColor = NvhOnSurface),
+                    ) {
+                        Text(
+                            text =
+                                stringResource(
+                                    if (permanentlyDenied) R.string.perm_open_settings else R.string.perm_allow,
+                                ),
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                 }
 
@@ -261,13 +253,10 @@ private fun MicrophoneRationaleScreen(
                     onClick = onContinueWithoutMicrophone,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Continuer sans micro (analyse de fichiers)")
+                    Text(stringResource(R.string.perm_continue_without_mic))
                 }
                 Text(
-                    text =
-                        "En mode analyse de fichiers, vous pouvez ouvrir un enregistrement " +
-                            "WAV ou une vidéo déjà réalisés ; seule la mesure en direct est " +
-                            "indisponible.",
+                    text = stringResource(R.string.perm_analyzer_only_explanation),
                     fontSize = 11.sp,
                     color = NvhOnSurfaceVariant,
                     textAlign = TextAlign.Center,

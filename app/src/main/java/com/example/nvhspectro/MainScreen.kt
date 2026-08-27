@@ -16,6 +16,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
@@ -143,6 +146,8 @@ fun AppScreen(
     val processingEstimateMessage by analyzerVm.processingEstimateMessage.collectAsStateWithLifecycle()
 
     val context = androidx.compose.ui.platform.LocalContext.current
+    // Hoisted out of the click lambda: resources are read in composition, not in a callback.
+    val liveDeniedMessage = stringResource(R.string.live_unavailable_no_mic)
     val wavPickerLauncher =
         rememberLauncherForActivityResult(
             ActivityResultContracts.GetContent(),
@@ -193,11 +198,11 @@ fun AppScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("NVH Spectro", fontWeight = FontWeight.Bold) },
+                    title = { Text(stringResource(R.string.app_title), fontWeight = FontWeight.Bold) },
                     actions = {
                         Image(
                             painter = painterResource(id = R.drawable.logo_vibratec),
-                            contentDescription = "Logo Vibratec",
+                            contentDescription = stringResource(R.string.cd_logo_vibratec),
                             modifier =
                                 Modifier
                                     .height(28.dp)
@@ -205,10 +210,14 @@ fun AppScreen(
                             contentScale = ContentScale.Fit,
                         )
                         TextButton(onClick = { showInfoDialog = true }) {
-                            Text("Informations", fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(
+                                stringResource(R.string.action_info),
+                                fontStyle = FontStyle.Italic,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
                         }
                         TextButton(onClick = { showSettingsDialog = true }) {
-                            Text("Réglages", color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(stringResource(R.string.action_settings), color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                     },
                     colors =
@@ -241,7 +250,10 @@ fun AppScreen(
                                 ),
                         ) {
                             Text(
-                                text = if (kinematicsConfig.isEnabled) "⚙️ GMPe (Actif)" else "⚙️ GMPe",
+                                text =
+                                    stringResource(
+                                        if (kinematicsConfig.isEnabled) R.string.gmpe_button_active else R.string.gmpe_button,
+                                    ),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
@@ -263,7 +275,7 @@ fun AppScreen(
                                 ),
                         ) {
                             Text(
-                                text = if (isReportModeActive) "Quitter Rapport" else "Rapport Manuel",
+                                text = stringResource(if (isReportModeActive) R.string.report_mode_exit else R.string.report_mode_enter),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
@@ -287,7 +299,7 @@ fun AppScreen(
                                         modifier =
                                             Modifier
                                                 .width(105.dp)
-                                                .height(34.dp),
+                                                .height(MIN_TOUCH_TARGET),
                                         contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                                         colors =
                                             ButtonDefaults.buttonColors(
@@ -296,7 +308,7 @@ fun AppScreen(
                                             ),
                                     ) {
                                         Text(
-                                            text = "📸 Exporter",
+                                            text = stringResource(R.string.export_frozen),
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             maxLines = 1,
@@ -311,7 +323,7 @@ fun AppScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .height(38.dp),
+                                        .height(MIN_TOUCH_TARGET),
                                 contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                                 colors =
                                     ButtonDefaults.buttonColors(
@@ -320,7 +332,7 @@ fun AppScreen(
                                     ),
                             ) {
                                 Text(
-                                    text = if (isFrozen) "▶ Dégeler" else "⏸ Figer",
+                                    text = stringResource(if (isFrozen) R.string.unfreeze else R.string.freeze),
                                     fontSize = 10.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
@@ -354,8 +366,7 @@ fun AppScreen(
                                                 } else {
                                                     // [U1] Never a silently dead control: say why, and how to fix it.
                                                     session.postNotice(
-                                                        "🎙️ Mesure en direct indisponible : autorisation micro refusée. " +
-                                                            "Activez « Micro » dans les réglages Android.",
+                                                        liveDeniedMessage,
                                                     )
                                                 }
                                                 showAudioModeMenu = false
@@ -363,7 +374,7 @@ fun AppScreen(
                                             modifier =
                                                 Modifier
                                                     .fillMaxWidth()
-                                                    .height(34.dp),
+                                                    .height(MIN_TOUCH_TARGET),
                                             contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                                             colors =
                                                 ButtonDefaults.buttonColors(
@@ -382,7 +393,10 @@ fun AppScreen(
                                                 ),
                                         ) {
                                             Text(
-                                                text = if (permissions.liveCapture) "🔴 En direct" else "🚫 En direct",
+                                                text =
+                                                    stringResource(
+                                                        if (permissions.liveCapture) R.string.source_live else R.string.source_live_denied,
+                                                    ),
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
@@ -398,7 +412,7 @@ fun AppScreen(
                                             modifier =
                                                 Modifier
                                                     .fillMaxWidth()
-                                                    .height(34.dp),
+                                                    .height(MIN_TOUCH_TARGET),
                                             contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                                             colors =
                                                 ButtonDefaults.buttonColors(
@@ -414,7 +428,7 @@ fun AppScreen(
                                                 ),
                                         ) {
                                             Text(
-                                                text = "📁 Analyseur WAV",
+                                                text = stringResource(R.string.source_wav),
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
@@ -430,7 +444,7 @@ fun AppScreen(
                                             modifier =
                                                 Modifier
                                                     .fillMaxWidth()
-                                                    .height(34.dp),
+                                                    .height(MIN_TOUCH_TARGET),
                                             contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                                             colors =
                                                 ButtonDefaults.buttonColors(
@@ -446,7 +460,7 @@ fun AppScreen(
                                                 ),
                                         ) {
                                             Text(
-                                                text = "🎬 Vidéo",
+                                                text = stringResource(R.string.source_video),
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
@@ -462,7 +476,7 @@ fun AppScreen(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
-                                        .height(38.dp),
+                                        .height(MIN_TOUCH_TARGET),
                                 contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
                                 colors =
                                     ButtonDefaults.buttonColors(
@@ -478,9 +492,12 @@ fun AppScreen(
                                 Text(
                                     text =
                                         when (audioSourceMode) {
-                                            com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER -> "📁 Audio (WAV)"
-                                            com.example.nvhspectro.AudioSourceMode.VIDEO -> "🎬 Audio (Vidéo)"
-                                            else -> "🎙️ En direct"
+                                            com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER ->
+                                                stringResource(
+                                                    R.string.source_button_wav,
+                                                )
+                                            com.example.nvhspectro.AudioSourceMode.VIDEO -> stringResource(R.string.source_button_video)
+                                            else -> stringResource(R.string.source_button_live)
                                         },
                                     fontSize = 10.5.sp,
                                     fontWeight = FontWeight.Bold,
@@ -575,7 +592,7 @@ fun AppScreen(
                                                         14,
                                                     )}"
                                                 } else {
-                                                    "🎬 Charger Vidéo"
+                                                    stringResource(R.string.load_video)
                                                 },
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
@@ -607,9 +624,9 @@ fun AppScreen(
                                                 if (loadedWavFileName !=
                                                     null
                                                 ) {
-                                                    "📂 ${loadedWavFileName!!.take(14)}"
+                                                    stringResource(R.string.loaded_file, loadedWavFileName!!.take(WAV_NAME_MAX_CHARS))
                                                 } else {
-                                                    "📂 Charger WAV"
+                                                    stringResource(R.string.load_wav)
                                                 },
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
@@ -637,15 +654,24 @@ fun AppScreen(
                                     onClick = { liveVm.toggleAudioRecording() },
                                     label = {
                                         if (isAudioRecording) {
-                                            val secStr = String.format("%02d:%02d", recordingElapsedSec / 60, recordingElapsedSec % 60)
+                                            val secStr = formatMinSec(recordingElapsedSec)
                                             Text(
-                                                "🔴 STOP ($secStr / 00:30)",
+                                                stringResource(
+                                                    R.string.recording_stop,
+                                                    secStr,
+                                                    formatMinSec(LiveViewModel.MAX_RECORDING_SEC),
+                                                ),
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = NvhOnSurface,
                                             )
                                         } else {
-                                            Text("🎙️ Enregistrement", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NvhOnSurface)
+                                            Text(
+                                                stringResource(R.string.recording_start),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = NvhOnSurface,
+                                            )
                                         }
                                     },
                                     colors =
@@ -669,9 +695,9 @@ fun AppScreen(
                         // Indication dynamique Min & Max (Police ultra-compacte et discrète)
                         val rangeText =
                             if (displayMode == DisplayMode.TTNR) {
-                                "Dynamique : Min 0 | Max +20 dB (émergence NVH)"
+                                stringResource(R.string.range_emergence)
                             } else {
-                                "Dynamique : Min ${minDb.toInt()} | Max ${maxDb.toInt()} dBFS"
+                                stringResource(R.string.range_absolute, minDb.toInt(), maxDb.toInt())
                             }
                         Surface(
                             color = NvhCanvasScrim,
@@ -712,20 +738,20 @@ fun AppScreen(
                                                     CircleShape,
                                                 ),
                                     )
-                                    val titleText = if (kinematicsConfig.vehicleName.isNotEmpty()) kinematicsConfig.vehicleName else "GMPe"
+                                    val titleText = kinematicsConfig.vehicleName.ifEmpty { stringResource(R.string.gmpe_default_name) }
 
                                     if (isActiveSpeed) {
                                         val h1Hz = kinematicsConfig.calculateH1FreqHz(curSpeed)
                                         val curRpm = kinematicsConfig.calculateRpm(curSpeed).toInt()
                                         Text(
-                                            text = "🚘 $titleText | V1000: %.1f km/h | H1: %.1fHz (%d RPM)".format(effV1000, h1Hz, curRpm),
+                                            text = stringResource(R.string.gmpe_banner_active, titleText, effV1000, h1Hz, curRpm),
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = NvhOnSurface,
                                         )
                                     } else {
                                         Text(
-                                            text = "🚘 $titleText | Inactif (< 1 km/h) | V1000: %.1f km/h".format(effV1000),
+                                            text = stringResource(R.string.gmpe_banner_idle, titleText, effV1000),
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = NvhStatusWarn,
@@ -748,15 +774,7 @@ fun AppScreen(
                             val targetOrdersList = kinematicsConfig.parsedTargetOrders()
                             if (targetOrdersList.isNotEmpty()) {
                                 val targetStr =
-                                    targetOrdersList.joinToString(", ") {
-                                        if (it % 1.0 ==
-                                            0.0
-                                        ) {
-                                            "H${it.toInt()}"
-                                        } else {
-                                            "H%.1f".format(it)
-                                        }
-                                    }
+                                    targetOrdersList.joinToString(", ") { orderLabel(context, it) }
 
                                 Surface(
                                     color = NvhCanvasPanel,
@@ -775,7 +793,7 @@ fun AppScreen(
                                                     .background(NvhAccent, CircleShape),
                                         )
                                         Text(
-                                            text = "🎯 FILTRE CIBLES : $targetStr",
+                                            text = stringResource(R.string.target_orders_banner, targetStr),
                                             fontSize = 9.5.sp,
                                             fontWeight = FontWeight.ExtraBold,
                                             color = NvhAccent,
@@ -792,10 +810,16 @@ fun AppScreen(
                                 color = NvhNoticeContainer,
                                 shape = RoundedCornerShape(4.dp),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, NvhNoticeBorder),
-                                modifier = Modifier.clickable { session.dismissNotice() },
+                                modifier =
+                                    Modifier
+                                        .defaultMinSize(minHeight = MIN_TOUCH_TARGET)
+                                        .clickable(
+                                            onClickLabel = stringResource(R.string.notice_dismiss),
+                                            onClick = { session.dismissNotice() },
+                                        ),
                             ) {
                                 Text(
-                                    text = "$notice   ✕",
+                                    text = stringResource(R.string.notice_with_close, notice),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = NvhOnNotice,
@@ -834,7 +858,7 @@ fun AppScreen(
                             modifier = Modifier.padding(16.dp),
                         ) {
                             Text(
-                                text = "Pas de données WAV chargées\nCliquez sur '📂 Charger WAV' pour ouvrir un fichier (limité à 5 min max).",
+                                text = stringResource(R.string.no_wav_loaded),
                                 color = NvhOnSurface,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -843,7 +867,7 @@ fun AppScreen(
                             )
                         }
                     } else if (fftHistory.isEmpty()) {
-                        Text("Analyse audio & sonogramme en cours...", color = NvhOnSurface)
+                        Text(stringResource(R.string.analysis_in_progress), color = NvhOnSurface)
                     }
                 }
             }
@@ -853,7 +877,7 @@ fun AppScreen(
                     // Lecteur WAV (si un fichier est chargé en mode Analyseur WAV)
                     if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER && loadedWavData != null) {
                         com.example.nvhspectro.ui.WavPlayerBar(
-                            fileName = loadedWavFileName ?: "fichier.wav",
+                            fileName = loadedWavFileName ?: stringResource(R.string.default_wav_name),
                             currentPosMs = wavPlaybackPositionMs,
                             totalDurationMs = loadedWavData?.durationMs ?: 0L,
                             isPlaying = isWavPlaying,
@@ -906,7 +930,7 @@ fun AppScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Text(
-                                        text = "DONNÉES GPS",
+                                        text = stringResource(R.string.gps_data_title),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 1.sp,
@@ -916,19 +940,24 @@ fun AppScreen(
                                     if (kinematicsConfig.isEnabled) {
                                         val showH1Overlay by liveVm.showH1Overlay.collectAsStateWithLifecycle()
                                         val projectedOrder by liveVm.projectedOrder.collectAsStateWithLifecycle()
-                                        val ordLabel =
-                                            if (projectedOrder % 1.0 ==
-                                                0.0
-                                            ) {
-                                                "H${projectedOrder.toInt()}"
-                                            } else {
-                                                "H%.1f".format(projectedOrder)
-                                            }
+                                        val ordLabel = orderLabel(context, projectedOrder)
+                                        val h1OverlayLabel = stringResource(R.string.cd_h1_overlay, ordLabel)
+                                        val projectedOrderLabel = stringResource(R.string.cd_choose_projected_order)
 
                                         FilterChip(
                                             selected = showH1Overlay,
                                             onClick = { liveVm.toggleH1Overlay() },
-                                            label = { Text("👁️ $ordLabel", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                                            label = {
+                                                Text(
+                                                    stringResource(R.string.h1_overlay_chip, ordLabel),
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier =
+                                                        Modifier.semantics {
+                                                            contentDescription = h1OverlayLabel
+                                                        },
+                                                )
+                                            },
                                             trailingIcon = {
                                                 Text(
                                                     text = "⚙️",
@@ -936,7 +965,12 @@ fun AppScreen(
                                                     modifier =
                                                         Modifier
                                                             .padding(start = 4.dp)
-                                                            .clickable { showProjectedOrderDialog = true },
+                                                            .semantics {
+                                                                contentDescription = projectedOrderLabel
+                                                            }.clickable(
+                                                                onClickLabel = projectedOrderLabel,
+                                                                onClick = { showProjectedOrderDialog = true },
+                                                            ),
                                                 )
                                             },
                                             shape =
@@ -956,7 +990,9 @@ fun AppScreen(
                                                     borderColor = MaterialTheme.colorScheme.outline,
                                                     selectedBorderColor = NvhAccent,
                                                 ),
-                                            modifier = Modifier.height(26.dp),
+                                            // No fixed height: the chip must be free to grow
+                                            // with the font scale and keep its 48 dp target.
+                                            modifier = Modifier.defaultMinSize(minHeight = MIN_TOUCH_TARGET),
                                         )
                                     }
 
@@ -987,11 +1023,9 @@ fun AppScreen(
                                         Text(
                                             text =
                                                 if (permissions.anyLocation) {
-                                                    "📍 Localisation approximative seulement — vitesse GNSS, RPM et " +
-                                                        "suivi d'ordre indisponibles. Toucher pour ouvrir les réglages."
+                                                    stringResource(R.string.location_coarse_banner)
                                                 } else {
-                                                    "📍 Localisation non autorisée — vitesse GNSS, RPM et suivi " +
-                                                        "d'ordre indisponibles. Toucher pour ouvrir les réglages."
+                                                    stringResource(R.string.location_denied_banner)
                                                 },
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.SemiBold,
@@ -1004,7 +1038,7 @@ fun AppScreen(
 
                                 // Encart des valeurs instantanées (Vitesse, Accélération, Ordre Traqué)
                                 val ordVal = kinematicsConfig.selectedTrackedOrder
-                                val ordLabel = if (ordVal % 1.0 == 0.0) "H${ordVal.toInt()}" else "H%.1f".format(ordVal)
+                                val ordLabel = orderLabel(context, ordVal)
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -1016,56 +1050,62 @@ fun AppScreen(
                                     // never a stale number that looks like a measurement.
                                     val gpsSpeedText =
                                         if (telemetry.gpsStatus == GpsStatus.NONE) {
-                                            "--"
+                                            stringResource(R.string.value_unavailable)
                                         } else {
-                                            "%.1f".format(telemetry.speedKmh)
+                                            formatSpeed(telemetry.speedKmh)
                                         }
                                     val theoInvalid =
                                         telemetry.speedValidity == EstimateValidity.INVALID
                                     val theoSpeedText =
                                         if (theoInvalid) {
-                                            "--"
+                                            stringResource(R.string.value_unavailable)
                                         } else {
-                                            "%.1f".format(telemetry.theoreticalSpeedKmh)
+                                            formatSpeed(telemetry.theoreticalSpeedKmh)
                                         }
                                     if (isGMPe) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                             Text(
-                                                text = "Vitesse",
+                                                text = stringResource(R.string.kpi_speed),
                                                 style = MaterialTheme.typography.labelMedium,
                                                 color = NvhOnSurfaceVariant,
                                             )
                                             Text(
-                                                text = "GPS: $gpsSpeedText",
+                                                text = stringResource(R.string.kpi_speed_gps, gpsSpeedText),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.Bold,
                                                 color = NvhOnSurface,
                                             )
                                             Text(
-                                                text = "Théo: $theoSpeedText",
+                                                text = stringResource(R.string.kpi_speed_theoretical, theoSpeedText),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.Bold,
                                                 color = NvhTheoretical,
                                             )
                                         }
                                     } else {
-                                        KpiItem("Vitesse", "$gpsSpeedText km/h")
+                                        KpiItem(
+                                            stringResource(R.string.kpi_speed),
+                                            stringResource(R.string.kpi_speed_with_unit, gpsSpeedText),
+                                        )
                                     }
-                                    KpiItem("Accélération", String.format("%.2f g", telemetry.accelerationG))
+                                    KpiItem(
+                                        stringResource(R.string.kpi_acceleration),
+                                        stringResource(R.string.kpi_acceleration_value, telemetry.accelerationG),
+                                    )
                                     // [U2, plan 4.9] Sampled in the ViewModel: composition
                                     // no longer reads the clock or mutates remembered state.
                                     val throttledOrderDbFS by liveVm.displayedOrderDbFS.collectAsStateWithLifecycle()
 
                                     KpiItem(
-                                        "Ordre $ordLabel",
+                                        stringResource(R.string.kpi_order, ordLabel),
                                         when {
-                                            !kinematicsConfig.isEnabled -> "Inactif"
-                                            telemetry.speedKmh <= 1.0f -> "/"
+                                            !kinematicsConfig.isEnabled -> stringResource(R.string.kpi_order_inactive)
+                                            telemetry.speedKmh <= 1.0f -> stringResource(R.string.kpi_order_stopped)
                                             // [GPS-4.2] Search window wider than the
                                             // identifiability bound: suspended, never
                                             // an ambiguous number.
-                                            !telemetry.trackedOrderIdentifiable -> "Non identifiable"
-                                            else -> String.format("%.1f dBFS", throttledOrderDbFS)
+                                            !telemetry.trackedOrderIdentifiable -> stringResource(R.string.kpi_order_unidentifiable)
+                                            else -> stringResource(R.string.kpi_order_value, throttledOrderDbFS)
                                         },
                                     )
                                 }
@@ -1086,9 +1126,9 @@ fun AppScreen(
                                         val isSelected = (selectedMetric == metric)
                                         val chipText =
                                             if (isOrderMetric && kinematicsConfig.isEnabled) {
-                                                "Ordre ($ordLabel) ⚙️"
+                                                stringResource(R.string.metric_order_with_settings, ordLabel)
                                             } else {
-                                                metric.label
+                                                stringResource(metric.labelRes)
                                             }
 
                                         FilterChip(
@@ -1299,24 +1339,25 @@ fun AppScreen(
 
 @Composable
 fun GpsLedIndicator(status: GpsStatus) {
-    val (ledColor, textLabel) =
+    // [§12, plan 4.4] Colour is never the only channel: each state also has its own SHAPE
+    // (filled circle / triangle / cross) and its own words. A red-green LED alone is
+    // unreadable to a red-green colour-blind operator — and this LED is what tells them
+    // whether to trust the RPM numbers.
+    val (ledColor, textLabel, glyph) =
         when (status) {
-            GpsStatus.GOOD -> NvhStatusGood to "Signal OK"
-            GpsStatus.POOR -> NvhStatusWarn to "Signal Médiocre"
-            GpsStatus.NONE -> NvhStatusBad to "Signal Perdu"
+            GpsStatus.GOOD -> Triple(NvhStatusGood, stringResource(R.string.gps_signal_good), "●")
+            GpsStatus.POOR -> Triple(NvhStatusWarn, stringResource(R.string.gps_signal_poor), "▲")
+            GpsStatus.NONE -> Triple(NvhStatusBad, stringResource(R.string.gps_signal_none), "✕")
         }
 
+    val spoken = stringResource(R.string.cd_gps_signal, textLabel)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = spoken },
     ) {
-        Text(text = "Signal GPS", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-        Box(
-            modifier =
-                Modifier
-                    .size(12.dp)
-                    .background(color = ledColor, shape = CircleShape),
-        )
+        Text(text = stringResource(R.string.gps_signal), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+        Text(text = glyph, color = ledColor, fontSize = 13.sp, fontWeight = FontWeight.Black)
         Text(text = textLabel, style = MaterialTheme.typography.labelSmall, color = NvhOnSurfaceVariant)
     }
 }
@@ -1340,7 +1381,12 @@ fun EmergenceReportButton(
         modifier = Modifier.clickable(onClick = onClick),
     ) {
         Text(
-            text = if (entryCount > 0) "📋 Rapport ($entryCount)" else "📋 Rapport",
+            text =
+                if (entryCount > 0) {
+                    stringResource(R.string.emergence_report_button_count, entryCount)
+                } else {
+                    stringResource(R.string.emergence_report_button)
+                },
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             color = NvhAccent,
@@ -1365,10 +1411,10 @@ fun LocationPermissionChip(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier.clickable(onClick = onClick),
     ) {
-        Text(text = "Signal GPS", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+        Text(text = stringResource(R.string.gps_signal), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
         Text(text = "⛔", fontSize = 12.sp)
         Text(
-            text = if (coarseOnly) "Précision refusée" else "Non autorisé",
+            text = stringResource(if (coarseOnly) R.string.gps_permission_coarse else R.string.gps_permission_denied),
             style = MaterialTheme.typography.labelSmall,
             color = NvhStatusWarn,
             fontWeight = FontWeight.Bold,
@@ -1387,8 +1433,43 @@ fun KpiItem(
     }
 }
 
+/**
+ * Minimum interactive size [§12, plan 4.4].
+ *
+ * The bottom bar and the source menu used 34–38 dp buttons: below the 48 dp Material/WCAG
+ * target, and fixed heights that clip their own label once the user raises the font scale.
+ * This is the floor for every control an operator has to hit — often wearing gloves, in a
+ * moving vehicle.
+ */
+private val MIN_TOUCH_TARGET = 48.dp
+
 /** Spectrogram share of the main layout, in both orientations [U8, plan 4.9]. */
 private const val SPECTRO_PANE_WEIGHT = 0.55f
 
 /** Vehicle-data / telemetry share of the main layout. */
 private const val DATA_PANE_WEIGHT = 0.45f
+
+/** Loaded-file chip truncation, so a long name cannot push the mode chips off-screen. */
+private const val WAV_NAME_MAX_CHARS = 14
+
+/** mm:ss, locale-independent: a timer readout must be identical on every device [C11 class]. */
+private fun formatMinSec(totalSeconds: Int): String =
+    String.format(java.util.Locale.ROOT, "%02d:%02d", totalSeconds / 60, totalSeconds % 60)
+
+/**
+ * "H18" / "H7.4" — the one place an order is turned into a label [§12, plan 4.4].
+ *
+ * The same two-branch formatting was repeated at four call sites, each with its own literal.
+ */
+private fun orderLabel(
+    context: android.content.Context,
+    order: Double,
+): String =
+    if (order % 1.0 == 0.0) {
+        context.getString(R.string.order_integer, order.toInt())
+    } else {
+        context.getString(R.string.order_fractional, order)
+    }
+
+/** One decimal, locale-independent — a measurement readout must not change with the locale. */
+private fun formatSpeed(kmh: Float): String = String.format(java.util.Locale.ROOT, "%.1f", kmh)

@@ -9,10 +9,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.nvhspectro.R
 import com.example.nvhspectro.data.EmergenceReportEntry
 import com.example.nvhspectro.data.KinematicsConfig
 import com.example.nvhspectro.theme.NvhAccent
@@ -59,7 +63,7 @@ fun EmergenceReportDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "📊 Rapport d'Émergence NVH",
+                        text = stringResource(R.string.emergence_report_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
@@ -87,12 +91,23 @@ fun EmergenceReportDialog(
                         ) {
                             Text(
                                 text =
-                                    if (hasVehicleOrMotor) {
-                                        "🚘 ${kinematicsConfig.vehicleName.ifBlank {
-                                            "Véhicule"
-                                        }} ${if (kinematicsConfig.motorName.isNotBlank()) "| ⚡ ${kinematicsConfig.motorName}" else ""}"
-                                    } else {
-                                        "🚘 Véhicule & GMPe"
+                                    when {
+                                        !hasVehicleOrMotor -> stringResource(R.string.emergence_vehicle_default)
+                                        kinematicsConfig.motorName.isNotBlank() ->
+                                            stringResource(
+                                                R.string.emergence_vehicle_with_motor,
+                                                kinematicsConfig.vehicleName.ifBlank {
+                                                    stringResource(R.string.emergence_vehicle_fallback)
+                                                },
+                                                kinematicsConfig.motorName,
+                                            )
+                                        else ->
+                                            stringResource(
+                                                R.string.emergence_vehicle,
+                                                kinematicsConfig.vehicleName.ifBlank {
+                                                    stringResource(R.string.emergence_vehicle_fallback)
+                                                },
+                                            )
                                     },
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
@@ -105,7 +120,7 @@ fun EmergenceReportDialog(
                                 color = NvhExport,
                             ) {
                                 Text(
-                                    text = "V1000 : %.1f km/h".format(effV1000),
+                                    text = stringResource(R.string.emergence_v1000_badge, effV1000),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = NvhOnSurface,
@@ -117,7 +132,7 @@ fun EmergenceReportDialog(
                         if (hasComments) {
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "📝 Notes / Commentaires Utilisateur :",
+                                text = stringResource(R.string.emergence_comments_label),
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = NvhAccent,
@@ -148,9 +163,9 @@ fun EmergenceReportDialog(
                         Text(
                             text =
                                 if (!kinematicsConfig.isEnabled) {
-                                    "⚠️ Activez la cinématique GMPe pour caractériser les rangs d'harmoniques H_k."
+                                    stringResource(R.string.emergence_needs_kinematics)
                                 } else {
-                                    "Aucune émergence harmonique significative (>= 0,4s) détectée pour le moment."
+                                    stringResource(R.string.emergence_none_detected)
                                 },
                             fontSize = 13.sp,
                             color = NvhOnSurfaceVariant,
@@ -166,11 +181,36 @@ fun EmergenceReportDialog(
                                 .padding(horizontal = 8.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Ordre", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.weight(0.9f))
-                        Text("Vitesse (km/h)", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.weight(1.3f))
-                        Text("Régime (RPM)", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.weight(1.3f))
-                        Text("Fréq. (Hz)", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.weight(1.1f))
-                        Text("Émergence", fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.weight(1.1f))
+                        Text(
+                            stringResource(R.string.kpi_order, "").trim(),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            modifier = Modifier.weight(0.9f),
+                        )
+                        Text(
+                            stringResource(R.string.emergence_col_speed),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            modifier = Modifier.weight(1.3f),
+                        )
+                        Text(
+                            stringResource(R.string.emergence_col_rpm),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            modifier = Modifier.weight(1.3f),
+                        )
+                        Text(
+                            stringResource(R.string.emergence_col_freq),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            modifier = Modifier.weight(1.1f),
+                        )
+                        Text(
+                            stringResource(R.string.emergence_col_emergence),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            modifier = Modifier.weight(1.1f),
+                        )
                     }
 
                     // Liste scrollable des entrées
@@ -198,7 +238,7 @@ fun EmergenceReportDialog(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     ) {
                         Text(
-                            text = "🔄 Réinitialiser",
+                            text = stringResource(R.string.emergence_reset),
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
                             maxLines = 1,
@@ -210,7 +250,7 @@ fun EmergenceReportDialog(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
                     ) {
                         Text(
-                            text = "Fermer",
+                            text = stringResource(R.string.action_close),
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
                             maxLines = 1,
@@ -230,6 +270,15 @@ fun EmergenceReportRow(entry: EmergenceReportEntry) {
     // here: a theme commit must not move a threshold an operator reads as "critical".
     val isCritical = entry.maxEmergenceDb >= CRITICAL_EMERGENCE_DB
     val badgeBg = if (isCritical) NvhEmergenceHigh else NvhEmergenceMarginal
+    // [§12, plan 4.4] Criticality is not encoded in colour alone: a red and an amber badge
+    // are the same badge to a red-green colour-blind operator, so the critical one carries a
+    // warning mark as well.
+    val badgeMark = if (isCritical) "▲ " else ""
+    val badgeSpoken =
+        stringResource(
+            if (isCritical) R.string.cd_emergence_critical else R.string.cd_emergence,
+            entry.maxEmergenceDb,
+        )
 
     Surface(
         shape = RoundedCornerShape(6.dp),
@@ -260,21 +309,21 @@ fun EmergenceReportRow(entry: EmergenceReportEntry) {
 
             // Plage de vitesse
             Text(
-                text = "%.0f - %.0f".format(entry.minSpeedKmh, entry.maxSpeedKmh),
+                text = stringResource(R.string.emergence_range_float, entry.minSpeedKmh, entry.maxSpeedKmh),
                 fontSize = 11.sp,
                 modifier = Modifier.weight(1.3f),
             )
 
             // Plage de régime RPM
             Text(
-                text = "${entry.minRpm} - ${entry.maxRpm}",
+                text = stringResource(R.string.emergence_range_int, entry.minRpm, entry.maxRpm),
                 fontSize = 11.sp,
                 modifier = Modifier.weight(1.3f),
             )
 
             // Plage de fréquence Hz
             Text(
-                text = "${entry.minFreqHz} - ${entry.maxFreqHz}",
+                text = stringResource(R.string.emergence_range_int, entry.minFreqHz, entry.maxFreqHz),
                 fontSize = 11.sp,
                 modifier = Modifier.weight(1.1f),
             )
@@ -286,11 +335,16 @@ fun EmergenceReportRow(entry: EmergenceReportEntry) {
                 modifier = Modifier.weight(1.1f),
             ) {
                 Text(
-                    text = "+%.1f dB".format(entry.maxEmergenceDb),
+                    text = stringResource(R.string.emergence_badge, badgeMark, entry.maxEmergenceDb),
                     fontWeight = FontWeight.Bold,
                     color = NvhCanvas,
                     fontSize = 10.sp,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                            .semantics {
+                                contentDescription = badgeSpoken
+                            },
                 )
             }
         }

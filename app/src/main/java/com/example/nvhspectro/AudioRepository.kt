@@ -94,7 +94,7 @@ class AudioRepository(
                 if (!fillStepCompletely(readBuffer, stepSize)) {
                     consecutiveErrors++
                     if (consecutiveErrors >= MAX_READ_ERRORS) {
-                        close(AudioCaptureException("Erreurs de lecture micro répétées — capture arrêtée"))
+                        close(AudioCaptureException(appContext.getString(R.string.notice_mic_read_errors)))
                         break
                     }
                     Thread.sleep(READ_ERROR_BACKOFF_MS) // [C9] backoff instead of hot-spinning (on IO dispatcher)
@@ -149,18 +149,25 @@ class AudioRepository(
             val record = AudioRecord(captureSource, sampleRate, channelConfig, audioFormat, recordBufferSize)
             if (record.state != AudioRecord.STATE_INITIALIZED) {
                 record.release()
-                Result.failure(AudioCaptureException("Micro indisponible (initialisation échouée)"))
+                Result.failure(AudioCaptureException(appContext.getString(R.string.notice_mic_init_failed)))
             } else {
                 record.startRecording()
                 if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
                     record.release()
-                    Result.failure(AudioCaptureException("Micro occupé par une autre application"))
+                    Result.failure(AudioCaptureException(appContext.getString(R.string.notice_mic_busy)))
                 } else {
                     Result.success(record)
                 }
             }
         } catch (e: Exception) {
-            Result.failure(AudioCaptureException("Capture micro impossible : ${e.message ?: e.javaClass.simpleName}"))
+            Result.failure(
+                AudioCaptureException(
+                    appContext.getString(
+                        R.string.notice_mic_capture_failed,
+                        e.message ?: e.javaClass.simpleName,
+                    ),
+                ),
+            )
         }
 
     /**

@@ -11,9 +11,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.nvhspectro.R
 import com.example.nvhspectro.data.RecordingEntry
 import com.example.nvhspectro.data.RecordingStore
 import com.example.nvhspectro.theme.NvhOnSurfaceVariant
@@ -41,7 +43,7 @@ fun WavSelectionDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("📂 Choisir un fichier WAV", fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.wav_picker_title), fontWeight = FontWeight.Bold)
         },
         text = {
             Column(
@@ -56,7 +58,7 @@ fun WavSelectionDialog(
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                 ) {
-                    Text("📥 Importer un fichier WAV extérieur...", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(stringResource(R.string.wav_picker_import), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -82,7 +84,7 @@ fun WavSelectionDialog(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                "Aucun enregistrement trouvé dans ${RecordingStore.COLLECTION_DIR}",
+                                stringResource(R.string.wav_picker_empty, RecordingStore.COLLECTION_DIR),
                                 fontSize = 12.sp,
                                 color = NvhOnSurfaceVariant,
                             )
@@ -90,7 +92,7 @@ fun WavSelectionDialog(
                     }
                     else -> {
                         Text(
-                            "Enregistrements récents (${entries!!.size}) :",
+                            stringResource(R.string.wav_picker_recent, entries!!.size),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -127,7 +129,14 @@ fun WavSelectionDialog(
                                                 maxLines = 1,
                                             )
                                             Text(
-                                                text = if (entry.jsonUri != null) "🎵 Audio + 📊 Télémétrie GPS" else "🎵 Audio Seul",
+                                                text =
+                                                    stringResource(
+                                                        if (entry.jsonUri != null) {
+                                                            R.string.wav_entry_with_telemetry
+                                                        } else {
+                                                            R.string.wav_entry_audio_only
+                                                        },
+                                                    ),
                                                 fontSize = 11.sp,
                                                 color = if (entry.jsonUri != null) NvhStatusGood else NvhOnSurfaceVariant,
                                             )
@@ -148,7 +157,7 @@ fun WavSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Fermer")
+                Text(stringResource(R.string.action_close))
             }
         },
     )
