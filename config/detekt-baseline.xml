@@ -606,6 +606,10 @@
     <ID>MaxLineLength:FFTProcessor.kt$FFTProcessor$// Règle générique : La bande de bruit minimale doit être strictement &gt;= 45 Hz (Filtre colormaps 43 Hz + 2 Hz de marge)</ID>
     <ID>MaxLineLength:FilterChain.kt$FilterChain$BiQuadFilter(FilterType.HIGH_PASS, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), sampleRateHz, q)</ID>
     <ID>MaxLineLength:FilterChain.kt$FilterChain$BiQuadFilter(FilterType.LOW_PASS, filter.minFreq.toDouble(), filter.maxFreq.toDouble(), sampleRateHz, q)</ID>
+    <ID>MaxLineLength:FilterChainTest.kt$FilterChainTest$FilterChain</ID>
+    <ID>MaxLineLength:FilterChainTest.kt$FilterChainTest$assertEquals(4, FilterChain.buildBiquads(listOf(FilterSpec(FilterType.BAND_STOP, 500, 2000)), sampleRate.toDouble()).size)</ID>
+    <ID>MaxLineLength:FilterChainTest.kt$FilterChainTest$assertEquals(4, FilterChain.buildBiquads(listOf(FilterSpec(FilterType.LOW_PASS, 0, 1000)), sampleRate.toDouble()).size)</ID>
+    <ID>MaxLineLength:FilterChainTest.kt$FilterChainTest$val biquads = FilterChain.buildBiquads(listOf(FilterSpec(FilterType.BAND_PASS, 500, 2000)), sampleRate.toDouble())</ID>
     <ID>MaxLineLength:InfoDialog.kt$text = "Application d'analyse acoustique temporelle, spectrogramme d'émergence tonale (TTNR) et télémétrie GPS en temps réel. Construit pour analyse NVH rapide lors de roulage véhicule _ domaine automobile.\n\nElle intègre également le post-traitement synchronisé de vidéos et de fichiers WAV, ainsi qu'un outil de suivi d'ordres dédié à l'extraction des harmoniques pour les Groupes Moto-Propulseurs électriques (GMPe)."</ID>
     <ID>MaxLineLength:KinematicsDialog.kt$"Laisser vide pour tout détecter. Saisissez des ordres séparés par des virgules (ex: 7.4, 18, 22.2)."</ID>
     <ID>MaxLineLength:KinematicsDialog.kt$"✓ Seules les harmoniques renseignées apparaîtront dans le rapport et sur le spectrogramme."</ID>
@@ -701,6 +705,7 @@
     <ID>MaxLineLength:SettingsDialog.kt$text = "💡 En mode Analyseur WAV, la durée d'affichage est automatique et calée sur la durée réelle de l'enregistrement audio (${String.format("%.1f", wavDurationSec)} s)."</ID>
     <ID>MaxLineLength:SettingsDialog.kt$text = "💡 En mode Vidéo/Analyseur, la taille FFT est automatiquement fixée à 2048 points pour offrir la meilleure précision acoustique NVH (~10,7 Hz) tout en garantissant une réactivité instantanée."</ID>
     <ID>MaxLineLength:SmartPathTracker.kt$SmartPathTracker$rawPath.add(ManualOrderAnchor(globalFrame, userPoint.binIndex, isUserPlaced = true, exactBinF = userPoint.binIndex.toFloat()))</ID>
+    <ID>MaxLineLength:SmartPathTrackerTest.kt$SmartPathTrackerTest$assertTrue(SmartPathTracker.compute(listOf(ManualOrderAnchor(3, 10), ManualOrderAnchor(3, 12)), ridgeHistory(5) { 10 }).size == 2)</ID>
     <ID>MaxLineLength:SpectrogramColormap.kt$// Double check bounds might have pushed it back into collision, but we prioritize being in view</ID>
     <ID>MaxLineLength:SpectrogramColormap.kt$// modifier.pointerInput is AFTER graphicsLayer, so the framework already inverse-transforms the offset.</ID>
     <ID>MaxLineLength:SpectrogramColormap.kt$currentRect = android.graphics.RectF(tx, newTy - 25f - paddingY, tx + boxWidth, newTy + 10f + paddingY)</ID>
@@ -738,6 +743,8 @@
     <ID>MaxLineLength:WavAnalysis.kt$WavAnalysis$smoothList[i] = smoothList[i].copy(theoreticalSpeedKmh = startSpeed + fraction * (endSpeed - startSpeed))</ID>
     <ID>MaxLineLength:WavAnalysis.kt$WavAnalysis$telem = raw.copy(theoreticalSpeedKmh = if (raw.theoreticalSpeedKmh &gt; 0.1f) raw.theoreticalSpeedKmh else raw.speedKmh)</ID>
     <ID>MaxLineLength:WavAnalysis.kt$WavAnalysis$val interpTheo = before.theoreticalSpeedKmh + fraction * (after.theoreticalSpeedKmh - before.theoreticalSpeedKmh)</ID>
+    <ID>MaxLineLength:WavAnalysisTest.kt$WavAnalysisTest$assertEquals("every telemetry sample gets tracked-order levels", -40.0, sweep.updatedTelemetry[0].trackedOrderDbFS, 1e-6)</ID>
+    <ID>MaxLineLength:WavAnalysisTest.kt$WavAnalysisTest$val pcm = SynthSignals.sine(SynthSignals.binCenteredFreq(bin, fftSize, sampleRate), sampleRate, sampleRate) // 1 s</ID>
     <ID>MaxLineLength:WavSelectionDialog.kt$text = if (entry.jsonUri != null) "🎵 Audio + 📊 Télémétrie GPS" else "🎵 Audio Seul"</ID>
     <ID>NestedBlockDepth:FFTProcessor.kt$FFTProcessor$fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</ID>
     <ID>NestedBlockDepth:MeasurementSession.kt$MeasurementSession$fun appendLiveFrame( magnitudes: FloatArray, ttnrSpectrum: FloatArray, retroUnmaskBins: List&lt;Int&gt;, retroRawRows: List&lt;FloatArray&gt;, maxHistory: Int )</ID>

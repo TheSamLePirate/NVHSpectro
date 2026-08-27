@@ -52,6 +52,9 @@ jobs:
       - name: Unit tests (characterization suite, :core + :app)
         run: ./gradlew :core:test :app:testDebugUnitTest
 
+      - name: Core coverage gate (≥ 90% line) [plan §1]
+        run: ./gradlew :core:koverVerify
+
       - name: Android lint (zero errors, no baseline)
         run: ./gradlew :app:lintDebug
 
