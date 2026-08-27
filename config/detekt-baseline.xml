@@ -6,7 +6,6 @@
     <ID>ComplexCondition:SpectrogramColormap.kt$w &lt;= 0 || h &lt;= 0 || plotWidth &lt;= 50f || plotHeight &lt;= 50f</ID>
     <ID>ComplexCondition:TelemetryGraph.kt$metric == TelemetryMetric.ORDER &amp;&amp; (!isKinematicsEnabled || (history.isNotEmpty() &amp;&amp; history.none { it.theoreticalSpeedKmh &gt; 1.0f || it.speedKmh &gt; 1.0f }))</ID>
     <ID>ComplexCondition:WavAnalysis.kt$WavAnalysis$config.isEnabled &amp;&amp; speedKmh &gt; 1.0f &amp;&amp; currentAbs.isNotEmpty() &amp;&amp; ttnr != null &amp;&amp; ttnr.isNotEmpty()</ID>
-    <ID>CyclomaticComplexMethod:AudioRepository.kt$AudioRepository$@SuppressLint("MissingPermission") fun startAudioCapture(fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE): Flow&lt;ShortArray&gt;</ID>
     <ID>CyclomaticComplexMethod:FFTProcessor.kt$FFTProcessor$fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</ID>
     <ID>CyclomaticComplexMethod:KinematicsDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun KinematicsDialog( currentConfig: KinematicsConfig, onDismiss: () -&gt; Unit, onSave: (KinematicsConfig) -&gt; Unit )</ID>
     <ID>CyclomaticComplexMethod:MainScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppScreen(liveVm: LiveViewModel, analyzerVm: AnalyzerViewModel, reportVm: ReportViewModel)</ID>
@@ -57,7 +56,6 @@
     <ID>ImplicitDefaultLocale:AnalyzerViewModel.kt$AnalyzerViewModel$String.format("%.1f", durationSec * 0.002)</ID>
     <ID>ImplicitDefaultLocale:ExportDialog.kt$String.format("%.1f", telemetry.speedKmh)</ID>
     <ID>ImplicitDefaultLocale:MainScreen.kt$String.format("%.1f dBFS", throttledOrderDbFS)</ID>
-    <ID>ImplicitDefaultLocale:MainScreen.kt$String.format("%.1f km/h", telemetry.speedKmh)</ID>
     <ID>ImplicitDefaultLocale:MainScreen.kt$String.format("%.2f g", telemetry.accelerationG)</ID>
     <ID>ImplicitDefaultLocale:MainScreen.kt$String.format("%02d:%02d", recordingElapsedSec / 60, recordingElapsedSec % 60)</ID>
     <ID>ImplicitDefaultLocale:PngExporter.kt$PngExporter$String.format("%.1f %s", maxV, unit)</ID>
@@ -86,7 +84,6 @@
     <ID>LongMethod:FFTProcessor.kt$FFTProcessor$fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</ID>
     <ID>LongMethod:InfoDialog.kt$@Composable fun InfoDialog( onDismiss: () -&gt; Unit )</ID>
     <ID>LongMethod:KinematicsDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun KinematicsDialog( currentConfig: KinematicsConfig, onDismiss: () -&gt; Unit, onSave: (KinematicsConfig) -&gt; Unit )</ID>
-    <ID>LongMethod:LiveViewModel.kt$LiveViewModel$private fun processLiveFrame(audioBuffer: ShortArray)</ID>
     <ID>LongMethod:MainScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AppScreen(liveVm: LiveViewModel, analyzerVm: AnalyzerViewModel, reportVm: ReportViewModel)</ID>
     <ID>LongMethod:OrderSelectionDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun OrderSelectionDialog( currentOrder: Double, onOrderSelected: (Double) -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
     <ID>LongMethod:PdfReportGenerator.kt$PdfReportGenerator$fun drawColormapBox(canvas: Canvas, bitmap: Bitmap?, x: Float, y: Float, width: Float, height: Float, boxTitle: String, drawBrilliance: Boolean = false)</ID>
@@ -106,7 +103,7 @@
     <ID>LongMethod:WavPlayerBar.kt$@Composable fun WavPlayerBar( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit )</ID>
     <ID>LongMethod:WavSelectionDialog.kt$@Composable fun WavSelectionDialog( onDismiss: () -&gt; Unit, onSelectEntry: (wavUri: Uri, jsonUri: Uri?) -&gt; Unit, onImportExternal: () -&gt; Unit )</ID>
     <ID>LongParameterList:BiQuadFilter.kt$BiQuadFilter$(a0_t: Double, a1_t: Double, a2_t: Double, b0_t: Double, b1_t: Double, b2_t: Double)</ID>
-    <ID>LongParameterList:LiveViewModel.kt$LiveViewModel$(newMinDb: Double, newMaxDb: Double, newFftSize: Int, newMinFreq: Int, newMaxFreq: Int, newTimeWindow: Double)</ID>
+    <ID>LongParameterList:LiveViewModel.kt$LiveViewModel$( newMinDb: Double, newMaxDb: Double, newFftSize: Int, newMinFreq: Int, newMaxFreq: Int, newTimeWindow: Double, )</ID>
     <ID>LongParameterList:OrderTrackingEngine.kt$OrderTrackingEngine$( frame: Frame, nowMs: Long, holdMs: Long, targetOrders: List&lt;Double&gt;, activeTags: List&lt;TrackedHarmonicTag&gt;, report: MutableList&lt;EmergenceReportEntry&gt; )</ID>
     <ID>LongParameterList:OrderTrackingEngine.kt$OrderTrackingEngine$( report: MutableList&lt;EmergenceReportEntry&gt;, orderValue: Double, orderName: String, freqHz: Int, emergenceDb: Double, frame: Frame, nowMs: Long )</ID>
     <ID>LongParameterList:PdfReportGenerator.kt$PdfReportGenerator$( context: Context, outStream: OutputStream, historyAbs: List&lt;FloatArray&gt;, historyTtnr: List&lt;FloatArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
@@ -429,14 +426,6 @@
     <ID>MagicNumber:SpectrogramColormap.kt$90.0</ID>
     <ID>MagicNumber:SpectrogramColormap.kt$9f</ID>
     <ID>MagicNumber:SpectrogramImageProducer.kt$SpectrogramImageProducer.Companion$0.65</ID>
-    <ID>MagicNumber:SpeedProvider.kt$SpeedProvider$0.5f</ID>
-    <ID>MagicNumber:SpeedProvider.kt$SpeedProvider$1.5f</ID>
-    <ID>MagicNumber:SpeedProvider.kt$SpeedProvider$10f</ID>
-    <ID>MagicNumber:SpeedProvider.kt$SpeedProvider$200L</ID>
-    <ID>MagicNumber:SpeedProvider.kt$SpeedProvider$26</ID>
-    <ID>MagicNumber:SpeedProvider.kt$SpeedProvider$30f</ID>
-    <ID>MagicNumber:SpeedProvider.kt$SpeedProvider$500L</ID>
-    <ID>MagicNumber:SpeedProvider.kt$SpeedProvider$999f</ID>
     <ID>MagicNumber:SplashScreen.kt$0.45f</ID>
     <ID>MagicNumber:SplashScreen.kt$0.5f</ID>
     <ID>MagicNumber:SplashScreen.kt$0.7f</ID>
@@ -600,13 +589,10 @@
     <ID>MaxLineLength:KinematicsDialog.kt$Row</ID>
     <ID>MaxLineLength:KinematicsDialog.kt$Text("🎯 Harmoniques Attendues (Filtrage Rapport &amp; Spectro)", fontWeight = FontWeight.Bold, fontSize = 13.sp)</ID>
     <ID>MaxLineLength:KinematicsDialog.kt$text = "📏 Rayon calculé : %.3f m (Circonférence = %.2f m)".format(computedR, 2.0 * Math.PI * computedR)</ID>
-    <ID>MaxLineLength:LiveViewModel.kt$LiveViewModel$fun</ID>
     <ID>MaxLineLength:MainActivity.kt$MainActivity$NVHSpectroTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { AppNavigation() } }</ID>
     <ID>MaxLineLength:MainScreen.kt$Text("Informations", fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onPrimaryContainer)</ID>
     <ID>MaxLineLength:MainScreen.kt$Text("🎙️ Enregistrement", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE0E0E0))</ID>
     <ID>MaxLineLength:MainScreen.kt$Text("🔴 STOP ($secStr / 00:30)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)</ID>
-    <ID>MaxLineLength:MainScreen.kt$Text(text = "GPS: %.1f".format(telemetry.speedKmh), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color.White)</ID>
-    <ID>MaxLineLength:MainScreen.kt$Text(text = "Théo: %.1f".format(telemetry.theoreticalSpeedKmh), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Color(0xFF0275D8))</ID>
     <ID>MaxLineLength:MainScreen.kt$Text(text = "Vitesse", style = MaterialTheme.typography.labelMedium, color = Color.Gray)</ID>
     <ID>MaxLineLength:MainScreen.kt$border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.8f))</ID>
     <ID>MaxLineLength:MainScreen.kt$containerColor = if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.LIVE) Color(0xFF15803D) else Color(0xFF334155)</ID>
@@ -748,7 +734,6 @@
     <ID>ReturnCount:SmartPathTracker.kt$SmartPathTracker$fun compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</ID>
     <ID>ReturnCount:SmartPathTracker.kt$SmartPathTracker$fun expectedBinF(globalFrame: Int): Float</ID>
     <ID>ReturnCount:SpectrogramColormap.kt$fun getFreqY(freqHz: Float): Float</ID>
-    <ID>ReturnCount:SpeedProvider.kt$SpeedProvider$private fun qualityOf( fix: Location?, nowNanos: Long, ): GpsStatus</ID>
     <ID>ReturnCount:TimelineMapper.kt$TimelineMapper$fun mapIndex(index: Int, fromSize: Int, toSize: Int): Int</ID>
     <ID>ReturnCount:TimelineMapper.kt$TimelineMapper$fun timeToIndex(posMs: Long, durationMs: Long, size: Int): Int</ID>
     <ID>ReturnCount:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
@@ -771,7 +756,6 @@
     <ID>TooGenericExceptionCaught:RecordingStore.kt$RecordingStore$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ReportViewModel.kt$ReportViewModel$e: Exception</ID>
     <ID>TooGenericExceptionCaught:SettingsStore.kt$SettingsStore$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:SpeedProvider.kt$SpeedProvider$e: Exception</ID>
     <ID>TooGenericExceptionCaught:TelemetryCodec.kt$TelemetryCodec$e: Exception</ID>
     <ID>TooGenericExceptionCaught:VideoAudioExtractor.kt$VideoAudioExtractor$e: Exception</ID>
     <ID>TooGenericExceptionCaught:WavDataReader.kt$WavDataReader$e: Exception</ID>
