@@ -18,7 +18,6 @@
     <ID>CyclomaticComplexMethod:SmartPathTracker.kt$SmartPathTracker$fun compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</ID>
     <ID>CyclomaticComplexMethod:SpectrogramColormap.kt$@Composable fun SpectrogramCanvas( history: List&lt;FloatArray&gt;, absHistory: List&lt;FloatArray&gt; = emptyList(), ttnrHistory: List&lt;FloatArray&gt; = emptyList(), modifier: Modifier = Modifier, minDb: Double = -120.0, maxDb: Double = 0.0, minFreq: Int = 0, maxFreq: Int = 10000, fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, sampleRate: Int, historySize: Int = 150, displayMode: DisplayMode = DisplayMode.ABSOLUTE, isDetectorEnabled: Boolean = true, emergenceThresholdDb: Double = 2.5, magnitudeGateDbFS: Double = -90.0, trackedHarmonicTags: List&lt;TrackedHarmonicTag&gt; = emptyList(), kinematicsConfig: KinematicsConfig = KinematicsConfig(), isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, showH1Overlay: Boolean = false, projectedOrder: Double = 1.0, telemetryHistory: List&lt;TelemetryData&gt; = emptyList(), activeFilters: List&lt;AudioFilter&gt; = emptyList(), isReportModeActive: Boolean = false, isDrawingMode: Boolean = false, currentUserPoints: List&lt;ManualOrderAnchor&gt; = emptyList(), currentSmartPath: List&lt;ManualOrderAnchor&gt; = emptyList(), manualTrackedOrders: List&lt;SmartTrackedOrder&gt; = emptyList(), selectedManualOrder: SmartTrackedOrder? = null, isBrillanceModeEnabled: Boolean = false, onAddManualPoint: (Int, Int) -&gt; Unit = { _, _ -&gt; }, )</ID>
     <ID>CyclomaticComplexMethod:TelemetryGraph.kt$@Composable fun TelemetryGraph( history: List&lt;TelemetryData&gt;, metric: TelemetryMetric, timeWindowSec: Double, historySize: Int = 150, ttnrSpectrum: FloatArray = FloatArray(0), minFreq: Int = 0, maxFreq: Int = 10000, sampleRate: Int, isKinematicsEnabled: Boolean = false, selectedOrderName: String = "H18", isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, modifier: Modifier = Modifier, )</ID>
-    <ID>CyclomaticComplexMethod:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$a0_t: Double</ID>
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$a1_t: Double</ID>
     <ID>FunctionParameterNaming:BiQuadFilter.kt$BiQuadFilter$a2_t: Double</ID>
@@ -48,7 +47,6 @@
     <ID>ImplicitDefaultLocale:TelemetryGraph.kt$String.format("%.1f %s", maxVal, metric.unit)</ID>
     <ID>ImplicitDefaultLocale:TelemetryGraph.kt$String.format("%.1f %s", minVal, metric.unit)</ID>
     <ID>ImplicitDefaultLocale:TelemetryGraph.kt$String.format("%.1f", maxEmergence)</ID>
-    <ID>ImplicitDefaultLocale:VideoPlayerView.kt$String.format("%02d:%02d", min, sec)</ID>
     <ID>ImplicitDefaultLocale:WavPlayerBar.kt$String.format("%02d:%02d", currentSec / 60, currentSec % 60)</ID>
     <ID>ImplicitDefaultLocale:WavPlayerBar.kt$String.format("%02d:%02d", totalSec / 60, totalSec % 60)</ID>
     <ID>InstanceOfCheckForException:RecordingStore.kt$RecordingStore$e is IOException</ID>
@@ -70,9 +68,6 @@
     <ID>LongMethod:SpectrogramColormap.kt$@Composable fun SpectrogramCanvas( history: List&lt;FloatArray&gt;, absHistory: List&lt;FloatArray&gt; = emptyList(), ttnrHistory: List&lt;FloatArray&gt; = emptyList(), modifier: Modifier = Modifier, minDb: Double = -120.0, maxDb: Double = 0.0, minFreq: Int = 0, maxFreq: Int = 10000, fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, sampleRate: Int, historySize: Int = 150, displayMode: DisplayMode = DisplayMode.ABSOLUTE, isDetectorEnabled: Boolean = true, emergenceThresholdDb: Double = 2.5, magnitudeGateDbFS: Double = -90.0, trackedHarmonicTags: List&lt;TrackedHarmonicTag&gt; = emptyList(), kinematicsConfig: KinematicsConfig = KinematicsConfig(), isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, showH1Overlay: Boolean = false, projectedOrder: Double = 1.0, telemetryHistory: List&lt;TelemetryData&gt; = emptyList(), activeFilters: List&lt;AudioFilter&gt; = emptyList(), isReportModeActive: Boolean = false, isDrawingMode: Boolean = false, currentUserPoints: List&lt;ManualOrderAnchor&gt; = emptyList(), currentSmartPath: List&lt;ManualOrderAnchor&gt; = emptyList(), manualTrackedOrders: List&lt;SmartTrackedOrder&gt; = emptyList(), selectedManualOrder: SmartTrackedOrder? = null, isBrillanceModeEnabled: Boolean = false, onAddManualPoint: (Int, Int) -&gt; Unit = { _, _ -&gt; }, )</ID>
     <ID>LongMethod:SplashScreen.kt$@Composable fun SplashScreen(onSplashFinished: () -&gt; Unit)</ID>
     <ID>LongMethod:TelemetryGraph.kt$@Composable fun TelemetryGraph( history: List&lt;TelemetryData&gt;, metric: TelemetryMetric, timeWindowSec: Double, historySize: Int = 150, ttnrSpectrum: FloatArray = FloatArray(0), minFreq: Int = 0, maxFreq: Int = 10000, sampleRate: Int, isKinematicsEnabled: Boolean = false, selectedOrderName: String = "H18", isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, modifier: Modifier = Modifier, )</ID>
-    <ID>LongMethod:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
-    <ID>LongMethod:VideoPlayerView.kt$@Composable fun VideoPlayerView( videoUri: Uri?, youtubeUrl: String?, videoTitle: String, isPlaying: Boolean, positionMs: Long, durationMs: Long, onSeekTo: (Long) -&gt; Unit, onTogglePlayPause: () -&gt; Unit, onOpenVideoSelection: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>
-    <ID>LongMethod:VideoSelectionDialog.kt$@Composable fun VideoSelectionDialog( onDismiss: () -&gt; Unit, onSelectLocalVideo: () -&gt; Unit, onSelectYouTubeUrl: (String) -&gt; Unit, )</ID>
     <ID>LongMethod:WavAudioWriter.kt$WavAudioWriter$fun writePcmToStream(pcmData: ShortArray, out: java.io.OutputStream, sampleRate: Int)</ID>
     <ID>LongMethod:WavPlayerBar.kt$@Composable fun WavPlayerBar( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit, )</ID>
     <ID>LongMethod:WavSelectionDialog.kt$@Composable fun WavSelectionDialog( onDismiss: () -&gt; Unit, onSelectEntry: (wavUri: Uri, jsonUri: Uri?) -&gt; Unit, onImportExternal: () -&gt; Unit, )</ID>
@@ -83,13 +78,8 @@
     <ID>LongParameterList:PdfReportGenerator.kt$PdfReportGenerator$( context: Context, outStream: OutputStream, historyAbs: List&lt;FloatArray&gt;, historyTtnr: List&lt;FloatArray&gt;, minDb: Double, maxDb: Double, trackedOrders: List&lt;SmartTrackedOrder&gt;, kinematicsConfig: KinematicsConfig, globalMaxFreq: Float, sampleRate: Int )</ID>
     <ID>LongParameterList:PdfReportGenerator.kt$PdfReportGenerator$(history: List&lt;FloatArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0)</ID>
     <ID>LongParameterList:PngExporter.kt$PngExporter.Input$( val history: List&lt;FloatArray&gt;, val telemetryHistory: List&lt;TelemetryData&gt;, val currentTelemetry: TelemetryData, val displayMode: DisplayMode, val minDb: Double, val maxDb: Double, val maxFreq: Int, val sampleRate: Int, val timeWindowSec: Double, val historySize: Int, val pedalPercent: String, val comments: String )</ID>
-    <ID>LongParameterList:SettingsDialog.kt$( onDismiss: () -&gt; Unit, sampleRateHz: Int, minDb: Double, maxDb: Double, onMinDbChange: (Double) -&gt; Unit, onMaxDbChange: (Double) -&gt; Unit, fftSize: Int, onFftSizeChange: (Int) -&gt; Unit, minFreq: Int = 0, onMinFreqChange: (Int) -&gt; Unit = {}, maxFreq: Int, onMaxFreqChange: (Int) -&gt; Unit = {}, timeWindowSec: Double, onTimeWindowChange: (Double) -&gt; Unit, isDetectorEnabled: Boolean = true, onDetectorEnabledChange: (Boolean) -&gt; Unit = {}, emergenceThresholdDb: Double = 2.5, onEmergenceThresholdChange: (Double) -&gt; Unit = {}, magnitudeGateDbFS: Double = -90.0, onMagnitudeGateChange: (Double) -&gt; Unit = {}, isWavAnalyzerMode: Boolean = false, wavDurationSec: Double = 0.0, activeFilters: List&lt;AudioFilter&gt; = emptyList(), onAddFilter: (AudioFilter) -&gt; Unit = {}, onRemoveFilter: (String) -&gt; Unit = {}, )</ID>
-    <ID>LongParameterList:SpectrogramColormap.kt$( history: List&lt;FloatArray&gt;, absHistory: List&lt;FloatArray&gt; = emptyList(), ttnrHistory: List&lt;FloatArray&gt; = emptyList(), modifier: Modifier = Modifier, minDb: Double = -120.0, maxDb: Double = 0.0, minFreq: Int = 0, maxFreq: Int = 10000, fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, sampleRate: Int, historySize: Int = 150, displayMode: DisplayMode = DisplayMode.ABSOLUTE, isDetectorEnabled: Boolean = true, emergenceThresholdDb: Double = 2.5, magnitudeGateDbFS: Double = -90.0, trackedHarmonicTags: List&lt;TrackedHarmonicTag&gt; = emptyList(), kinematicsConfig: KinematicsConfig = KinematicsConfig(), isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, showH1Overlay: Boolean = false, projectedOrder: Double = 1.0, telemetryHistory: List&lt;TelemetryData&gt; = emptyList(), activeFilters: List&lt;AudioFilter&gt; = emptyList(), isReportModeActive: Boolean = false, isDrawingMode: Boolean = false, currentUserPoints: List&lt;ManualOrderAnchor&gt; = emptyList(), currentSmartPath: List&lt;ManualOrderAnchor&gt; = emptyList(), manualTrackedOrders: List&lt;SmartTrackedOrder&gt; = emptyList(), selectedManualOrder: SmartTrackedOrder? = null, isBrillanceModeEnabled: Boolean = false, onAddManualPoint: (Int, Int) -&gt; Unit = { _, _ -&gt; }, )</ID>
     <ID>LongParameterList:SpectrogramImageProducer.kt$SpectrogramImageProducer$( history: List&lt;FloatArray&gt;, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean, maskBelowBin: Int = 0 )</ID>
     <ID>LongParameterList:SpectrogramImageProducer.kt$SpectrogramImageProducer$( latestFrame: FloatArray, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean, maskBelowBin: Int = 0 )</ID>
-    <ID>LongParameterList:TelemetryGraph.kt$( history: List&lt;TelemetryData&gt;, metric: TelemetryMetric, timeWindowSec: Double, historySize: Int = 150, ttnrSpectrum: FloatArray = FloatArray(0), minFreq: Int = 0, maxFreq: Int = 10000, sampleRate: Int, isKinematicsEnabled: Boolean = false, selectedOrderName: String = "H18", isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, modifier: Modifier = Modifier, )</ID>
-    <ID>LongParameterList:VideoPlayerView.kt$( videoUri: Uri?, youtubeUrl: String?, videoTitle: String, isPlaying: Boolean, positionMs: Long, durationMs: Long, onSeekTo: (Long) -&gt; Unit, onTogglePlayPause: () -&gt; Unit, onOpenVideoSelection: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>
-    <ID>LongParameterList:WavPlayerBar.kt$( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit, )</ID>
     <ID>LongParameterList:WavRoundTripTest.kt$WavRoundTripTest$( sampleRate: Int, channels: Int, bits: Int, pcmBytes: ByteArray, extraChunkBeforeData: Boolean = false, audioFormat: Int = 1 )</ID>
     <ID>LoopWithTooManyJumpStatements:AudioRepository.kt$AudioRepository$while</ID>
     <ID>LoopWithTooManyJumpStatements:FFTProcessor.kt$FFTProcessor$for</ID>
@@ -366,14 +356,6 @@
     <ID>MagicNumber:TelemetryGraph.kt$45f</ID>
     <ID>MagicNumber:TelemetryGraph.kt$4f</ID>
     <ID>MagicNumber:TelemetryGraph.kt$8f</ID>
-    <ID>MagicNumber:VideoAudioExtractor.kt$VideoAudioExtractor$1000L</ID>
-    <ID>MagicNumber:VideoAudioExtractor.kt$VideoAudioExtractor$1024</ID>
-    <ID>MagicNumber:VideoAudioExtractor.kt$VideoAudioExtractor$5</ID>
-    <ID>MagicNumber:VideoAudioExtractor.kt$VideoAudioExtractor$5000L</ID>
-    <ID>MagicNumber:VideoAudioExtractor.kt$VideoAudioExtractor$60</ID>
-    <ID>MagicNumber:VideoAudioExtractor.kt$VideoAudioExtractor$64</ID>
-    <ID>MagicNumber:VideoPlayerView.kt$1000</ID>
-    <ID>MagicNumber:VideoPlayerView.kt$60</ID>
     <ID>MagicNumber:WavAnalysis.kt$WavAnalysis$0.1f</ID>
     <ID>MagicNumber:WavAnalysis.kt$WavAnalysis$0.5</ID>
     <ID>MagicNumber:WavAnalysis.kt$WavAnalysis$1000.0</ID>
@@ -462,17 +444,12 @@
     <ID>MaxLineLength:SmartPathTracker.kt$SmartPathTracker$rawPath.add(ManualOrderAnchor(globalFrame, userPoint.binIndex, isUserPlaced = true, exactBinF = userPoint.binIndex.toFloat()))</ID>
     <ID>MaxLineLength:SpectrogramColormap.kt$val visibleMaxTimeSec = if (isReportModeActive) ((-pan.x + plotWidth) / (plotWidth * zoom)) * totalTimeSec else (if (isWavAnalyzerMode) totalTimeSec else 0.0)</ID>
     <ID>MaxLineLength:SpectrogramColormap.kt$val visibleMinTimeSec = if (isReportModeActive) (-pan.x / (plotWidth * zoom)) * totalTimeSec else (if (isWavAnalyzerMode) 0.0 else -totalTimeSec)</ID>
-    <ID>MaxLineLength:VideoAudioExtractor.kt$VideoAudioExtractor$val channelCount = if (format.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) else 1</ID>
-    <ID>MaxLineLength:VideoAudioExtractor.kt$VideoAudioExtractor$val sampleRate = if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) format.getInteger(MediaFormat.KEY_SAMPLE_RATE) else AudioConfig.LIVE_SAMPLE_RATE_HZ</ID>
-    <ID>MaxLineLength:VideoPlayerView.kt$text = "Pas de données vidéo. Cliquez sur [Charger Vidéo] à côté de TTNR pour ouvrir un fichier local ou un lien YouTube (limité à 5 min max)."</ID>
     <ID>NestedBlockDepth:FFTProcessor.kt$FFTProcessor$fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</ID>
     <ID>NestedBlockDepth:MeasurementSession.kt$MeasurementSession$fun appendLiveFrame( magnitudes: FloatArray, ttnrSpectrum: FloatArray, retroUnmaskBins: List&lt;Int&gt;, retroRawRows: List&lt;FloatArray&gt;, maxHistory: Int )</ID>
     <ID>NestedBlockDepth:OrderTrackingEngine.kt$OrderTrackingEngine$@Synchronized fun step( frame: Frame, nowMs: Long, holdMs: Long, targetOrders: List&lt;Double&gt;, activeTags: List&lt;TrackedHarmonicTag&gt;, report: MutableList&lt;EmergenceReportEntry&gt; ): List&lt;TrackedHarmonicTag&gt;</ID>
     <ID>NestedBlockDepth:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;FloatArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0): Bitmap?</ID>
     <ID>NestedBlockDepth:ReportViewModel.kt$ReportViewModel$fun validateCurrentOrder(customName: String? = null)</ID>
     <ID>NestedBlockDepth:SmartPathTracker.kt$SmartPathTracker$fun compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</ID>
-    <ID>NestedBlockDepth:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
-    <ID>PrintStackTrace:VideoAudioExtractor.kt$VideoAudioExtractor$e</ID>
     <ID>ReturnCount:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$private fun updateInternal( elapsedRealtimeNanos: Long, measuredMps: Float, sigmaMps: Float?, ): SampleRejection?</ID>
     <ID>ReturnCount:OrderTrackingEngine.kt$OrderTrackingEngine$private fun isLocalOrderMax(j: Int): Boolean</ID>
     <ID>ReturnCount:OrderTrackingEngine.kt$OrderTrackingEngine.Companion$private fun scallopingCorrected(absRow: FloatArray, peakBin: Int, peakDb: Double): Double</ID>
@@ -483,7 +460,6 @@
     <ID>ReturnCount:SpectrogramColormap.kt$fun getFreqY(freqHz: Float): Float</ID>
     <ID>ReturnCount:TimelineMapper.kt$TimelineMapper$fun mapIndex(index: Int, fromSize: Int, toSize: Int): Int</ID>
     <ID>ReturnCount:TimelineMapper.kt$TimelineMapper$fun timeToIndex(posMs: Long, durationMs: Long, size: Int): Int</ID>
-    <ID>ReturnCount:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
     <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun ByteArray.startsWith(ascii: String): Boolean</ID>
     <ID>ReturnCount:WavDataReader.kt$WavDataReader$private fun parseWavStream( stream: InputStream, jsonText: String?, ): WavReadResult</ID>
     <ID>SwallowedException:AudioRepository.kt$AudioRepository$e: Exception</ID>
@@ -516,7 +492,6 @@
     <ID>UnusedPrivateProperty:SpectrogramColormap.kt$val beaconBadgeBgPaint = remember { Paint().apply { color = AndroidColor.parseColor("#EE1A1A2E") // Sombre translucide style = Paint.Style.FILL isAntiAlias = true } }</ID>
     <ID>UnusedPrivateProperty:SpectrogramColormap.kt$val beaconBadgeTextPaint = remember { Paint().apply { textSize = 26f typeface = Typeface.DEFAULT_BOLD isAntiAlias = true } }</ID>
     <ID>UnusedPrivateProperty:SpectrogramColormap.kt$val boxHeight = 35f + paddingY * 2</ID>
-    <ID>UnusedPrivateProperty:VideoAudioExtractor.kt$VideoAudioExtractor$ch</ID>
     <ID>VariableNaming:BiQuadFilter.kt$BiQuadFilter$val a0_temp = 1.0 + alpha</ID>
     <ID>VariableNaming:BiQuadFilter.kt$BiQuadFilter$val a1_temp = -2.0 * cosW0</ID>
     <ID>VariableNaming:BiQuadFilter.kt$BiQuadFilter$val a2_temp = 1.0 - alpha</ID>
@@ -568,9 +543,6 @@
     <ID>WildcardImport:VideoPlayerView.kt$import androidx.compose.foundation.layout.*</ID>
     <ID>WildcardImport:VideoPlayerView.kt$import androidx.compose.material3.*</ID>
     <ID>WildcardImport:VideoPlayerView.kt$import androidx.compose.runtime.*</ID>
-    <ID>WildcardImport:VideoSelectionDialog.kt$import androidx.compose.foundation.layout.*</ID>
-    <ID>WildcardImport:VideoSelectionDialog.kt$import androidx.compose.material3.*</ID>
-    <ID>WildcardImport:VideoSelectionDialog.kt$import androidx.compose.runtime.*</ID>
     <ID>WildcardImport:WavPlayerBar.kt$import androidx.compose.foundation.layout.*</ID>
     <ID>WildcardImport:WavPlayerBar.kt$import androidx.compose.material3.*</ID>
     <ID>WildcardImport:WavPlayerBar.kt$import androidx.compose.runtime.*</ID>

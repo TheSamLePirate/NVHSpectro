@@ -8,6 +8,14 @@ naming:
     # not a violation. Non-composable functions keep the standard rule.
     ignoreAnnotated: ["Composable"]
 
+complexity:
+  LongParameterList:
+    # Compose's contract is "state down, events up": a composable's parameter list IS its
+    # API, and hoisting a callback into a holder object to satisfy a counter makes the call
+    # site worse, not better. Non-composable functions keep the standard limit — that is the
+    # rule that caught `updateSettings` (DEV-41).
+    ignoreAnnotated: ["Composable"]
+
 style:
   MaxLineLength:
     # Match ktlint's limit exactly: two tools disagreeing about line length means every file

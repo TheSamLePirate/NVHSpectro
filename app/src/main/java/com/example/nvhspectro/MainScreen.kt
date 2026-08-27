@@ -142,9 +142,7 @@ fun AppScreen(
     val isWavPlaying by analyzerVm.player.isPlaying.collectAsState()
     val isReportModeActive by reportVm.isReportModeActive.collectAsState()
 
-    var showVideoSelectionDialog by remember { mutableStateOf(false) }
     val loadedVideoUri by analyzerVm.loadedVideoUri.collectAsState()
-    val loadedYouTubeUrl by analyzerVm.loadedYouTubeUrl.collectAsState()
     val loadedVideoTitle by analyzerVm.loadedVideoTitle.collectAsState()
     val processingEstimateMessage by analyzerVm.processingEstimateMessage.collectAsState()
 
@@ -576,8 +574,8 @@ fun AppScreen(
                             // Bouton Enregistrement (Live) OU Bouton Charger WAV (Analyseur WAV) OU Charger Vidéo (Vidéo)
                             if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.VIDEO) {
                                 FilterChip(
-                                    selected = (loadedVideoUri != null || !loadedYouTubeUrl.isNullOrBlank()),
-                                    onClick = { showVideoSelectionDialog = true },
+                                    selected = (loadedVideoUri != null),
+                                    onClick = { videoPickerLauncher.launch("video/*") },
                                     label = {
                                         Text(
                                             text =
@@ -603,7 +601,7 @@ fun AppScreen(
                                     border =
                                         FilterChipDefaults.filterChipBorder(
                                             enabled = true,
-                                            selected = (loadedVideoUri != null || !loadedYouTubeUrl.isNullOrBlank()),
+                                            selected = (loadedVideoUri != null),
                                             borderColor = NvhCanvasChipBorder,
                                             selectedBorderColor = NvhModeVideoAccent,
                                         ),
@@ -866,14 +864,16 @@ fun AppScreen(
                     if (isVideoMode) {
                         com.example.nvhspectro.ui.VideoPlayerView(
                             videoUri = loadedVideoUri,
-                            youtubeUrl = loadedYouTubeUrl,
                             videoTitle = loadedVideoTitle,
-                            isPlaying = isWavPlaying,
-                            positionMs = wavPlaybackPositionMs,
-                            durationMs = loadedWavData?.durationMs ?: 0L,
+                            state =
+                                com.example.nvhspectro.ui.VideoPlaybackState(
+                                    isPlaying = isWavPlaying,
+                                    positionMs = wavPlaybackPositionMs,
+                                    durationMs = loadedWavData?.durationMs ?: 0L,
+                                ),
                             onSeekTo = { pos -> analyzerVm.player.seekTo(pos) },
                             onTogglePlayPause = { analyzerVm.player.togglePlayPause() },
-                            onOpenVideoSelection = { showVideoSelectionDialog = true },
+                            onOpenVideoSelection = { videoPickerLauncher.launch("video/*") },
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
@@ -1156,20 +1156,6 @@ fun AppScreen(
                         }
                     }
                 }
-            }
-
-            if (showVideoSelectionDialog) {
-                com.example.nvhspectro.ui.VideoSelectionDialog(
-                    onDismiss = { showVideoSelectionDialog = false },
-                    onSelectLocalVideo = {
-                        showVideoSelectionDialog = false
-                        videoPickerLauncher.launch("video/*")
-                    },
-                    onSelectYouTubeUrl = { url ->
-                        showVideoSelectionDialog = false
-                        analyzerVm.loadVideoFromYouTube(url)
-                    },
-                )
             }
 
             if (showInfoDialog) {

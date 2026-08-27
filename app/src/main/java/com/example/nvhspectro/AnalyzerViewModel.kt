@@ -63,7 +63,6 @@ class AnalyzerViewModel(
                 playback.release()
                 _loadedWavFileName.value = null
                 _loadedVideoUri.value = null
-                _loadedYouTubeUrl.value = null
             }
         unregisterResettable =
             session.registerAnalysisResettable {
@@ -78,9 +77,6 @@ class AnalyzerViewModel(
 
     private val _loadedVideoUri = MutableStateFlow<Uri?>(null)
     val loadedVideoUri: StateFlow<Uri?> = _loadedVideoUri.asStateFlow()
-
-    private val _loadedYouTubeUrl = MutableStateFlow<String?>(null)
-    val loadedYouTubeUrl: StateFlow<String?> = _loadedYouTubeUrl.asStateFlow()
 
     private val _loadedVideoTitle = MutableStateFlow("")
     val loadedVideoTitle: StateFlow<String> = _loadedVideoTitle.asStateFlow()
@@ -206,7 +202,6 @@ class AnalyzerViewModel(
         player.stopAndRewind()
         session.dismissNotice()
         _loadedVideoUri.value = null
-        _loadedYouTubeUrl.value = null
         session.clearStreams()
         _isProcessingVideo.value = true
         _processingEstimateMessage.value = "⏳ Chargement du fichier audio..."
@@ -255,22 +250,28 @@ class AnalyzerViewModel(
         processingJob?.cancel()
         player.stopAndRewind()
         session.dismissNotice()
-        _loadedYouTubeUrl.value = null
         _loadedVideoUri.value = uri
         _loadedVideoTitle.value = uri.lastPathSegment?.substringAfterLast("/") ?: "Vidéo locale"
         session.forceMode(AudioSourceMode.VIDEO)
         session.clearStreams()
         _isProcessingVideo.value = true
-        _processingEstimateMessage.value = "⏳ Extraction de l'audio de la vidéo..."
+        _processingEstimateMessage.value = "⏳ Extraction de l'audio de la vidéo…"
 
         viewModelScope.launch(Dispatchers.Default) {
-            val data = VideoAudioExtractor.extractAudioFromVideoUri(context, uri)
+            // [C12, plan 4.8] Real progress, not an indeterminate spinner: a 5-minute video
+            // takes many seconds to decode and the UI used to sit silent through all of it.
+            val result =
+                VideoAudioExtractor.extractAudioFromVideoUri(context, uri) { progress ->
+                    _processingEstimateMessage.value =
+                        "⏳ Extraction de l'audio de la vidéo… ${(progress * PERCENT).toInt()} %"
+                }
             withContext(Dispatchers.Main) {
-                if (data == null) {
+                if (result is VideoAudioExtractor.Result.Failure) {
                     _isProcessingVideo.value = false
                     _processingEstimateMessage.value = null
-                    session.postNotice("❌ Extraction audio impossible depuis cette vidéo")
+                    session.postNotice("❌ ${result.message}")
                 } else {
+                    val data = (result as VideoAudioExtractor.Result.Success).data
                     val mediaDuration = playback.setOriginalSource(context, null, uri)
                     // [C3] Analyzed PCM bounds the timeline; a longer container means the cap was hit.
                     val exactDuration = minOf(mediaDuration ?: data.durationMs, data.durationMs)
@@ -286,16 +287,6 @@ class AnalyzerViewModel(
                 }
             }
         }
-    }
-
-    fun loadVideoFromYouTube(url: String) {
-        processingJob?.cancel()
-        player.stopAndRewind()
-        _loadedVideoUri.value = null
-        _loadedYouTubeUrl.value = url
-        _loadedVideoTitle.value = "Vidéo YouTube"
-        session.forceMode(AudioSourceMode.VIDEO)
-        session.clearStreams()
     }
 
     // -------------------------------------------------------------- analysis
@@ -407,5 +398,10 @@ class AnalyzerViewModel(
         processingJob?.cancel()
         playback.release()
         super.onCleared()
+    }
+
+    private companion object {
+        /** 0..1 progress rendered as a percentage. */
+        const val PERCENT = 100f
     }
 }

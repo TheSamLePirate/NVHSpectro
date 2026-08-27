@@ -64,7 +64,7 @@ fi
 # --- [ARMED] purged dead code must not return [A3/A4/D5, plan 3.8] --------
 # The regex-patch era resurrected deleted code more than once. These symbols
 # and files were deliberately removed; any reappearance fails the build.
-DEAD_SYMBOLS='CandidateHarmonicTracker|isFrequencyAllowed|toggleDrawingMode|parseYouTubeEmbedUrl_DELETED'
+DEAD_SYMBOLS='CandidateHarmonicTracker|isFrequencyAllowed|toggleDrawingMode|parseYouTubeEmbedUrl|loadVideoFromYouTube|VideoSelectionDialog'
 if grep -RIn --include='*.kt' -E "$DEAD_SYMBOLS" app/src/main core/src/main >/dev/null 2>&1; then
   violation "purged dead code has returned [plan 3.8]:"
   grep -RIn --include='*.kt' -E "$DEAD_SYMBOLS" app/src/main core/src/main | head -10
@@ -72,6 +72,22 @@ fi
 if git ls-files | grep -qE '(report_mode_screen_copy\.kt|ui/main/|vibratec_logo\.png)'; then
   violation "deleted dead files are tracked again [plan 3.8]:"
   git ls-files | grep -E '(report_mode_screen_copy\.kt|ui/main/|vibratec_logo\.png)'
+fi
+
+# --- [ARMED] no WebView / JS surface [V2, U6, plan 4.8, decision D7] ------
+# The YouTube mode loaded user-supplied URLs into a JavaScript-enabled WebView and
+# analysed nothing at all. Deleting it removed the app's only script-execution
+# surface; §1's security gate says it must stay removed.
+# Matches real code (import/instantiation/setting), not prose about the removal.
+WEBVIEW_RE='^import android\.webkit|WebView\(|javaScriptEnabled'
+if grep -RIn --include='*.kt' -E "$WEBVIEW_RE" app/src/main core/src/main >/dev/null 2>&1; then
+  violation "a WebView/JS surface has returned [audit V2, plan 4.8]:"
+  grep -RIn --include='*.kt' -E "$WEBVIEW_RE" app/src/main core/src/main | head -10
+fi
+
+# --- [ARMED] no INTERNET permission [§9 privacy posture] ------------------
+if grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml; then
+  violation "INTERNET permission added — measurement data must not be able to leave the device"
 fi
 
 if [ "$fail" -ne 0 ]; then

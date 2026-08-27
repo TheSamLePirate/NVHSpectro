@@ -22,12 +22,12 @@
         <error line="10" column="1" source="standard:no-wildcard-imports" />
         <error line="61" column="5" source="standard:function-naming" />
         <error line="97" column="5" source="standard:function-naming" />
-        <error line="177" column="141" source="standard:max-line-length" />
-        <error line="243" column="141" source="standard:max-line-length" />
-        <error line="838" column="141" source="standard:max-line-length" />
-        <error line="1299" column="5" source="standard:function-naming" />
-        <error line="1329" column="5" source="standard:function-naming" />
-        <error line="1350" column="5" source="standard:function-naming" />
+        <error line="175" column="141" source="standard:max-line-length" />
+        <error line="241" column="141" source="standard:max-line-length" />
+        <error line="836" column="141" source="standard:max-line-length" />
+        <error line="1285" column="5" source="standard:function-naming" />
+        <error line="1315" column="5" source="standard:function-naming" />
+        <error line="1336" column="5" source="standard:function-naming" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/PlaybackController.kt">
         <error line="3" column="1" source="standard:import-ordering" />
@@ -154,30 +154,6 @@
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/data/SmartTrackedOrder.kt">
         <error line="19" column="31" source="standard:trailing-comma-on-declaration-site" />
-    </file>
-    <file name="app/src/main/java/com/example/nvhspectro/data/VideoAudioExtractor.kt">
-        <error line="12" column="1" source="standard:no-empty-first-line-in-class-body" />
-        <error line="13" column="34" source="standard:function-signature" />
-        <error line="13" column="52" source="standard:function-signature" />
-        <error line="13" column="60" source="standard:function-signature" />
-        <error line="36" column="24" source="standard:multiline-expression-wrapping" />
-        <error line="41" column="53" source="standard:argument-list-wrapping" />
-        <error line="41" column="80" source="standard:argument-list-wrapping" />
-        <error line="41" column="101" source="standard:argument-list-wrapping" />
-        <error line="41" column="128" source="standard:argument-list-wrapping" />
-        <error line="41" column="140" source="standard:max-line-length" />
-        <error line="42" column="55" source="standard:argument-list-wrapping" />
-        <error line="42" column="84" source="standard:argument-list-wrapping" />
-        <error line="42" column="105" source="standard:argument-list-wrapping" />
-        <error line="42" column="134" source="standard:argument-list-wrapping" />
-        <error line="42" column="141" source="standard:max-line-length" />
-        <error line="122" column="44" source="standard:trailing-comma-on-call-site" />
-        <error line="126" column="18" source="standard:try-catch-finally-spacing" />
-        <error line="126" column="19" source="standard:statement-wrapping" />
-        <error line="126" column="39" source="standard:statement-wrapping" />
-        <error line="126" column="39" source="standard:try-catch-finally-spacing" />
-        <error line="126" column="63" source="standard:try-catch-finally-spacing" />
-        <error line="126" column="63" source="standard:try-catch-finally-spacing" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/data/WavAudioWriter.kt">
         <error line="5" column="1" source="standard:no-unused-imports" />
@@ -465,21 +441,14 @@
         <error line="40" column="5" source="standard:function-naming" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/ui/VideoPlayerView.kt">
-        <error line="3" column="1" source="standard:no-unused-imports" />
-        <error line="7" column="1" source="standard:no-unused-imports" />
-        <error line="10" column="1" source="standard:no-unused-imports" />
-        <error line="11" column="1" source="standard:no-wildcard-imports" />
-        <error line="13" column="1" source="standard:no-wildcard-imports" />
-        <error line="14" column="1" source="standard:no-wildcard-imports" />
-        <error line="32" column="5" source="standard:function-naming" />
-        <error line="79" column="141" source="standard:max-line-length" />
-        <error line="165" column="1" source="standard:indent" />
-    </file>
-    <file name="app/src/main/java/com/example/nvhspectro/ui/VideoSelectionDialog.kt">
-        <error line="3" column="1" source="standard:no-wildcard-imports" />
-        <error line="5" column="1" source="standard:no-wildcard-imports" />
         <error line="6" column="1" source="standard:no-wildcard-imports" />
-        <error line="17" column="5" source="standard:function-naming" />
+        <error line="8" column="1" source="standard:no-wildcard-imports" />
+        <error line="9" column="1" source="standard:no-wildcard-imports" />
+        <error line="47" column="5" source="standard:function-naming" />
+        <error line="80" column="13" source="standard:function-naming" />
+        <error line="130" column="13" source="standard:function-naming" />
+        <error line="185" column="13" source="standard:function-naming" />
+        <error line="218" column="13" source="standard:function-naming" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/ui/WavPlayerBar.kt">
         <error line="3" column="1" source="standard:no-unused-imports" />
