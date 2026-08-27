@@ -272,9 +272,21 @@ detekt 845 → **500**.
 
 ### Notes for Phase 5
 
-- `doc/ARCHITECTURE_AND_DSP_METHODS.md` is still v10-stale and the README still
-  claims accelerometer-derived acceleration — both are plan 5.4's step, now the
-  last documentation debt.
+- **Plan 5.4 (docs) pulled forward and DONE** (`e1f5d57`): the architecture doc
+  was rewritten from the tree (module split, honest DSP constants, the
+  non-conformity statement for the emergence index, the **speed → RPM → order
+  error budget** the plan §1 DSP gate requires in `doc/`, the GNSS chain, limits
+  of use); the README's accelerometer claim [B6] is corrected to GNSS-derived;
+  AGENTS.md moved to the phase-0–4 state with the Phase-4 UI rules. What remains
+  of 5.4 is `doc/VALIDATION.md`, which cannot be written before GPS-5 collects
+  the data.
+- ⚠️ **Regression found while writing the docs:** the plan §1 architecture gate
+  ("< 300 lines per ViewModel"), met at the end of Phase 3 (281 / 296 / 189 code
+  lines), is now breached — **LiveViewModel 385, AnalyzerViewModel 343**,
+  ReportViewModel 214. Cause: Phase 4 added the permission policy, the sampled
+  order readout and string resolution to already-full classes. Recorded in the
+  architecture doc as a known gap; the 30 s field recorder (state, timer, save)
+  is the natural extraction out of `LiveViewModel`. **Fix before Gate 5.**
 - Decision **D9** (`applicationId` still `com.example.nvhspectro`) and **D1**
   (git-history purge) remain open; both are plan 5.5/0.1 items.
 - LeakCanary is still not installed (DEV-19/DEV-31) — plan 5.1.
