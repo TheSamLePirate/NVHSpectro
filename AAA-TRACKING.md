@@ -4,7 +4,7 @@ Live log of the `V13.1-AAA-plan.md` execution. One section per phase: steps,
 commits, verification evidence, and every deviation from the written plan.
 Update this file **in the same session** as the work it describes.
 
-**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0–3 COMPLETE; GPS-0 → GPS-3 COMPLETE — Gates 0–3 and GPS-0–GPS-3 passed on emulator (hardware follow-ups listed per phase)** (2026-08-27)
+**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0–3 COMPLETE; GPS-0 → GPS-4 COMPLETE — Gates 0–3 and GPS-0–GPS-4 passed on emulator (hardware follow-ups listed per phase)** (2026-08-27)
 
 ---
 
@@ -329,8 +329,44 @@ no-NaN/PSD invariants, less-noise-than-raw + no-delay gate). 141 :core tests.
 | DEV-40 | Full-tracking A/B switch is a constructor parameter (default OFF), not yet a debug UI toggle | The GPS-5 campaign flips it in a debug build; a settings surface for it belongs to Phase 4 UI work if wanted |
 | DEV-41 | **First remote CI run failed on detekt** (`updateSettings` LongParameterList): the GPS-3 session ran `ktlint --format` on LiveViewModel AFTER its last local detekt pass, so the reformatted signature no longer matched its baselined entry | Fixed by baseline re-sync `a6b8b46` (net −15 entries, nothing new baselined). Rule added to AGENTS.md: style checks run LAST, after any format — format → ktlint → detekt → tests → checks |
 
-**Still open (next: GPS-4):** σ → dynamic order-search window + suspension
-[GPS-10], kinematic error budget [GPS-4.1], telemetry/export schema v3 with
-validity + provenance [GPS-09/13/14 surfaces, DEV-35/36], RTS reconstruction
-for deferred analyses [GPS-4.4]; then GPS-5 (field validation, 3 phones,
-ground truth, parameter freeze).
+### Phase GPS-4 — Propagation to orders & deferred processing (COMPLETE, 2026-08-27)
+
+| Step | What was done | Commit |
+|---|---|---|
+| GPS-4.1 | **[GPS-10]** `OrderSearchPolicy` (:core): the plan's error budget (σrpm = σv·1000/V1000, σf(Hn) = n·σrpm/60) with tests reproducing the audit arithmetic exactly (180 rpm / 54 Hz at the worked example). V1000's own uncertainty documented as characterized separately at plan 5.3 | `2f79b0f` |
+| GPS-4.2 | **[GPS-10]** Dynamic search half-width k·σf + Δf (k = 2, recorded in exports), BOUNDED by half the adjacent-order spacing — beyond it the tracked order SUSPENDS ("Non identifiable" KPI, per-sample `trackedOrderIdentifiable`). The bound gates the UNCERTAINTY term only (Δf is grid resolution, not a speed problem). σ-unknown (α-β, pre-v3 sidecars) falls back to the historical ±1/±3-bin radii — legacy analyses byte-identical (existing tests pass unchanged). Consumers: live readout, WAV cursor, WAV sweep — one `withTrackedOrderReadout` helper | `2f79b0f` |
+| GPS-4.3 | Sidecar **schema v3**: per-sample estimated speed + 1-σ (null = unknown, never 0) + validity + paired audio BOOTTIME; per-document estimator identity with FULL parameter set, capture speed status ("causale"), order-confidence k. v1 AND v2 decode as DEGRADED σ-null ("incertitude inconnue") — also fixes a latent GPS-1 regression (v2 decoded as INVALID → old recordings would have shown "--"). Migration tests v1/v2/v3 | `ca2c153` |
+| GPS-4.4 | `RtsSpeedSmoother` (:core): forward Kalman (same Config as LIVE) + backward RTS; offline outliers drop; >5 s gaps split segments. `SpeedReconstruction`: dedups the recorder's frame-rate fix copies (never recycling extrapolated speeds as truth), smooths, evaluates at each sample's audio time; v1 falls back to interpolation. Status label ("lissée (RTS)" / "brute (interpolée)") on AnalyzerViewModel + load notice; PDF stamp is plan 4.5's | `9f35954` |
+
+Replay tests prove the plan's comparison: smoothed RMSE < causal RMSE < raw
+RMSE; σ_smoothed ≤ σ_filtered at interior knots; ramp-onset error smaller
+smoothed than causal (the future is used); no bleed across a 60 s hole.
+
+### Gate GPS-4 verification (2026-08-27, emulator NVH_Pixel_7_API_37, debug)
+
+- ✅ **Record → save → reload round trip**: 9 s recording saved; on-device
+  sidecar is **schema v3** (`speedEstimator: "kalman-va/1 Config(jerkPsd=0.5,
+  …)"` — the full parameter set, `speedStatus: "causale"`,
+  `orderConfidenceK: 2.0`, 389 samples with per-sample `estSpeedSigmaKmh`
+  breathing 1.63↔3.68 km/h between fixes, `validity` PREDICTED↔VALID,
+  monotonic `audioTimeNanos`); picker lists it; **reload posts "🛰️ Vitesse
+  GNSS : lissée (RTS)"** — the RTS path ran over the real sidecar. Zero FATAL.
+- ✅ Confidence band contains the true line / suspension when ambiguous /
+  legacy fallback — unit-proven (OrderSearchPolicyTest incl. a true line at
+  +2σ captured where the old ±1-bin search missed it; WAV suspension test).
+- ⏳ "Non identifiable" KPI needs GMPe + a moving vehicle to show live —
+  drive-test task (GPS-5). PDF speed-status stamp + full screen/telemetry/PDF
+  alignment land with plan 4.5 (see DEV-43).
+
+| ID | Deviation | Rationale |
+|---|---|---|
+| DEV-42 | Identifiability bound compares k·σf (not k·σf + Δf) against half the order spacing | Δf is display resolution, present regardless of speed quality; when Δf ≫ h1 the FFT-size choice owns the problem, not the GNSS chain |
+| DEV-43 | Gate GPS-4's "écran/télémétrie/PDF même statut" is PARTIAL: screen+telemetry share one TelemetryData; the PDF stamp (status, k, estimator) is plan 4.5's reporting-integrity step | The reporting surface is being rebuilt wholesale in 4.5; stamping the old PDF twice would be churn |
+| DEV-44 | Sidecar went v2 → v3 in one step (σ, validity, audio times, estimator, status together) | One version bump instead of one per phase (per DEV-35's intent) |
+| DEV-45 | Suspension visual not exercised on emulator | Needs kinematics enabled + real motion; unit-covered on both live and WAV paths |
+
+**Still open (next: GPS-5):** field validation campaign — 3 phones vs ground
+truth, biais/MAE/RMSE/P95 + lag by correlation, σ-coverage check,
+full-tracking A/B decision, PARAMETER FREEZE (every `Config` constant is
+provisional), `doc/VALIDATION.md`. Optional GPS-6 (raw pseudorange-rate R&D)
+only after GPS-5 shows remaining need.
