@@ -4,7 +4,7 @@ Live log of the `V13.1-AAA-plan.md` execution. One section per phase: steps,
 commits, verification evidence, and every deviation from the written plan.
 Update this file **in the same session** as the work it describes.
 
-**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0–3 COMPLETE; GPS-0 & GPS-1 COMPLETE — Gates 0–3, GPS-0, GPS-1 passed on emulator (hardware follow-ups listed per phase)** (2026-08-27)
+**Branch:** `aaa/phase0` (from `master` @ `4518ec6`) · **Status: Phases 0–3 COMPLETE; GPS-0, GPS-1 & GPS-2 COMPLETE — Gates 0–3, GPS-0–GPS-2 passed on emulator (hardware follow-ups listed per phase)** (2026-08-27)
 
 ---
 
@@ -268,8 +268,34 @@ GPS-2. :core coverage stayed ≥ 90 % (94.1 % at GPS-0).
 | DEV-37 | `gps12_coarsePermission_disablesMetrologicalSpeed` not implemented as a unit test | Permission state is Android-side; coarse-only permission already yields no GPS_PROVIDER fixes → INVALID (fail-safe). Full provider/permission state handling is GPS-3.2 |
 | DEV-38 | Gate GPS-1 run on emulator API 37 only | Same constraint as DEV-7/DEV-11; physical-device matrix flagged above |
 
-**Still open (next: GPS-2):** Kalman filter with σv-weighted updates and
-covariance [GPS-02, GPS-04, GPS-05], NIS-based outlier coherence [GPS-06] —
-their `pinned_*` tests are armed in `SpeedEstimatorContractTest`. Then GPS-3
-(acquisition/diagnostics), GPS-4 (uncertainty → orders, schema v3), GPS-5
-(field validation).
+### Phase GPS-2 — Probabilistic estimator (COMPLETE, 2026-08-27)
+
+| Step | What was done | Commit |
+|---|---|---|
+| GPS-2.1 | **[GPS-02, GPS-04, GPS-05]** `KalmanSpeedEstimator` (:core, Double core): x=[v,a], variable dt, R=max(σv,floor)², white-jerk Q(dt), Joseph-form symmetric update. σv finally weights every correction; estimates carry real σv/σa; gains derive from covariances. σv-less fixes get the conservative 2 m/s default → DEGRADED. Validity keys on predicted σv (INVALID > 3, DEGRADED > 1.5 m/s) + the 2 s hard horizon. q=0.5 picked from simulated σ-growth profiles (σv ≈ 1.0 m/s at 1 s, 1.5 at 1.5 s on a healthy 1 Hz stream) | `0eacd04` |
+| GPS-2.2 | **[GPS-06]** NIS gate (χ²(1)=9) + candidate reacquisition: rejected fixes leave the state at its last accepted epoch (uncertainty grows normally); reacquisition needs two MUTUALLY COHERENT rejected fixes (implied accel ≤ 12 m/s²), a 4-rejection safety valve, or a >5 s gap re-seed. 45-then-28 m/s multipath pair now rejected outright; NIS recorded per fix (`lastNis`) and logged in the trace (`nis` column; legacy 18-field rows still parse) | `0eacd04` |
+| GPS-2.3 | **[GPS-14 estimator-side]** Stationary state with 0.25/0.6 m/s hysteresis publishes an honest 0 near standstill (σ stays truthful); no internal clamp substitutes for validity. σa is now available for GPS-4.3's display gating | `0eacd04` |
+
+`GnssSpeedSession` defaults to the Kalman; the α-β stays as the fixed-gain
+A/B baseline for replay tuning (its tests document that role). Pinned
+gps02/04/06 replaced by fixed-behavior tests in `KalmanSpeedEstimatorTest`
+(plan §Tests GPS-2 matrix: 1/5/10 Hz, ramps ±1, −6 m/s² braking via coherent
+reacquisition, stop-and-go, irregular dt, σ 0.05–5 m/s, losses 1–60 s,
+no-NaN/PSD invariants, less-noise-than-raw + no-delay gate). 141 :core tests.
+
+### Gate GPS-2 verification (2026-08-27)
+
+- ✅ Unit gates: high-σ fixes weigh less than precise ones; no blind second
+  outlier; uncertainty grows during loss; filtered RMSE < raw with zero
+  steady-state lag on ramps (2nd-order model) — all in `KalmanSpeedEstimatorTest`.
+- ✅ Emulator smoke (Pixel 7 AVD, debug): live chain runs on the Kalman, GPS
+  card green, zero FATAL; the v2 trace now carries **estSpeedSigmaMps ≈ 0.452**
+  — matching the simulated steady-state σ(0)=0.45 for q=0.5/σv=0.5 exactly —
+  plus per-fix `nis` and VALID validity.
+- ✅ Parameters recorded as PROVISIONAL (named `Config` fields) until Gate GPS-5.
+- ⏳ A/B traces on two chipsets + drive-log replay tuning → field tasks (GPS-5).
+
+**Still open (next: GPS-3):** explicit API-31+ LocationRequest, provider/
+permission states, GnssStatus diagnostics, controlled full-tracking A/B
+[GPS-07, GPS-11, GPS-12]; then GPS-4 (σ → order search window, schema v3,
+RTS reconstruction [GPS-09/10/13/14 surfaces]), GPS-5 (field validation).
