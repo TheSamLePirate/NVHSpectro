@@ -64,7 +64,7 @@ object FieldTraceV2 {
 
     fun encodeHeader(metadata: Metadata): String = headerLine(metadata) + "\n" + COLUMNS
 
-    private fun headerLine(m: Metadata): String = "$HEADER_PREFIX install=${m.installId} model=${m.deviceModel}"
+    private fun headerLine(m: Metadata): String = "${HEADER_PREFIX}install=${m.installId} model=${m.deviceModel}"
 
     /** Locale-independent (Kotlin toString: '.' decimals); null → empty field. */
     fun encodeRow(r: Record): String =
