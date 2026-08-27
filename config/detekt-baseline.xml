@@ -64,7 +64,6 @@
     <ID>LongMethod:SettingsDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AddFilterDialog( existingCount: Int, onDismiss: () -&gt; Unit, onAddFilter: (AudioFilter) -&gt; Unit, )</ID>
     <ID>LongMethod:SmartPathTracker.kt$SmartPathTracker$fun compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</ID>
     <ID>LongMethod:SpectrogramColormap.kt$@Composable fun SpectrogramCanvas( history: List&lt;FloatArray&gt;, absHistory: List&lt;FloatArray&gt; = emptyList(), ttnrHistory: List&lt;FloatArray&gt; = emptyList(), modifier: Modifier = Modifier, minDb: Double = -120.0, maxDb: Double = 0.0, minFreq: Int = 0, maxFreq: Int = 10000, fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, sampleRate: Int, historySize: Int = 150, displayMode: DisplayMode = DisplayMode.ABSOLUTE, isDetectorEnabled: Boolean = true, emergenceThresholdDb: Double = 2.5, magnitudeGateDbFS: Double = -90.0, trackedHarmonicTags: List&lt;TrackedHarmonicTag&gt; = emptyList(), kinematicsConfig: KinematicsConfig = KinematicsConfig(), isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, showH1Overlay: Boolean = false, projectedOrder: Double = 1.0, telemetryHistory: List&lt;TelemetryData&gt; = emptyList(), activeFilters: List&lt;AudioFilter&gt; = emptyList(), isReportModeActive: Boolean = false, isDrawingMode: Boolean = false, currentUserPoints: List&lt;ManualOrderAnchor&gt; = emptyList(), currentSmartPath: List&lt;ManualOrderAnchor&gt; = emptyList(), manualTrackedOrders: List&lt;SmartTrackedOrder&gt; = emptyList(), selectedManualOrder: SmartTrackedOrder? = null, isBrillanceModeEnabled: Boolean = false, onAddManualPoint: (Int, Int) -&gt; Unit = { _, _ -&gt; }, )</ID>
-    <ID>LongMethod:SplashScreen.kt$@Composable fun SplashScreen(onSplashFinished: () -&gt; Unit)</ID>
     <ID>LongMethod:TelemetryGraph.kt$@Composable fun TelemetryGraph( history: List&lt;TelemetryData&gt;, metric: TelemetryMetric, timeWindowSec: Double, historySize: Int = 150, ttnrSpectrum: FloatArray = FloatArray(0), minFreq: Int = 0, maxFreq: Int = 10000, sampleRate: Int, isKinematicsEnabled: Boolean = false, selectedOrderName: String = "H18", isWavAnalyzerMode: Boolean = false, wavPlaybackProgress: Float = 0f, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:WavAudioWriter.kt$WavAudioWriter$fun writePcmToStream(pcmData: ShortArray, out: java.io.OutputStream, sampleRate: Int)</ID>
     <ID>LongMethod:WavPlayerBar.kt$@Composable fun WavPlayerBar( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit, )</ID>
@@ -91,6 +90,7 @@
     <ID>MagicNumber:AnalyzerViewModel.kt$AnalyzerViewModel$60</ID>
     <ID>MagicNumber:AnalyzerViewModel.kt$AnalyzerViewModel$60.0</ID>
     <ID>MagicNumber:BiQuadFilter.kt$BiQuadFilter$2.0</ID>
+    <ID>MagicNumber:DiagnosticsSection.kt$1024</ID>
     <ID>MagicNumber:EmergenceReportDialog.kt$0.85f</ID>
     <ID>MagicNumber:EmergenceReportDialog.kt$0.9f</ID>
     <ID>MagicNumber:EmergenceReportDialog.kt$1.1f</ID>
@@ -143,13 +143,9 @@
     <ID>MagicNumber:LiveViewModel.kt$LiveViewModel$20</ID>
     <ID>MagicNumber:LiveViewModel.kt$LiveViewModel$256</ID>
     <ID>MagicNumber:MainScreen.kt$0.45f</ID>
-    <ID>MagicNumber:MainScreen.kt$0.55f</ID>
     <ID>MagicNumber:MainScreen.kt$100</ID>
-    <ID>MagicNumber:MainScreen.kt$120.0</ID>
     <ID>MagicNumber:MainScreen.kt$14</ID>
     <ID>MagicNumber:MainScreen.kt$250</ID>
-    <ID>MagicNumber:MainScreen.kt$30.0</ID>
-    <ID>MagicNumber:MainScreen.kt$500</ID>
     <ID>MagicNumber:MainScreen.kt$60</ID>
     <ID>MagicNumber:MeasurementSession.kt$MeasurementSession$10</ID>
     <ID>MagicNumber:MeasurementSession.kt$MeasurementSession$10000</ID>
@@ -316,10 +312,6 @@
     <ID>MagicNumber:SpectrogramColormap.kt$8f</ID>
     <ID>MagicNumber:SpectrogramColormap.kt$90.0</ID>
     <ID>MagicNumber:SpectrogramImageProducer.kt$SpectrogramImageProducer.Companion$0.65</ID>
-    <ID>MagicNumber:SplashScreen.kt$0.45f</ID>
-    <ID>MagicNumber:SplashScreen.kt$0.5f</ID>
-    <ID>MagicNumber:SplashScreen.kt$0.7f</ID>
-    <ID>MagicNumber:SplashScreen.kt$2000L</ID>
     <ID>MagicNumber:SynthSignals.kt$SynthSignals$32767</ID>
     <ID>MagicNumber:SynthSignals.kt$SynthSignals$32767.0</ID>
     <ID>MagicNumber:SynthSignals.kt$SynthSignals$32768</ID>
@@ -518,9 +510,6 @@
     <ID>WildcardImport:SettingsDialog.kt$import androidx.compose.runtime.*</ID>
     <ID>WildcardImport:SpectrogramColormap.kt$import androidx.compose.animation.core.*</ID>
     <ID>WildcardImport:SpectrogramColormap.kt$import androidx.compose.runtime.*</ID>
-    <ID>WildcardImport:SplashScreen.kt$import androidx.compose.animation.core.*</ID>
-    <ID>WildcardImport:SplashScreen.kt$import androidx.compose.foundation.layout.*</ID>
-    <ID>WildcardImport:SplashScreen.kt$import androidx.compose.runtime.*</ID>
     <ID>WildcardImport:VideoPlayerView.kt$import androidx.compose.foundation.layout.*</ID>
     <ID>WildcardImport:VideoPlayerView.kt$import androidx.compose.material3.*</ID>
     <ID>WildcardImport:VideoPlayerView.kt$import androidx.compose.runtime.*</ID>

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.window.Popup
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nvhspectro.data.EstimateValidity
 import com.example.nvhspectro.theme.NvhAccent
 import com.example.nvhspectro.theme.NvhActiveContainer
@@ -52,20 +53,15 @@ import com.example.nvhspectro.ui.NvhPermissions
 import com.example.nvhspectro.ui.OrderSelectionDialog
 import com.example.nvhspectro.ui.PermissionGate
 import com.example.nvhspectro.ui.openAppSettings
-import com.example.nvhspectro.ui.SplashScreen
 import com.example.nvhspectro.ui.TelemetryGraph
 import com.example.nvhspectro.ui.TelemetryMetric
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavigation() {
-    var showSplash by remember { mutableStateOf(true) }
-
-    if (showSplash) {
-        SplashScreen(onSplashFinished = { showSplash = false })
-        return
-    }
-
+    // [U8, plan 4.9] No in-app splash: the platform SplashScreen (installed in MainActivity)
+    // covers process start and hands over at the first frame. The old Compose splash added a
+    // fixed 2 s delay on top of it.
     // [plan 3.3] Three session-sharing ViewModels replace the monolith.
     // LiveViewModel first: it registers its transition hooks before the others.
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as android.app.Application
@@ -102,49 +98,49 @@ fun AppScreen(
 ) {
     val session = liveVm.session
 
-    val telemetry by session.telemetryState.collectAsState()
-    val telemetryHistory by session.telemetryHistory.collectAsState()
-    val selectedMetric by liveVm.selectedMetric.collectAsState()
+    val telemetry by session.telemetryState.collectAsStateWithLifecycle()
+    val telemetryHistory by session.telemetryHistory.collectAsStateWithLifecycle()
+    val selectedMetric by liveVm.selectedMetric.collectAsStateWithLifecycle()
 
-    val fftHistory by session.fftHistory.collectAsState()
-    val fftHistoryAbsolute by session.fftHistoryAbsolute.collectAsState()
-    val fftHistoryTTNR by session.fftHistoryTTNR.collectAsState()
-    val isDetectorEnabled by session.isDetectorEnabled.collectAsState()
-    val emergenceThresholdDb by session.emergenceThresholdDb.collectAsState()
-    val magnitudeGateDbFS by session.magnitudeGateDbFS.collectAsState()
-    val latestTTNRSpectrum by session.latestTTNRSpectrum.collectAsState()
+    val fftHistory by session.fftHistory.collectAsStateWithLifecycle()
+    val fftHistoryAbsolute by session.fftHistoryAbsolute.collectAsStateWithLifecycle()
+    val fftHistoryTTNR by session.fftHistoryTTNR.collectAsStateWithLifecycle()
+    val isDetectorEnabled by session.isDetectorEnabled.collectAsStateWithLifecycle()
+    val emergenceThresholdDb by session.emergenceThresholdDb.collectAsStateWithLifecycle()
+    val magnitudeGateDbFS by session.magnitudeGateDbFS.collectAsStateWithLifecycle()
+    val latestTTNRSpectrum by session.latestTTNRSpectrum.collectAsStateWithLifecycle()
 
-    val minDb by session.minDb.collectAsState()
-    val maxDb by session.maxDb.collectAsState()
-    val fftSize by session.fftSize.collectAsState()
-    val minFreq by session.minFreq.collectAsState()
-    val maxFreq by session.maxFreq.collectAsState()
-    val timeWindowSec by session.timeWindowSec.collectAsState()
-    val displayMode by session.displayMode.collectAsState()
-    val isFrozen by session.isFrozen.collectAsState()
+    val minDb by session.minDb.collectAsStateWithLifecycle()
+    val maxDb by session.maxDb.collectAsStateWithLifecycle()
+    val fftSize by session.fftSize.collectAsStateWithLifecycle()
+    val minFreq by session.minFreq.collectAsStateWithLifecycle()
+    val maxFreq by session.maxFreq.collectAsStateWithLifecycle()
+    val timeWindowSec by session.timeWindowSec.collectAsStateWithLifecycle()
+    val displayMode by session.displayMode.collectAsStateWithLifecycle()
+    val isFrozen by session.isFrozen.collectAsStateWithLifecycle()
 
-    val kinematicsConfig by session.kinematicsConfig.collectAsState()
-    val activeFilters by analyzerVm.activeFilters.collectAsState()
-    val trackedHarmonicTags by session.trackedHarmonicTags.collectAsState()
-    val emergenceReportEntries by session.emergenceReportEntries.collectAsState()
+    val kinematicsConfig by session.kinematicsConfig.collectAsStateWithLifecycle()
+    val activeFilters by analyzerVm.activeFilters.collectAsStateWithLifecycle()
+    val trackedHarmonicTags by session.trackedHarmonicTags.collectAsStateWithLifecycle()
+    val emergenceReportEntries by session.emergenceReportEntries.collectAsStateWithLifecycle()
 
-    val isAudioRecording by liveVm.isAudioRecording.collectAsState()
-    val recordingElapsedSec by liveVm.recordingElapsedSec.collectAsState()
-    val showSaveRecordingDialog by liveVm.showSaveRecordingDialog.collectAsState()
+    val isAudioRecording by liveVm.isAudioRecording.collectAsStateWithLifecycle()
+    val recordingElapsedSec by liveVm.recordingElapsedSec.collectAsStateWithLifecycle()
+    val showSaveRecordingDialog by liveVm.showSaveRecordingDialog.collectAsStateWithLifecycle()
 
-    val audioSourceMode by session.audioSourceMode.collectAsState()
+    val audioSourceMode by session.audioSourceMode.collectAsStateWithLifecycle()
     var showAudioModeMenu by remember { mutableStateOf(false) }
     var showWavSelectionDialog by remember { mutableStateOf(false) }
-    val loadedWavData by session.loadedWavData.collectAsState()
-    val analysisNotice by session.analysisNotice.collectAsState()
-    val loadedWavFileName by analyzerVm.loadedWavFileName.collectAsState()
-    val wavPlaybackPositionMs by analyzerVm.player.positionMs.collectAsState()
-    val isWavPlaying by analyzerVm.player.isPlaying.collectAsState()
-    val isReportModeActive by reportVm.isReportModeActive.collectAsState()
+    val loadedWavData by session.loadedWavData.collectAsStateWithLifecycle()
+    val analysisNotice by session.analysisNotice.collectAsStateWithLifecycle()
+    val loadedWavFileName by analyzerVm.loadedWavFileName.collectAsStateWithLifecycle()
+    val wavPlaybackPositionMs by analyzerVm.player.positionMs.collectAsStateWithLifecycle()
+    val isWavPlaying by analyzerVm.player.isPlaying.collectAsStateWithLifecycle()
+    val isReportModeActive by reportVm.isReportModeActive.collectAsStateWithLifecycle()
 
-    val loadedVideoUri by analyzerVm.loadedVideoUri.collectAsState()
-    val loadedVideoTitle by analyzerVm.loadedVideoTitle.collectAsState()
-    val processingEstimateMessage by analyzerVm.processingEstimateMessage.collectAsState()
+    val loadedVideoUri by analyzerVm.loadedVideoUri.collectAsStateWithLifecycle()
+    val loadedVideoTitle by analyzerVm.loadedVideoTitle.collectAsStateWithLifecycle()
+    val processingEstimateMessage by analyzerVm.processingEstimateMessage.collectAsStateWithLifecycle()
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val wavPickerLauncher =
@@ -497,19 +493,14 @@ fun AppScreen(
                 }
             },
         ) { paddingValues ->
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-            ) {
-                // Zone 1: Spectrogramme (55% hauteur)
+            // [U8, plan 4.9] The two panes are declared once and arranged by the container:
+            // stacked in portrait, side by side in landscape. targetSdk 36 ignores an
+            // orientation lock on large screens, so a tablet used to get the portrait stack
+            // squeezed into a wide window — a ~200 px spectrogram. Closures capture the state
+            // the panes need, so adapting the layout costs no parameter plumbing.
+            val spectrogramPane: @Composable (Modifier) -> Unit = { paneModifier ->
                 Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(0.55f)
-                            .background(NvhCanvas),
+                    modifier = paneModifier.background(NvhCanvas),
                     contentAlignment = Alignment.Center,
                 ) {
                     SpectrogramCanvas(
@@ -532,8 +523,8 @@ fun AppScreen(
                         kinematicsConfig = kinematicsConfig,
                         isWavAnalyzerMode = isWavMode,
                         wavPlaybackProgress = wavProgress,
-                        showH1Overlay = liveVm.showH1Overlay.collectAsState().value,
-                        projectedOrder = liveVm.projectedOrder.collectAsState().value,
+                        showH1Overlay = liveVm.showH1Overlay.collectAsStateWithLifecycle().value,
+                        projectedOrder = liveVm.projectedOrder.collectAsStateWithLifecycle().value,
                         telemetryHistory = telemetryHistory,
                     )
 
@@ -855,8 +846,10 @@ fun AppScreen(
                         Text("Analyse audio & sonogramme en cours...", color = NvhOnSurface)
                     }
                 }
+            }
 
-                if (!isReportModeActive) {
+            val vehicleDataPane: @Composable (Modifier) -> Unit = { paneModifier ->
+                Column(modifier = paneModifier) {
                     // Lecteur WAV (si un fichier est chargé en mode Analyseur WAV)
                     if (audioSourceMode == com.example.nvhspectro.AudioSourceMode.WAV_ANALYZER && loadedWavData != null) {
                         com.example.nvhspectro.ui.WavPlayerBar(
@@ -921,8 +914,8 @@ fun AppScreen(
 
                                     // Bouton 👁️ Hx intégré à l'en-tête (Si GMPe activé)
                                     if (kinematicsConfig.isEnabled) {
-                                        val showH1Overlay by liveVm.showH1Overlay.collectAsState()
-                                        val projectedOrder by liveVm.projectedOrder.collectAsState()
+                                        val showH1Overlay by liveVm.showH1Overlay.collectAsStateWithLifecycle()
+                                        val projectedOrder by liveVm.projectedOrder.collectAsStateWithLifecycle()
                                         val ordLabel =
                                             if (projectedOrder % 1.0 ==
                                                 0.0
@@ -1059,16 +1052,9 @@ fun AppScreen(
                                         KpiItem("Vitesse", "$gpsSpeedText km/h")
                                     }
                                     KpiItem("Accélération", String.format("%.2f g", telemetry.accelerationG))
-                                    var throttledOrderDbFS by remember { mutableDoubleStateOf(-120.0) }
-                                    var lastOrderUpdateTime by remember { mutableLongStateOf(0L) }
-
-                                    val currentMillis = System.currentTimeMillis()
-                                    if (currentMillis - lastOrderUpdateTime > 500 ||
-                                        kotlin.math.abs(throttledOrderDbFS - telemetry.trackedOrderDbFS) > 30.0
-                                    ) {
-                                        throttledOrderDbFS = telemetry.trackedOrderDbFS
-                                        lastOrderUpdateTime = currentMillis
-                                    }
+                                    // [U2, plan 4.9] Sampled in the ViewModel: composition
+                                    // no longer reads the clock or mutates remembered state.
+                                    val throttledOrderDbFS by liveVm.displayedOrderDbFS.collectAsStateWithLifecycle()
 
                                     KpiItem(
                                         "Ordre $ordLabel",
@@ -1168,6 +1154,26 @@ fun AppScreen(
                 }
             }
 
+            BoxWithConstraints(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+            ) {
+                // Landscape / tablet: side by side, so the spectrogram keeps a usable height.
+                if (maxWidth > maxHeight) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        spectrogramPane(Modifier.weight(SPECTRO_PANE_WEIGHT).fillMaxHeight())
+                        vehicleDataPane(Modifier.weight(DATA_PANE_WEIGHT).fillMaxHeight())
+                    }
+                } else {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        spectrogramPane(Modifier.weight(SPECTRO_PANE_WEIGHT).fillMaxWidth())
+                        vehicleDataPane(Modifier.weight(DATA_PANE_WEIGHT).fillMaxWidth())
+                    }
+                }
+            }
+
             if (showInfoDialog) {
                 InfoDialog(
                     onDismiss = { showInfoDialog = false },
@@ -1185,7 +1191,7 @@ fun AppScreen(
             }
 
             if (showProjectedOrderDialog) {
-                val projectedOrder by liveVm.projectedOrder.collectAsState()
+                val projectedOrder by liveVm.projectedOrder.collectAsStateWithLifecycle()
                 OrderSelectionDialog(
                     currentOrder = projectedOrder,
                     onOrderSelected = { newOrd ->
@@ -1380,3 +1386,9 @@ fun KpiItem(
         Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
     }
 }
+
+/** Spectrogram share of the main layout, in both orientations [U8, plan 4.9]. */
+private const val SPECTRO_PANE_WEIGHT = 0.55f
+
+/** Vehicle-data / telemetry share of the main layout. */
+private const val DATA_PANE_WEIGHT = 0.45f

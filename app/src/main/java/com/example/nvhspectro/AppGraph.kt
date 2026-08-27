@@ -3,6 +3,7 @@ package com.example.nvhspectro
 import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.example.nvhspectro.data.DiagnosticLog
 import com.example.nvhspectro.data.SettingsStore
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +28,16 @@ object AppGraph {
      */
     fun startPersistence(application: Application) {
         if (!persistenceStarted.compareAndSet(false, true)) return
+
+        // [V3, plan 4.7] Every user-facing notice is also written to the local diagnostic
+        // log, so a field failure leaves a trace the operator can send afterwards instead of
+        // vanishing with the session.
+        DiagnosticLog.init(application)
+        DiagnosticLog.i("Session", "NVH Spectro v${BuildConfig.VERSION_NAME} — nouvelle session")
+        scope.launch {
+            session.analysisNotice.collect { notice -> notice?.let { DiagnosticLog.notice(it) } }
+        }
+
         val store = SettingsStore(application)
         scope.launch {
             store.restoreInto(session)
@@ -36,8 +47,9 @@ object AppGraph {
 }
 
 /** Builds the session-sharing ViewModels [plan 3.3]. */
-class NvhViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
-
+class NvhViewModelFactory(
+    private val application: Application,
+) : ViewModelProvider.Factory {
     init {
         AppGraph.startPersistence(application)
     }

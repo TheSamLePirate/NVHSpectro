@@ -7,7 +7,7 @@ import android.location.GnssStatus
 import android.location.LocationManager
 import android.os.Build
 import android.os.Handler
-import android.util.Log
+import com.example.nvhspectro.data.DiagnosticLog
 import com.example.nvhspectro.data.GnssDiagnostics
 import java.util.concurrent.Executor
 
@@ -65,14 +65,14 @@ class GnssDiagnosticsMonitor(
             } else {
                 locationManager.registerGnssStatusCallback(statusCallback, handler)
             }
-        }.onFailure { Log.w(TAG, "GnssStatus callback unavailable", it) }
+        }.onFailure { DiagnosticLog.w(TAG, "GnssStatus callback unavailable", it) }
         // [GPS-3.4] Full tracking only during an active measurement session.
         val callback = measurementsCallback
         if (fullTrackingRequested && callback != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             runCatching {
                 val request = GnssMeasurementRequest.Builder().setFullTracking(true).build()
                 locationManager.registerGnssMeasurementsCallback(request, executor, callback)
-            }.onFailure { Log.w(TAG, "full-tracking registration failed", it) }
+            }.onFailure { DiagnosticLog.w(TAG, "full-tracking registration failed", it) }
         }
     }
 
@@ -81,7 +81,7 @@ class GnssDiagnosticsMonitor(
         val callback = measurementsCallback
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && callback != null) {
             if (measurementEventCount > 0) {
-                Log.i(TAG, "full-tracking session delivered $measurementEventCount measurement events")
+                DiagnosticLog.i(TAG, "full-tracking session delivered $measurementEventCount measurement events")
             }
             runCatching { locationManager.unregisterGnssMeasurementsCallback(callback) }
         }

@@ -11,7 +11,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
-import android.util.Log
+import com.example.nvhspectro.data.DiagnosticLog
 import com.example.nvhspectro.data.EstimatorOutcome
 import com.example.nvhspectro.data.FieldLocationLogger
 import com.example.nvhspectro.data.GnssSpeedSample
@@ -140,7 +140,7 @@ class SpeedProvider(
         } catch (e: SecurityException) {
             // [GPS-12, GPS-3.2] Approximate-only permission cannot feed a
             // metrological speed chain — say so instead of silently degrading.
-            Log.w(TAG, "location permission missing", e)
+            DiagnosticLog.w(TAG, "location permission missing", e)
             onNotice?.invoke("⚠️ Localisation précise requise pour la vitesse GNSS")
             started = false
         }
@@ -241,7 +241,7 @@ class SpeedProvider(
                 fusedListener,
                 gnssThread.looper,
             )
-        }.onFailure { Log.w(TAG, "fallback provider unavailable", it) }
+        }.onFailure { DiagnosticLog.w(TAG, "fallback provider unavailable", it) }
     }
 
     private fun onFix(

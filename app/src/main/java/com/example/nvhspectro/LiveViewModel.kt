@@ -14,8 +14,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -104,6 +108,22 @@ class LiveViewModel(
 
     /** Re-applies the policy after a grant/revocation [U1, plan 4.1]. */
     fun onPermissionsChanged() = applyResourcePolicy(session.audioSourceMode.value)
+
+    /**
+     * The tracked-order level as the KPI card should show it — sampled, not per frame
+     * [U2, P3, plan 4.9].
+     *
+     * Telemetry is appended at the analysis rate (~43 Hz); a numeric readout changing 43
+     * times a second is unreadable AND recomposes the whole card. The screen used to throttle
+     * it by reading `System.currentTimeMillis()` *during composition* and assigning
+     * remembered vars — non-idempotent composition logic that only worked because something
+     * else recomposed constantly. Throttling belongs here, where time may legitimately pass.
+     */
+    val displayedOrderDbFS: StateFlow<Double> =
+        session.telemetryState
+            .map { it.trackedOrderDbFS }
+            .sample(ORDER_READOUT_PERIOD_MS)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, NO_SIGNAL_DBFS)
 
     /** ONE consumer for the app's lifetime; enable/fftSize changes flow through CaptureEngine. */
     private fun startLivePipeline() {
@@ -478,5 +498,8 @@ class LiveViewModel(
     companion object {
         const val MAX_RECORDING_SEC = 30
         private const val NO_SIGNAL_DBFS = -120.0
+
+        /** KPI readout cadence: fast enough to feel live, slow enough to read [U2, P3]. */
+        private const val ORDER_READOUT_PERIOD_MS = 500L
     }
 }

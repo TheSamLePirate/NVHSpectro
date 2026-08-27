@@ -8,7 +8,7 @@ import android.media.AudioRecord
 import android.media.AudioTimestamp
 import android.media.MediaRecorder
 import android.os.SystemClock
-import android.util.Log
+import com.example.nvhspectro.data.DiagnosticLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -186,7 +186,9 @@ class AudioRepository(
         if (!clock.hasAnchor || source == AudioTimestampSource.ESTIMATED) {
             clock.setAnchor(totalFramesRead, SystemClock.elapsedRealtimeNanos())
             if (!estimatedClockLogged) {
-                Log.w(TAG, "AudioTimestamp unavailable — using ESTIMATED audio clock")
+                // [V3] Also into the local diagnostic log: a degraded audio clock changes how
+                // speed is paired with sound, so a later report must be able to show it.
+                DiagnosticLog.w(TAG, "AudioTimestamp unavailable — using ESTIMATED audio clock")
                 estimatedClockLogged = true
             }
         }

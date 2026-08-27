@@ -2,18 +2,6 @@
 <baseline version="1.0">
     <file name="app/src/main/java/com/example/nvhspectro/AppGraph.kt">
         <error line="3" column="1" source="standard:import-ordering" />
-        <error line="39" column="27" source="standard:class-signature" />
-        <error line="39" column="63" source="standard:class-signature" />
-        <error line="40" column="1" source="standard:no-empty-first-line-in-class-body" />
-    </file>
-    <file name="app/src/main/java/com/example/nvhspectro/MainActivity.kt">
-        <error line="14" column="1" source="standard:indent" />
-        <error line="15" column="1" source="standard:indent" />
-        <error line="17" column="1" source="standard:indent" />
-        <error line="18" column="1" source="standard:indent" />
-        <error line="19" column="1" source="standard:indent" />
-        <error line="20" column="1" source="standard:indent" />
-        <error line="21" column="1" source="standard:indent" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/MainScreen.kt">
         <error line="3" column="1" source="standard:import-ordering" />
@@ -21,14 +9,14 @@
         <error line="9" column="1" source="standard:no-wildcard-imports" />
         <error line="10" column="1" source="standard:no-wildcard-imports" />
         <error line="61" column="5" source="standard:function-naming" />
-        <error line="97" column="5" source="standard:function-naming" />
-        <error line="175" column="141" source="standard:max-line-length" />
-        <error line="241" column="141" source="standard:max-line-length" />
-        <error line="846" column="141" source="standard:max-line-length" />
-        <error line="1295" column="5" source="standard:function-naming" />
-        <error line="1326" column="5" source="standard:function-naming" />
-        <error line="1353" column="5" source="standard:function-naming" />
-        <error line="1374" column="5" source="standard:function-naming" />
+        <error line="93" column="5" source="standard:function-naming" />
+        <error line="171" column="141" source="standard:max-line-length" />
+        <error line="237" column="141" source="standard:max-line-length" />
+        <error line="837" column="141" source="standard:max-line-length" />
+        <error line="1301" column="5" source="standard:function-naming" />
+        <error line="1332" column="5" source="standard:function-naming" />
+        <error line="1359" column="5" source="standard:function-naming" />
+        <error line="1380" column="5" source="standard:function-naming" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/PlaybackController.kt">
         <error line="3" column="1" source="standard:import-ordering" />
@@ -216,6 +204,9 @@
         <error line="35" column="6" source="standard:block-comment-initial-star-alignment" />
         <error line="36" column="1" source="standard:indent" />
     </file>
+    <file name="app/src/main/java/com/example/nvhspectro/ui/DiagnosticsSection.kt">
+        <error line="44" column="5" source="standard:function-naming" />
+    </file>
     <file name="app/src/main/java/com/example/nvhspectro/ui/EmergenceReportDialog.kt">
         <error line="4" column="1" source="standard:no-wildcard-imports" />
         <error line="8" column="1" source="standard:no-wildcard-imports" />
@@ -239,9 +230,9 @@
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/ui/InfoDialog.kt">
         <error line="6" column="1" source="standard:no-wildcard-imports" />
-        <error line="8" column="1" source="standard:no-wildcard-imports" />
-        <error line="28" column="5" source="standard:function-naming" />
-        <error line="139" column="5" source="standard:function-naming" />
+        <error line="10" column="1" source="standard:no-wildcard-imports" />
+        <error line="30" column="5" source="standard:function-naming" />
+        <error line="145" column="5" source="standard:function-naming" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/ui/KinematicsDialog.kt">
         <error line="3" column="1" source="standard:no-unused-imports" />
@@ -266,10 +257,10 @@
         <error line="10" column="1" source="standard:no-wildcard-imports" />
         <error line="15" column="1" source="standard:no-wildcard-imports" />
         <error line="16" column="1" source="standard:no-wildcard-imports" />
-        <error line="51" column="5" source="standard:function-naming" />
-        <error line="438" column="141" source="standard:max-line-length" />
-        <error line="624" column="5" source="standard:function-naming" />
-        <error line="686" column="5" source="standard:function-naming" />
+        <error line="52" column="5" source="standard:function-naming" />
+        <error line="439" column="141" source="standard:max-line-length" />
+        <error line="625" column="5" source="standard:function-naming" />
+        <error line="687" column="5" source="standard:function-naming" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/ui/SaveRecordingDialog.kt">
         <error line="3" column="1" source="standard:no-wildcard-imports" />
@@ -296,13 +287,6 @@
         <error line="290" column="1" source="standard:indent" />
         <error line="421" column="5" source="standard:function-naming" />
         <error line="436" column="5" source="standard:function-naming" />
-    </file>
-    <file name="app/src/main/java/com/example/nvhspectro/ui/SplashScreen.kt">
-        <error line="3" column="1" source="standard:import-ordering" />
-        <error line="3" column="1" source="standard:no-wildcard-imports" />
-        <error line="7" column="1" source="standard:no-wildcard-imports" />
-        <error line="8" column="1" source="standard:no-wildcard-imports" />
-        <error line="21" column="5" source="standard:function-naming" />
     </file>
     <file name="app/src/main/java/com/example/nvhspectro/ui/TelemetryGraph.kt">
         <error line="42" column="5" source="standard:function-naming" />

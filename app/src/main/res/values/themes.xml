@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Launch-window theme [U5, plan 4.3]. The app is Compose-only and fixed-dark (decision D4),
-  so this XML theme exists purely to make the window Android draws *before* the first frame
-  match the app. The previous Theme.Material.Light parent produced a white flash into a dark
-  instrument UI on every cold start.
+  Launch/splash theme [U5 plan 4.3, U8 plan 4.9]. The app is Compose-only and fixed-dark
+  (decision D4), so this XML theme exists to make the window Android draws *before* the first
+  frame match the app. The previous Theme.Material.Light parent produced a white flash into a
+  dark instrument UI on every cold start, and a Compose splash then held the app for a further
+  fixed 2 seconds; the platform SplashScreen API below replaces both.
 -->
 <resources>
 
-    <style name="Theme.NVHSpectro" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.NVHSpectro" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/nvh_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.NVHSpectro.Main</item>
+    </style>
+
+    <style name="Theme.NVHSpectro.Main" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/nvh_background</item>
         <item name="android:colorBackground">@color/nvh_background</item>
         <item name="android:statusBarColor">@color/nvh_primary_container</item>

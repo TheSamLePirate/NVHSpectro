@@ -98,7 +98,7 @@ class FieldLocationLogger(
                 }
             } catch (e: Exception) {
                 failed = true
-                Log.w(TAG, "field logging disabled after error", e)
+                DiagnosticLog.w(TAG, "field logging disabled after error", e)
             }
         }
     }

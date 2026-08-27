@@ -222,7 +222,7 @@ object VideoAudioExtractor {
                 )
             }
         } catch (e: Exception) {
-            Log.w(TAG, "audio extraction failed", e)
+            DiagnosticLog.w(TAG, "audio extraction failed", e)
             Result.Failure("Extraction audio impossible : ${e.message ?: e.javaClass.simpleName}")
         } finally {
             runCatching { codec?.stop() }

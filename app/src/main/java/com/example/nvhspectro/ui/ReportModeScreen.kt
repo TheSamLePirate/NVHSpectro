@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.nvhspectro.AudioConfig
 import com.example.nvhspectro.DisplayMode
 import com.example.nvhspectro.ReportViewModel
@@ -52,25 +53,25 @@ fun ReportModeScreen(
     viewModel: ReportViewModel,
     onBack: () -> Unit,
 ) {
-    val reportFftHistory by viewModel.reportFftHistory.collectAsState()
-    val reportAbsHistory by viewModel.reportFftHistoryAbsolute.collectAsState()
-    val reportTtnrHistory by viewModel.reportFftHistoryTTNR.collectAsState()
+    val reportFftHistory by viewModel.reportFftHistory.collectAsStateWithLifecycle()
+    val reportAbsHistory by viewModel.reportFftHistoryAbsolute.collectAsStateWithLifecycle()
+    val reportTtnrHistory by viewModel.reportFftHistoryTTNR.collectAsStateWithLifecycle()
 
-    val displayMode by viewModel.session.displayMode.collectAsState()
-    val minFreq by viewModel.session.minFreq.collectAsState()
-    val maxFreq by viewModel.session.maxFreq.collectAsState()
-    val minDb by viewModel.session.minDb.collectAsState()
-    val maxDb by viewModel.session.maxDb.collectAsState()
+    val displayMode by viewModel.session.displayMode.collectAsStateWithLifecycle()
+    val minFreq by viewModel.session.minFreq.collectAsStateWithLifecycle()
+    val maxFreq by viewModel.session.maxFreq.collectAsStateWithLifecycle()
+    val minDb by viewModel.session.minDb.collectAsStateWithLifecycle()
+    val maxDb by viewModel.session.maxDb.collectAsStateWithLifecycle()
 
-    val manualTrackedOrders by viewModel.manualTrackedOrders.collectAsState()
-    val selectedValidatedOrder by viewModel.selectedValidatedOrder.collectAsState()
-    val isBrillanceModeEnabled by viewModel.isBrillanceModeEnabled.collectAsState()
-    val kinematicsConfig by viewModel.session.kinematicsConfig.collectAsState()
-    val currentUserPoints by viewModel.currentUserPoints.collectAsState()
-    val currentSmartPath by viewModel.currentSmartPath.collectAsState()
+    val manualTrackedOrders by viewModel.manualTrackedOrders.collectAsStateWithLifecycle()
+    val selectedValidatedOrder by viewModel.selectedValidatedOrder.collectAsStateWithLifecycle()
+    val isBrillanceModeEnabled by viewModel.isBrillanceModeEnabled.collectAsStateWithLifecycle()
+    val kinematicsConfig by viewModel.session.kinematicsConfig.collectAsStateWithLifecycle()
+    val currentUserPoints by viewModel.currentUserPoints.collectAsStateWithLifecycle()
+    val currentSmartPath by viewModel.currentSmartPath.collectAsStateWithLifecycle()
 
     // [C1] Report mode can hold a snapshot from live capture or from a loaded file.
-    val loadedWavData by viewModel.session.loadedWavData.collectAsState()
+    val loadedWavData by viewModel.session.loadedWavData.collectAsStateWithLifecycle()
     val sampleRate = loadedWavData?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ
     val context = LocalContext.current
 
