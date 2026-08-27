@@ -47,15 +47,15 @@ class LiveAnalysisEngineTest {
     }
 
     @Test
-    fun l7_reset_restoresFirstFrameShockSquelch() {
+    fun l7_reset_restoresFreshStreamGating() {
         val engine = LiveAnalysisEngine(fftSize, sampleRate)
         repeat(12) { engine.processFrame(toneBuffer) }
         engine.reset()
-        // A fresh stream's first frame is always squelched (D3 pinned behavior) —
-        // proving the FFT shock/integration state did not survive the reset.
+        // A fresh stream needs PERSISTENCE_FRAMES before anything validates —
+        // proving persistence/integration state did not survive the reset.
         val first = engine.processFrame(toneBuffer)
         assertTrue(
-            "first post-reset frame must report no emergence, got ${first.ttnrSpectrum.max()}",
+            "first post-reset frame must report no VALIDATED emergence, got ${first.ttnrSpectrum.max()}",
             first.ttnrSpectrum.max() <= 0.0
         )
     }

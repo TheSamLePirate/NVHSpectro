@@ -1,5 +1,6 @@
 package com.example.nvhspectro
 
+import kotlin.math.exp
 import kotlin.math.log10
 import kotlin.math.sqrt
 import org.jtransforms.fft.DoubleFFT_1D
@@ -11,64 +12,84 @@ import org.jtransforms.fft.DoubleFFT_1D
  * and never share it between live capture and file analysis [audit D3].
  * The sample rate is fixed per instance and threaded from the actual source
  * [audit C1] — never assume a rate here.
+ *
+ * [plan 3.7] DSP core polish:
+ * - real FFT ([DoubleFFT_1D.realForward]) on preallocated, reused buffers —
+ *   half the work and zero per-frame allocation of the old complexForward
+ *   with zeroed imaginary parts [D6]. The returned magnitude array is REUSED
+ *   across calls: copy it if you retain it.
+ * - No sentinel arithmetic: the TTNR scale is emergence dB with 0 = none;
+ *   temporal integration runs on LINEAR power with the honest time constant
+ *   [TTNR_INTEGRATION_TAU_SEC] (α is derived from the real frame interval,
+ *   so integration time no longer changes with FFT size) [D2].
+ * - The shock detector compares energy RISE RATE (dB/s), not per-call deltas,
+ *   and the first frame of a stream is ANALYZED (the historical −120
+ *   initialization squelched it unconditionally) [D3].
+ * - Sub-30 Hz masking is display policy and lives in the display layer
+ *   ([AudioConfig.DISPLAY_MIN_FREQ_HZ]) — magnitudes here are true [D7].
  */
 class FFTProcessor(val fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, private val sampleRateHz: Int) {
     private val fft = DoubleFFT_1D(fftSize.toLong())
-    private var lastFrameEnergyDb: Double = -120.0
-    private var integratedTtnr: DoubleArray? = null
+
+    /** NaN = no previous frame: the first frame has no shock reference [D3]. */
+    private var lastFrameEnergyDb: Double = Double.NaN
+    private var integratedTtnrPower: DoubleArray? = null
 
     /** Bin width in Hz for this instance's stream. */
     private val df = sampleRateHz.toDouble() / fftSize
+
+    /** Frame interval at the pipeline's 50 % overlap. */
+    private val frameDtSec = (fftSize / 2.0) / sampleRateHz
+
+    /** [D2] α from the honest τ: at 2048/44.1 kHz this is the historical 0.36. */
+    private val integrationAlpha = 1.0 - exp(-frameDtSec / TTNR_INTEGRATION_TAU_SEC)
 
     // Fenêtrage de Hanning pour réduire le "leakage"
     private val window = DoubleArray(fftSize) { i ->
         0.5 * (1.0 - Math.cos(2.0 * Math.PI * i / (fftSize - 1)))
     }
 
+    // [D6] Preallocated work buffers, reused every call.
+    private val fftBuffer = DoubleArray(fftSize)
+    private val magnitudes = DoubleArray(fftSize / 2)
+
     /**
-     * Calcule la FFT sur un bloc audio
-     * @param audioData : bloc de taille >= fftSize
-     * @return DoubleArray contenant les magnitudes (moitié du tableau car signal réel)
+     * Calcule la FFT sur un bloc audio.
+     * @param audioData bloc de taille >= fftSize
+     * @return magnitudes dBFS (moitié du tableau, signal réel). Le tableau est
+     *   RÉUTILISÉ à chaque appel — copier avant de le conserver.
      */
     fun processFFT(audioData: ShortArray): DoubleArray {
         val size = minOf(audioData.size, fftSize)
-        val fftData = DoubleArray(fftSize * 2)
-
         for (i in 0 until size) {
-            // Normalisation 16-bit [-1.0, 1.0] et application de la fenêtre Hanning
-            fftData[i * 2] = (audioData[i].toDouble() / 32768.0) * window[i]
-            fftData[i * 2 + 1] = 0.0
+            // Normalisation 16-bit [-1.0, 1.0] et fenêtre de Hanning.
+            fftBuffer[i] = (audioData[i].toDouble() / 32768.0) * window[i]
+        }
+        for (i in size until fftSize) {
+            fftBuffer[i] = 0.0
         }
 
-        // Calcul de la FFT
-        fft.complexForward(fftData)
+        // [D6] Real-input FFT: half the work of complexForward on zeroed ims.
+        fft.realForward(fftBuffer)
 
-        // Calcul des magnitudes (échelle dBFS)
-        val magnitudes = DoubleArray(fftSize / 2)
         val normFactor = fftSize / 4.0
-
         for (i in 0 until fftSize / 2) {
-            val f = i * df
-            if (f < 30.0) {
-                magnitudes[i] = -120.0
-                continue
-            }
-            val re = fftData[i * 2]
-            val im = fftData[i * 2 + 1]
+            // realForward packing (n even): a[0]=Re[0]; a[2k]=Re[k], a[2k+1]=Im[k].
+            val re = if (i == 0) fftBuffer[0] else fftBuffer[2 * i]
+            val im = if (i == 0) 0.0 else fftBuffer[2 * i + 1]
             val mag = sqrt(re * re + im * im)
-
             val magNormalized = mag / normFactor
             magnitudes[i] = if (magNormalized > 1e-6) 20 * log10(magNormalized) else -120.0
         }
-
         return magnitudes
     }
 
     /**
-     * Calcule le spectre d'émergence TTNR (Tone-to-Noise Ratio) selon ECMA-74 / ISO 1996-2 Hybride NVH v7.0.0
-     * Avec Intégration Temporelle Exponentielle (tau = 220 ms) et Anti-Shock Squelch.
-     * @param magnitudesDbFS : Tableau de magnitudes en dBFS
-     * @return DoubleArray contenant les valeurs TTNR en dB d'émergence filtrées [0..30 dB]
+     * Spectre d'émergence tonale (heuristique NVH hybride — voir audit D1 :
+     * PAS une implémentation ECMA-74/ISO 1996-2 conforme).
+     *
+     * @param magnitudesDbFS magnitudes en dBFS
+     * @return émergence en dB, échelle [0, 30] — 0 = aucune émergence [D2].
      */
     fun computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray {
         val binCount = magnitudesDbFS.size
@@ -82,12 +103,13 @@ class FFTProcessor(val fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, private val 
             p
         }
 
-        // 1. DÉTECTEUR D'IMPULSION ET CHOC TEMPOREL (ANTI-SHOCK SQUELCH)
+        // 1. DÉTECTEUR DE CHOC TEMPOREL [D3] : taux de montée en dB/s (indépendant
+        // de la taille FFT), sans référence factice pour la première trame.
         val currentFrameEnergyDb = 10.0 * log10(totalFrameEnergySum.coerceAtLeast(1e-12))
-        val deltaEnergyDb = currentFrameEnergyDb - lastFrameEnergyDb
+        val previousEnergyDb = lastFrameEnergyDb
         lastFrameEnergyDb = currentFrameEnergyDb
-
-        val isTransientShock = deltaEnergyDb > 6.0
+        val isTransientShock = !previousEnergyDb.isNaN() &&
+            (currentFrameEnergyDb - previousEnergyDb) > SHOCK_RISE_DB_PER_SECOND * frameDtSec
 
         if (!isTransientShock) {
             for (i in 0 until binCount) {
@@ -161,32 +183,34 @@ class FFTProcessor(val fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, private val 
                 val cbwEffective = maxOf(criticalBandwidth, 150.0)
                 val pNoiseTotalInCb = pNoiseDensityPerHz * cbwEffective
 
-                // TTNR ECMA-74 sur puissance nette du ton
+                // Ratio tonal sur puissance nette du ton
                 val ratioCb = if (pNoiseTotalInCb > 0.0) pToneNet / pNoiseTotalInCb else 0.0
                 val ttnrCbDb = if (ratioCb > 1.0) 10.0 * log10(ratioCb) else 0.0
 
-                // Émergence Spectrale Locale ISO 1996-2
+                // Émergence spectrale locale
                 val localNoiseFloorDbFS = 10.0 * log10(pNoiseDensityPerHz * df)
                 val localEmergenceDb = (magnitudesDbFS[i] - localNoiseFloorDbFS).coerceAtLeast(0.0)
 
-                // Seuil d'émergence adaptatif en fréquence (anti-turbulences & double verrou HF)
+                // Seuil d'émergence minimale (anti-turbulences & double verrou HF)
                 val minEmergenceRequired = -3.0
 
-                // Hybridation NVH Psychoacoustique : Seuls les tons avec puissance nette positive ET émergence nette sont retenus
+                // [D2] Hybridation NVH : échelle honnête [0, 30], 0 = pas d'émergence
+                // (l'ancienne fenêtre −3..0 était invisible pour tous les consommateurs).
                 val finalPeakTtnr = if (pToneNet > 0.0 && localEmergenceDb >= minEmergenceRequired) {
-                    maxOf(ttnrCbDb, localEmergenceDb - 1.5).coerceIn(-3.0, 30.0)
+                    maxOf(ttnrCbDb, localEmergenceDb - 1.5).coerceIn(0.0, 30.0)
                 } else {
-                    -100.0
+                    0.0
                 }
 
-                if (finalPeakTtnr >= -3.0) {
+                if (finalPeakTtnr > 0.0) {
                     rawTtnr[i] = finalPeakTtnr
                     // Reconstitution de la largeur physique du dôme (Leakage Hanning sur bins adjacents)
-                    if (i > 0 && rawTtnr[i - 1] < finalPeakTtnr - 4.0) {
-                        rawTtnr[i - 1] = finalPeakTtnr - 4.0
+                    val domeLevel = (finalPeakTtnr - 4.0).coerceAtLeast(0.0)
+                    if (i > 0 && rawTtnr[i - 1] < domeLevel) {
+                        rawTtnr[i - 1] = domeLevel
                     }
-                    if (i < binCount - 1 && rawTtnr[i + 1] < finalPeakTtnr - 4.0) {
-                        rawTtnr[i + 1] = finalPeakTtnr - 4.0
+                    if (i < binCount - 1 && rawTtnr[i + 1] < domeLevel) {
+                        rawTtnr[i + 1] = domeLevel
                     }
                 }
             }
@@ -196,39 +220,53 @@ class FFTProcessor(val fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE, private val 
         val filteredTtnr = DoubleArray(binCount)
         for (i in 0 until binCount) {
             val valCurr = rawTtnr[i]
-            if (valCurr <= -3.0) continue
+            if (valCurr <= 0.0) continue
 
-            val prevVal = if (i > 0) rawTtnr[i - 1] else -100.0
-            val nextVal = if (i < binCount - 1) rawTtnr[i + 1] else -100.0
+            val prevVal = if (i > 0) rawTtnr[i - 1] else 0.0
+            val nextVal = if (i < binCount - 1) rawTtnr[i + 1] else 0.0
 
             val hasStructure = (prevVal >= valCurr - 8.0 || nextVal >= valCurr - 8.0)
             if (hasStructure) {
                 filteredTtnr[i] = valCurr
-            } else {
-                filteredTtnr[i] = -100.0
             }
         }
 
-        // 3. INTÉGRATION TEMPORELLE EXPONENTIELLE NVH (EMA tau = 110 ms, alpha = 0.36)
-        // Temps d'intégration réduit de moitié (~100 ms) pour une réactivité ultra-rapide
-        // Seuil couperet d'émergence minimale ajusté à 2.0 dB
-        val alpha = 0.36
+        // 3. INTÉGRATION TEMPORELLE [D2] : EMA sur puissance LINÉAIRE (une
+        // disparition de ton décroît exponentiellement au lieu d'un blend de
+        // sentinelles), τ honnête = TTNR_INTEGRATION_TAU_SEC.
         val finalTtnr = DoubleArray(binCount)
-        val prevIntegrated = integratedTtnr
-
-        if (prevIntegrated != null && prevIntegrated.size == binCount) {
-            for (i in 0 until binCount) {
-                val rawVal = filteredTtnr[i]
-                val integVal = (1.0 - alpha) * prevIntegrated[i] + alpha * rawVal
-                finalTtnr[i] = if (integVal < -3.0 || i * df < 30.0) -100.0 else integVal
-            }
-        } else {
-            for (i in 0 until binCount) {
-                finalTtnr[i] = if (filteredTtnr[i] < -3.0 || i * df < 30.0) -100.0 else filteredTtnr[i]
-            }
+        val prevPower = integratedTtnrPower
+            ?.takeIf { it.size == binCount }
+            ?: DoubleArray(binCount) { 1.0 } // 1.0 = 0 dB = aucune émergence
+        for (i in 0 until binCount) {
+            val pRaw = Math.pow(10.0, filteredTtnr[i] / 10.0)
+            val pInt = (1.0 - integrationAlpha) * prevPower[i] + integrationAlpha * pRaw
+            prevPower[i] = pInt
+            val db = 10.0 * log10(pInt)
+            // Plancher de détection (= seuil noir de l'affichage) : un zéro franc
+            // sur l'échelle d'émergence, pas une sentinelle.
+            finalTtnr[i] = if (db >= DETECTION_FLOOR_DB) db else 0.0
         }
+        integratedTtnrPower = prevPower
 
-        integratedTtnr = finalTtnr.clone()
         return finalTtnr
+    }
+
+    companion object {
+        /**
+         * [D2] Historical behavior made honest: α=0.36 at the 23.2 ms frame
+         * interval of 2048/44.1 kHz ⇒ τ = −Δt/ln(1−α) ≈ 52 ms. (Comments used
+         * to claim 220 ms and 110 ms; both contradicted the math.)
+         */
+        const val TTNR_INTEGRATION_TAU_SEC = 0.052
+
+        /**
+         * [D3] Historical sensitivity (6 dB per frame at 43 fps) expressed as
+         * a rate so it no longer changes silently with FFT size.
+         */
+        const val SHOCK_RISE_DB_PER_SECOND = 258.0
+
+        /** Below this integrated emergence the output is plain 0 (display black threshold). */
+        const val DETECTION_FLOOR_DB = 1.0
     }
 }

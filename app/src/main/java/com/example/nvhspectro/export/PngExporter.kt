@@ -11,6 +11,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Environment
 import android.provider.MediaStore
+import com.example.nvhspectro.AudioConfig
 import com.example.nvhspectro.DisplayMode
 import com.example.nvhspectro.R
 import com.example.nvhspectro.TelemetryData
@@ -78,11 +79,13 @@ object PngExporter {
         // [U10, plan 3.4] History is chronological in every mode — no column
         // mirror. (The old unconditional reversal was right only for the
         // newest-first live list and time-mirrored every WAV export.)
+        // [D7] Display-layer sub-30 Hz floor (the data itself is true).
+        val maskBelowBin = Math.ceil(AudioConfig.DISPLAY_MIN_FREQ_HZ * binCount / nyquistFreq).toInt()
         for (x in 0 until bitmapWidth) {
             val frameData = history[x]
             for (y in 0 until bitmapHeight) {
                 val b = bitmapHeight - 1 - y
-                val valMagnitude = if (b < frameData.size) frameData[b].toDouble() else minVal
+                val valMagnitude = if (b < maskBelowBin || b >= frameData.size) minVal else frameData[b].toDouble()
                 val normalized = ((valMagnitude - minVal) / (maxVal - minVal)).toFloat()
                 pixels[y * bitmapWidth + x] = getJetColorInt(normalized)
             }

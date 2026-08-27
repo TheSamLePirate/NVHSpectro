@@ -34,7 +34,8 @@ class SpectrogramImageProducer(val width: Int, val height: Int) {
         maxBin: Int,
         effectiveMin: Double,
         effectiveMax: Double,
-        isTtnr: Boolean
+        isTtnr: Boolean,
+        maskBelowBin: Int = 0
     ): Bitmap {
         val numFrames = history.size
         val displayedBinCount = (maxBin - minBin).coerceAtLeast(1)
@@ -43,7 +44,12 @@ class SpectrogramImageProducer(val width: Int, val height: Int) {
             val frame = if (frameIdx in history.indices) history[frameIdx] else EMPTY_FRAME
             for (y in 0 until height) {
                 val binIndex = (maxBin - 1) - (y * (displayedBinCount - 1)) / maxOf(1, height - 1)
-                val magnitude = if (binIndex in frame.indices) frame[binIndex].toDouble() else effectiveMin
+                // [D7] Sub-30 Hz is display policy now: the data is true, the paint floors it.
+                val magnitude = if (binIndex < maskBelowBin || binIndex !in frame.indices) {
+                    effectiveMin
+                } else {
+                    frame[binIndex].toDouble()
+                }
                 pixels[y * width + x] = colorFor(magnitude, effectiveMin, effectiveMax, isTtnr)
             }
         }
@@ -58,13 +64,19 @@ class SpectrogramImageProducer(val width: Int, val height: Int) {
         maxBin: Int,
         effectiveMin: Double,
         effectiveMax: Double,
-        isTtnr: Boolean
+        isTtnr: Boolean,
+        maskBelowBin: Int = 0
     ): Bitmap {
         val displayedBinCount = (maxBin - minBin).coerceAtLeast(1)
         for (y in 0 until height) {
             System.arraycopy(pixels, y * width + 1, pixels, y * width, width - 1)
             val binIndex = (maxBin - 1) - (y * (displayedBinCount - 1)) / maxOf(1, height - 1)
-            val magnitude = if (binIndex in latestFrame.indices) latestFrame[binIndex].toDouble() else effectiveMin
+            // [D7] Sub-30 Hz floored at paint time, not in the FFT.
+            val magnitude = if (binIndex < maskBelowBin || binIndex !in latestFrame.indices) {
+                effectiveMin
+            } else {
+                latestFrame[binIndex].toDouble()
+            }
             pixels[y * width + (width - 1)] = colorFor(magnitude, effectiveMin, effectiveMax, isTtnr)
         }
         return publish()

@@ -41,10 +41,12 @@ class LiveAnalysisEngine(val fftSize: Int, private val sampleRateHz: Int) {
             recentRawTTNR.removeLast()
         }
 
+        // [D2, plan 3.7] Emergence scale is [0, 30] with 0 = none — presence is
+        // "value > 0", and absence is a plain zero, never a sentinel.
         val validated = DoubleArray(rawTtnr.size)
         val retroBins = mutableListOf<Int>()
         for (i in rawTtnr.indices) {
-            if (rawTtnr[i] >= -3.0) {
+            if (rawTtnr[i] > 0.0) {
                 ttnrPersistenceCount[i]++
             } else {
                 ttnrPersistenceCount[i] = 0
@@ -54,18 +56,18 @@ class LiveAnalysisEngine(val fftSize: Int, private val sampleRateHz: Int) {
                 if (ttnrPersistenceCount[i] == PERSISTENCE_FRAMES) {
                     retroBins.add(i)
                 }
-            } else {
-                validated[i] = -100.0
             }
         }
 
+        // [D2] Fast-attack smoothing on LINEAR power: a tone dropping out
+        // decays exponentially instead of blending with a −100 marker.
         val smoothed = DoubleArray(rawTtnr.size)
-        if (previousTTNRSpectrum.size == rawTtnr.size) {
-            for (i in rawTtnr.indices) {
-                smoothed[i] = 0.75 * validated[i] + 0.25 * previousTTNRSpectrum[i]
-            }
-        } else {
-            System.arraycopy(validated, 0, smoothed, 0, validated.size)
+        val hasPrev = previousTTNRSpectrum.size == rawTtnr.size
+        for (i in rawTtnr.indices) {
+            val pCur = Math.pow(10.0, validated[i] / 10.0)
+            val pPrev = if (hasPrev) Math.pow(10.0, previousTTNRSpectrum[i] / 10.0) else pCur
+            val db = 10.0 * kotlin.math.log10(SMOOTHING_ATTACK * pCur + (1.0 - SMOOTHING_ATTACK) * pPrev)
+            smoothed[i] = if (db >= FFTProcessor.DETECTION_FLOOR_DB) db else 0.0
         }
         previousTTNRSpectrum = smoothed
 
@@ -94,6 +96,9 @@ class LiveAnalysisEngine(val fftSize: Int, private val sampleRateHz: Int) {
     companion object {
         const val PERSISTENCE_FRAMES = 6
         const val RETRO_FRAMES = 6
+
+        /** Historical 0.75/0.25 fast-attack blend, now on linear power [D2]. */
+        const val SMOOTHING_ATTACK = 0.75
     }
 }
 

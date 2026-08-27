@@ -17,4 +17,11 @@ object AudioConfig {
 
     /** Default FFT size for live capture (user-adjustable in settings). */
     const val DEFAULT_FFT_SIZE = 2048
+
+    /**
+     * [D7, plan 3.7] Display policy: spectrogram surfaces paint bins below
+     * this as floor. The DATA is true — the old code destroyed sub-30 Hz
+     * magnitudes inside the FFT itself.
+     */
+    const val DISPLAY_MIN_FREQ_HZ = 30.0
 }

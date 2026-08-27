@@ -181,12 +181,14 @@ fun SpectrogramCanvas(
     ) {
         if (history.isNotEmpty()) {
             val isTtnr = displayMode == DisplayMode.TTNR
+            // [D7, plan 3.7] Sub-30 Hz floor is applied here, at the display layer.
+            val maskBelowBin = Math.ceil(AudioConfig.DISPLAY_MIN_FREQ_HZ * totalBinCount / nyquistFreq).toInt()
             value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                 if (isWavAnalyzerMode || isReportModeActive) {
-                    producer.renderFull(history, minBin, maxBin, effectiveMin, effectiveMax, isTtnr)
+                    producer.renderFull(history, minBin, maxBin, effectiveMin, effectiveMax, isTtnr, maskBelowBin)
                 } else {
                     // [plan 3.4] Chronological history: the newest frame is LAST.
-                    producer.appendLatest(history.last(), minBin, maxBin, effectiveMin, effectiveMax, isTtnr)
+                    producer.appendLatest(history.last(), minBin, maxBin, effectiveMin, effectiveMax, isTtnr, maskBelowBin)
                 }
             }.asImageBitmap()
         }

@@ -218,6 +218,11 @@ class OrderTrackingEngine {
          * Max |dBFS| / emergence in a ±[radiusBins] window around
          * [targetFreqHz]. Center bin is ROUNDED (the historical sweep copy
          * truncated — resolved deliberately to rounding, audit D7).
+         *
+         * [D9, plan 3.7] The dBFS readout is SCALLOPING-CORRECTED: a parabola
+         * through the peak bin and its neighbors estimates the true tone
+         * amplitude, removing the ~1.4 dB ripple the raw bin max showed as an
+         * order swept across bin boundaries.
          */
         fun searchTrackedOrder(
             absRow: FloatArray,
@@ -230,14 +235,42 @@ class OrderTrackingEngine {
             if (totalBins == 0 || df <= 0.0) return TrackedOrderLevels(-120.0, 0.0)
             val centerBin = Math.round(targetFreqHz / df).toInt().coerceIn(0, totalBins - 1)
             var maxMag = -120.0
+            var maxBin = -1
             var maxEm = 0.0
             val lo = (centerBin - radiusBins).coerceAtLeast(0)
             val hi = (centerBin + radiusBins).coerceAtMost(totalBins - 1)
             for (b in lo..hi) {
-                if (absRow[b] > maxMag) maxMag = absRow[b].toDouble()
+                if (absRow[b] > maxMag) {
+                    maxMag = absRow[b].toDouble()
+                    maxBin = b
+                }
                 if (b < ttnrRow.size && ttnrRow[b] > maxEm) maxEm = ttnrRow[b].toDouble()
             }
-            return TrackedOrderLevels(maxMag, maxEm)
+            return TrackedOrderLevels(scallopingCorrected(absRow, maxBin, maxMag), maxEm)
         }
+
+        /** [D9] Parabolic peak amplitude through (b−1, b, b+1). */
+        private fun scallopingCorrected(absRow: FloatArray, peakBin: Int, peakDb: Double): Double {
+            if (peakBin <= 0 || peakBin >= absRow.size - 1) return peakDb
+            val y1 = absRow[peakBin - 1].toDouble()
+            val y2 = peakDb
+            val y3 = absRow[peakBin + 1].toDouble()
+            if (y2 < y1 || y2 < y3) return peakDb // not a local max: no vertex above
+            val denom = y1 - 2.0 * y2 + y3
+            if (denom >= 0.0) return peakDb // flat/degenerate
+            val vertex = y2 - (y1 - y3) * (y1 - y3) / (8.0 * denom)
+            // A correction beyond the physical Hann scalloping maximum means the
+            // neighborhood is not a tone peak — reject it, never clamp it in.
+            return if (vertex - y2 <= MAX_SCALLOPING_CORRECTION_DB) vertex else peakDb
+        }
+
+        /**
+         * The dB-domain parabola through a Hann half-bin tone's bins
+         * (−15.4, −1.43, −1.43) corrects by 1.75 dB (vertex +0.32 dB — the
+         * parabola slightly overfits the kernel; residual error ≤ ~0.35 dB vs
+         * the former −1.42 dB dip). Anything above this analytic worst case
+         * is not tone scalloping and is rejected.
+         */
+        const val MAX_SCALLOPING_CORRECTION_DB = 1.8
     }
 }

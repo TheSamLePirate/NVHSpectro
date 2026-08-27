@@ -66,10 +66,7 @@ class FFTProcessorCharacterizationTest {
         // Under the old hard-coded 44100, this tone would have been attributed
         // to bin round(4007.8 × 2048/44100) = 186 — verify 186 is NOT the peak.
         assertTrue("44.1k-grid bin must not carry the tone", mags[186] < -20.0)
-        // 30 Hz mask on the real grid: bin 1 = 23.4 Hz is masked to the floor...
-        assertEquals(-120.0, mags[1], 0.0)
-        // ...while a full-scale tone placed AT bin 2 (46.9 Hz) reads through,
-        // proving bin 2 is outside the mask on the 48 kHz grid.
+        // A full-scale tone AT bin 2 (46.9 Hz) reads correctly on the 48 kHz grid.
         val lowMags = FFTProcessor(fftSize, sr48).processFFT(
             SynthSignals.sine(SynthSignals.binCenteredFreq(2, fftSize, sr48), sr48, fftSize, amplitude = 1.0)
         )
@@ -91,23 +88,27 @@ class FFTProcessorCharacterizationTest {
     // Pinned current behavior (audit findings — update when fixed)
     // ---------------------------------------------------------------
 
-    /** [audit D7] Bins below 30 Hz are hard-masked to -120 inside processFFT. */
+    /**
+     * [D7, plan 3.7 — FIXED] Sub-30 Hz masking moved to the display layer:
+     * the FFT now reports TRUE magnitudes everywhere. A 21.5 Hz full-scale
+     * tone reads its real level at bin 1 instead of a destroyed −120.
+     */
     @Test
-    fun pinned_binsBelow30Hz_forcedToMinus120() {
+    fun d7_lowBins_carryTrueData_maskIsDisplayPolicyOnly() {
         val mags = FFTProcessor(fftSize, sampleRate).processFFT(
             SynthSignals.sine(21.5, sampleRate, fftSize, amplitude = 1.0)
         )
-        assertEquals(-120.0, mags[0], 0.0)
-        assertEquals(-120.0, mags[1], 0.0) // 21.5 Hz < 30 Hz
-        assertTrue("bin 2 (43 Hz) must NOT be masked", mags[2] > -120.0)
+        assertTrue("21.5 Hz tone must carry real energy at bin 1, got ${mags[1]}", mags[1] > -3.0)
     }
 
     /**
-     * [audit D9] No scalloping correction: a tone at bin+0.5 reads ~1.42 dB low
-     * on both straddling bins. Documents the ±1.4 dB order-trace ripple.
+     * [D9] RAW bin readout keeps its physical ~1.42 dB scalloping (that is
+     * what an FFT bin measures); the CORRECTION lives in the tracked-order
+     * readout — see d9_trackedOrderReadout_correctsScalloping in
+     * OrderTrackingEngineTest [plan 3.7].
      */
     @Test
-    fun pinned_halfBinTone_showsHannScallopingLoss() {
+    fun d9_rawBinReadout_hasPhysicalScalloping() {
         val bin = 150
         val freq = (bin + 0.5) * df
         val mags = FFTProcessor(fftSize, sampleRate).processFFT(
@@ -118,18 +119,28 @@ class FFTProcessorCharacterizationTest {
     }
 
     /**
-     * [audit D3] lastFrameEnergyDb initializes to -120, so the very first frame
-     * of every stream trips the >6 dB anti-shock detector and is squelched:
-     * the analysis provably starts with a discarded frame.
+     * [D3, plan 3.7 — FIXED] The first frame of a stream is ANALYZED: with no
+     * previous frame there is no shock reference (the historical −120
+     * initialization squelched frame 1 of every stream unconditionally).
      */
     @Test
-    fun pinned_firstTtnrFrame_alwaysSquelchedAsShock() {
+    fun d3_firstFrame_isAnalyzed_notSquelched() {
         val p = FFTProcessor(fftSize, sampleRate)
         val ttnr = p.computeTTNR(toneOverFloorSpectrum())
         assertTrue(
-            "first frame must report no emergence (all ≤ 0), got max ${ttnr.max()}",
-            ttnr.max() <= 0.0
+            "first frame must already report the tone, got ${ttnr[200]}",
+            ttnr[200] > 3.0
         )
+    }
+
+    /** [D3] A genuine energy jump (> ~6 dB in one frame interval) still squelches. */
+    @Test
+    fun d3_suddenEnergyJump_stillSquelched() {
+        val p = FFTProcessor(fftSize, sampleRate)
+        repeat(3) { p.computeTTNR(DoubleArray(fftSize / 2) { -80.0 }) }
+        // +30 dB across the whole spectrum in one frame = a shock.
+        val ttnr = p.computeTTNR(toneOverFloorSpectrum().map { it + 20.0 }.toDoubleArray())
+        assertTrue("shock frame must report no emergence, got max ${ttnr.max()}", ttnr.max() <= 0.0)
     }
 
     @Test

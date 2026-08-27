@@ -37,7 +37,7 @@ object PdfReportGenerator {
         return Color.argb(255, (r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt())
     }
 
-    private fun createBitmapFromHistory(history: List<FloatArray>, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int): Bitmap? {
+    private fun createBitmapFromHistory(history: List<FloatArray>, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0): Bitmap? {
         if (history.isEmpty()) return null
         
         val width = history.size
@@ -50,7 +50,8 @@ object PdfReportGenerator {
             for (y in 0 until height) {
                 // Y-axis is inverted (0 is top, maxFreq is top in spectrogram)
                 val binIndex = (height - 1) - y
-                val magnitude = if (binIndex in frame.indices) frame[binIndex].toDouble() else minVal
+                // [D7] Display-layer sub-30 Hz floor.
+                val magnitude = if (binIndex < maskBelowBin || binIndex !in frame.indices) minVal else frame[binIndex].toDouble()
                 
                 val colorInt = if (isTtnr && magnitude < 1.0) {
                     Color.BLACK
@@ -97,8 +98,10 @@ object PdfReportGenerator {
 
         val maxBin = ((pdfMaxFreq * totalBinCount) / nyquist).toInt().coerceIn(1, totalBinCount)
 
-        val absoluteBitmap = createBitmapFromHistory(historyAbs, minDb, maxDb, false, maxBin)
-        val ttnrBitmap = createBitmapFromHistory(historyTtnr, 1.0, 20.0, true, maxBin)
+        // [D7] Display-layer sub-30 Hz floor (data stays true).
+        val maskBelowBin = Math.ceil(AudioConfig.DISPLAY_MIN_FREQ_HZ * totalBinCount / nyquist).toInt()
+        val absoluteBitmap = createBitmapFromHistory(historyAbs, minDb, maxDb, false, maxBin, maskBelowBin)
+        val ttnrBitmap = createBitmapFromHistory(historyTtnr, 1.0, 20.0, true, maxBin, maskBelowBin)
 
         val pdfDocument = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4

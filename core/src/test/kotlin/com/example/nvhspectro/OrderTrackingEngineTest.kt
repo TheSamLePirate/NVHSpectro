@@ -120,6 +120,32 @@ class OrderTrackingEngineTest {
         assertEquals(-20.0, levels.dbFS, 1e-9)
     }
 
+    /**
+     * [D9, plan 3.7] Scalloping-corrected readout: a full-scale tone half-way
+     * between bins raw-reads ≈ −1.42 dB; the parabolic amplitude estimate must
+     * recover the true 0 dBFS within a few tenths.
+     */
+    @Test
+    fun d9_trackedOrderReadout_correctsScalloping() {
+        val fftSize = 2048
+        val sr = AudioConfig.LIVE_SAMPLE_RATE_HZ
+        val bin = 150
+        val freq = (bin + 0.5) * sr.toDouble() / fftSize
+        val mags = FFTProcessor(fftSize, sr).processFFT(
+            com.example.nvhspectro.testutil.SynthSignals.sine(freq, sr, fftSize, amplitude = 1.0)
+        )
+        val row = FloatArray(mags.size) { mags[it].toFloat() }
+        val rawPeak = maxOf(row[bin], row[bin + 1])
+        assertTrue("raw bins must show the scalloping dip, got $rawPeak", rawPeak < -1.0f)
+
+        val levels = OrderTrackingEngine.searchTrackedOrder(
+            row, FloatArray(row.size), freq, sr.toDouble() / fftSize,
+            OrderTrackingEngine.TRACKED_SEARCH_RADIUS_FRAME_BINS
+        )
+        assertTrue("corrected amplitude must be within 0.5 dB of 0 dBFS, got ${levels.dbFS}", levels.dbFS > -0.5)
+        assertTrue("correction must not overshoot, got ${levels.dbFS}", levels.dbFS < 0.5)
+    }
+
     @Test
     fun d7_searchTrackedOrder_radiusBoundsTheWindow() {
         val abs = FloatArray(binCount) { -100f }
