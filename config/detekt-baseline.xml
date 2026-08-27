@@ -127,7 +127,6 @@
     <ID>LoopWithTooManyJumpStatements:OrderTrackingEngine.kt$OrderTrackingEngine$for</ID>
     <ID>LoopWithTooManyJumpStatements:SpectrogramColormap.kt$for</ID>
     <ID>MagicNumber:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$15f</ID>
-    <ID>MagicNumber:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$1e9f</ID>
     <ID>MagicNumber:AnalyzerViewModel.kt$AnalyzerViewModel$0.002</ID>
     <ID>MagicNumber:AnalyzerViewModel.kt$AnalyzerViewModel$1000.0</ID>
     <ID>MagicNumber:AnalyzerViewModel.kt$AnalyzerViewModel$1500L</ID>
@@ -176,7 +175,6 @@
     <ID>MagicNumber:FFTProcessor.kt$FFTProcessor$75.0</ID>
     <ID>MagicNumber:FFTProcessor.kt$FFTProcessor$8.0</ID>
     <ID>MagicNumber:FFTProcessor.kt$FFTProcessor$85.0</ID>
-    <ID>MagicNumber:FieldLocationLogger.kt$FieldLocationLogger$26</ID>
     <ID>MagicNumber:FilterChain.kt$FilterChain$0.509795579</ID>
     <ID>MagicNumber:FilterChain.kt$FilterChain$0.601344887</ID>
     <ID>MagicNumber:FilterChain.kt$FilterChain$0.899976223</ID>
@@ -742,7 +740,7 @@
     <ID>NestedBlockDepth:SmartPathTracker.kt$SmartPathTracker$fun compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</ID>
     <ID>NestedBlockDepth:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>
     <ID>PrintStackTrace:VideoAudioExtractor.kt$VideoAudioExtractor$e</ID>
-    <ID>ReturnCount:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$fun update(elapsedRealtimeNanos: Long, measuredMps: Float)</ID>
+    <ID>ReturnCount:AlphaBetaSpeedEstimator.kt$AlphaBetaSpeedEstimator$private fun updateInternal( elapsedRealtimeNanos: Long, measuredMps: Float, sigmaMps: Float?, ): SampleRejection?</ID>
     <ID>ReturnCount:OrderTrackingEngine.kt$OrderTrackingEngine$private fun isLocalOrderMax(j: Int): Boolean</ID>
     <ID>ReturnCount:OrderTrackingEngine.kt$OrderTrackingEngine.Companion$private fun scallopingCorrected(absRow: FloatArray, peakBin: Int, peakDb: Double): Double</ID>
     <ID>ReturnCount:PdfReportGenerator.kt$PdfReportGenerator$private fun createBitmapFromHistory(history: List&lt;FloatArray&gt;, minVal: Double, maxVal: Double, isTtnr: Boolean, maxBin: Int, maskBelowBin: Int = 0): Bitmap?</ID>
@@ -750,7 +748,7 @@
     <ID>ReturnCount:SmartPathTracker.kt$SmartPathTracker$fun compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</ID>
     <ID>ReturnCount:SmartPathTracker.kt$SmartPathTracker$fun expectedBinF(globalFrame: Int): Float</ID>
     <ID>ReturnCount:SpectrogramColormap.kt$fun getFreqY(freqHz: Float): Float</ID>
-    <ID>ReturnCount:SpeedProvider.kt$SpeedProvider$private fun qualityOf(fix: Location?, nowNanos: Long): GpsStatus</ID>
+    <ID>ReturnCount:SpeedProvider.kt$SpeedProvider$private fun qualityOf( fix: Location?, nowNanos: Long, ): GpsStatus</ID>
     <ID>ReturnCount:TimelineMapper.kt$TimelineMapper$fun mapIndex(index: Int, fromSize: Int, toSize: Int): Int</ID>
     <ID>ReturnCount:TimelineMapper.kt$TimelineMapper$fun timeToIndex(posMs: Long, durationMs: Long, size: Int): Int</ID>
     <ID>ReturnCount:VideoAudioExtractor.kt$VideoAudioExtractor$fun extractAudioFromVideoUri(context: Context, uri: Uri): LoadedWavData?</ID>

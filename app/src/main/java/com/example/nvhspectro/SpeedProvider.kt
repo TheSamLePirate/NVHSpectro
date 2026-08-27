@@ -12,6 +12,8 @@ import android.os.SystemClock
 import android.util.Log
 import com.example.nvhspectro.data.AlphaBetaSpeedEstimator
 import com.example.nvhspectro.data.FieldLocationLogger
+import com.example.nvhspectro.data.GnssSpeedSample
+import com.example.nvhspectro.data.SpeedSampleSource
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -38,8 +40,15 @@ import kotlinx.coroutines.flow.asStateFlow
  * Runs only while started — LIVE mode only [C7]. The old always-on
  * full-tracking GnssMeasurements registration (empty callback, battery-only
  * cost) is not carried over — audit G5 / decision D8 recommendation.
+ *
+ * Units and time bases [plan-gps GPS-0.5]: estimator I/O is m/s and BOOTTIME
+ * nanoseconds ([GnssSpeedSample]/[SpeedEstimate]); TelemetryData speeds are
+ * km/h for display. Location.time (UTC) is logged for labeling only — it
+ * never enters interval math [G1].
  */
-class SpeedProvider(context: Context) {
+class SpeedProvider(
+    context: Context,
+) {
     private val appContext = context.applicationContext
     private val locationManager =
         appContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
@@ -58,25 +67,37 @@ class SpeedProvider(context: Context) {
     /** ~1 Hz updates for the UI card; per-frame consumers use [currentTelemetry]. */
     val telemetry: StateFlow<TelemetryData> = _telemetry.asStateFlow()
 
-    private val gpsListener = object : LocationListener {
-        override fun onLocationChanged(location: Location) = onFix(location, gnssSourced = true)
+    private val gpsListener =
+        object : LocationListener {
+            override fun onLocationChanged(location: Location) = onFix(location, source = SpeedSampleSource.GPS)
 
-        @Deprecated("Deprecated in Java")
-        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
+            @Deprecated("Deprecated in Java")
+            override fun onStatusChanged(
+                provider: String?,
+                status: Int,
+                extras: Bundle?,
+            ) = Unit
 
-        override fun onProviderEnabled(provider: String) = Unit
+            override fun onProviderEnabled(provider: String) = Unit
 
-        override fun onProviderDisabled(provider: String) = Unit
-    }
+            override fun onProviderDisabled(provider: String) = Unit
+        }
 
-    private val fusedCallback = object : LocationCallback() {
-        override fun onLocationResult(result: LocationResult) {
-            for (loc in result.locations) {
-                // [G2] Provenance filter: only GNSS-sourced fused fixes carry Doppler speed.
-                onFix(loc, gnssSourced = loc.provider == LocationManager.GPS_PROVIDER)
+    private val fusedCallback =
+        object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                for (loc in result.locations) {
+                    // [G2] Provenance filter: only GNSS-sourced fused fixes carry Doppler speed.
+                    val source =
+                        if (loc.provider == LocationManager.GPS_PROVIDER) {
+                            SpeedSampleSource.FUSED_GNSS
+                        } else {
+                            null // no sample: the fix must not feed the estimator
+                        }
+                    onFix(loc, source)
+                }
             }
         }
-    }
 
     @SuppressLint("MissingPermission")
     fun start() {
@@ -85,12 +106,18 @@ class SpeedProvider(context: Context) {
         try {
             if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                 locationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER, 0L, 0f, gpsListener, Looper.getMainLooper()
+                    LocationManager.GPS_PROVIDER,
+                    0L,
+                    0f,
+                    gpsListener,
+                    Looper.getMainLooper(),
                 )
             } else {
-                val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 500L)
-                    .setMinUpdateIntervalMillis(200L)
-                    .build()
+                val request =
+                    LocationRequest
+                        .Builder(Priority.PRIORITY_HIGH_ACCURACY, 500L)
+                        .setMinUpdateIntervalMillis(200L)
+                        .build()
                 fusedClient.requestLocationUpdates(request, fusedCallback, Looper.getMainLooper())
             }
         } catch (e: Exception) {
@@ -119,30 +146,65 @@ class SpeedProvider(context: Context) {
      * thread at frame rate. Prediction is what makes the live H1 projection
      * current instead of 1.2 s late.
      */
-    fun currentTelemetry(): TelemetryData = synchronized(lock) {
-        buildTelemetry(SystemClock.elapsedRealtimeNanos())
-    }
+    fun currentTelemetry(): TelemetryData =
+        synchronized(lock) {
+            buildTelemetry(SystemClock.elapsedRealtimeNanos())
+        }
 
-    fun reset() = synchronized(lock) {
-        estimator.reset()
-        lastFix = null
-        lastFixElapsedNanos = Long.MIN_VALUE
-        _telemetry.value = TelemetryData()
-    }
+    fun reset() =
+        synchronized(lock) {
+            estimator.reset()
+            lastFix = null
+            lastFixElapsedNanos = Long.MIN_VALUE
+            _telemetry.value = TelemetryData()
+        }
 
-    private fun onFix(loc: Location, gnssSourced: Boolean) {
-        fieldLogger?.log(loc)
-        val nowNanos = SystemClock.elapsedRealtimeNanos()
+    private fun onFix(
+        loc: Location,
+        source: SpeedSampleSource?,
+    ) {
+        val callbackNanos = SystemClock.elapsedRealtimeNanos()
+        val mock = isMockFix(loc)
+        // [GPS-0.1] The qualified sample: only a GNSS-sourced fix carrying a
+        // Doppler speed feeds the estimator [G2]; σv rides along for logging
+        // and validity, not yet for weighting (pinned GPS-02).
+        val sample =
+            if (source != null && loc.hasSpeed()) {
+                GnssSpeedSample(
+                    // [G1] Monotonic fix timestamp, never loc.time (steppable UTC).
+                    fixTimeNanos = loc.elapsedRealtimeNanos,
+                    callbackTimeNanos = callbackNanos,
+                    speedMps = loc.speed,
+                    speedSigmaMps =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && loc.hasSpeedAccuracy()) {
+                            loc.speedAccuracyMetersPerSecond
+                        } else {
+                            null
+                        },
+                    source = source,
+                    isMock = mock,
+                )
+            } else {
+                null
+            }
         synchronized(lock) {
             lastFix = loc
             lastFixElapsedNanos = loc.elapsedRealtimeNanos
-            if (gnssSourced && loc.hasSpeed()) {
-                // [G1] Monotonic fix timestamp, never loc.time (steppable UTC).
-                estimator.update(loc.elapsedRealtimeNanos, loc.speed)
-            }
-            _telemetry.value = buildTelemetry(nowNanos)
+            val rejection = sample?.let { estimator.update(it) }
+            _telemetry.value = buildTelemetry(callbackNanos)
+            // [GPS-0.4] Schema-v2 drive trace: raw fix + estimator outcome.
+            fieldLogger?.log(loc, callbackNanos, mock, estimator.estimateAt(callbackNanos), rejection)
         }
     }
+
+    /** [GPS-12] Mock-provider flag, recorded in samples and traces. */
+    private fun isMockFix(loc: Location): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            loc.isMock
+        } else {
+            @Suppress("DEPRECATION")
+            loc.isFromMockProvider
+        }
 
     /** Call under [lock]. */
     private fun buildTelemetry(nowNanos: Long): TelemetryData {
@@ -156,17 +218,21 @@ class SpeedProvider(context: Context) {
             longitude = fix?.longitude ?: 0.0,
             gpsStatus = qualityOf(fix, nowNanos),
             // [S2] Schema-v2 export fields.
-            speedAccuracyMs = if (Build.VERSION.SDK_INT >= 26 && fix?.hasSpeedAccuracy() == true) {
-                fix.speedAccuracyMetersPerSecond
-            } else {
-                0f
-            },
-            elapsedRealtimeNanos = fix?.elapsedRealtimeNanos ?: 0L
+            speedAccuracyMs =
+                if (Build.VERSION.SDK_INT >= 26 && fix?.hasSpeedAccuracy() == true) {
+                    fix.speedAccuracyMetersPerSecond
+                } else {
+                    0f
+                },
+            elapsedRealtimeNanos = fix?.elapsedRealtimeNanos ?: 0L,
         )
     }
 
     /** [G3] LED keyed to speed accuracy — the error term the app lives on. */
-    private fun qualityOf(fix: Location?, nowNanos: Long): GpsStatus {
+    private fun qualityOf(
+        fix: Location?,
+        nowNanos: Long,
+    ): GpsStatus {
         fix ?: return GpsStatus.NONE
         if (nowNanos - lastFixElapsedNanos > STALE_FIX_NANOS) return GpsStatus.NONE
         if (Build.VERSION.SDK_INT >= 26 && fix.hasSpeedAccuracy()) {
