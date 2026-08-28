@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formats de données — NVH Spectro</title>
+<link rel="icon" type="image/webp" href="../assets/icon.webp">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav-slot"></div>
+<main class="docs-main"><div class="wrap docs-grid">
+<aside class="docs-toc">
+  <div class="toc-title">Sur cette page</div>
+  <a class="toc-link" href="#sidecar">Sidecar télémétrie v3</a>
+  <a class="toc-link" href="#migration">Migration v1/v2 → v3</a>
+  <a class="toc-link" href="#trace">Trace terrain v2</a>
+  <a class="toc-link" href="#storage">Stockage & réglages</a>
+  <a class="toc-link" href="#audio">Audio & vidéo</a>
+</aside>
+<article class="docs-content">
+<nav class="crumbs"><a href="../index.html">Accueil</a> › <a href="index.html">Docs</a> › Formats de données</nav>
+<h1>Formats de données</h1>
+<p class="lead">Un essai enregistré est un dossier <code>Downloads/NVH_Spectro_Exports/&lt;nom&gt;/</code> contenant le WAV et son sidecar JSON. Les formats sont versionnés, avec lecture des versions antérieures — un enregistrement d'hier se rouvre aujourd'hui, et s'ouvrira demain.</p>
+
+<h2 id="sidecar">Sidecar télémétrie — schéma v3</h2>
+<p>Écrit par <code>TelemetryCodec.encodeV3</code> (kotlinx-serialization, <code>schemaVersion: 3</code>). Chaque échantillon est apparié 1:1 à une fenêtre FFT :</p>
+<table class="tbl">
+  <tr><th>Champ</th><th>Sens</th></tr>
+  <tr><td><code>speedKmh</code></td><td>vitesse GNSS brute du fix (diagnostique)</td></tr>
+  <tr><td><code>estSpeedKmh</code> + <code>estSpeedSigmaKmh</code></td><td>vitesse estimée (Kalman) et son 1-σ — <b>null = inconnu</b>, jamais 0</td></tr>
+  <tr><td><code>validity</code></td><td><code>VALID</code> / <code>DEGRADED</code> / <code>INVALID</code> à la capture</td></tr>
+  <tr><td><code>audioTimeNanos</code></td><td>BOOTTIME du centre de la fenêtre audio appariée (GPS-03)</td></tr>
+  <tr><td><code>elapsedRealtimeNanos</code></td><td>instant monotone du fix</td></tr>
+  <tr><td><code>lat / lng / altitude / speedAccuracyMs / gpsStatus</code></td><td>fix brut, pour diagnostic et rejeu</td></tr>
+</table>
+<p>En-tête du document : <code>appVersion</code>, <code>sampleRate</code>, <code>captureSource</code> (route micro réelle), <code>speedEstimator</code> (identité + <b>paramètres complets</b> de l'estimateur), <code>speedStatus</code> (« causale »), <code>orderConfidenceK</code>.</p>
+
+<h2 id="migration">Migration v1/v2 → v3</h2>
+<ul>
+  <li><b>v1</b> — télémétrie minimale, sans horodatage ni σ : lecture en « brute (interpolée) », validité DEGRADED.</li>
+  <li><b>v2</b> — ajoute <code>schemaVersion</code>, <code>appVersion</code>, temps monotone, altitude, σv brute.</li>
+  <li><b>v3</b> — ajoute estimation + σ + validité + temps audio + identité d'estimateur.</li>
+</ul>
+<p>Les tests de migration couvrent v1, v2 et v3. Un correctif latent notable : les sidecars v2 décodés comme INVALID à une époque ont été corrigés en DEGRADED (« incertitude inconnue ») — un vieil enregistrement n'affiche pas « -- » à tort.</p>
+
+<h2 id="trace">Trace terrain v2 (debug)</h2>
+<p>En debug uniquement, <code>FieldLocationLogger</code> écrit un CSV <code>nvh-field-trace v2</code> : chaque fix brut (temps monotone + UTC, provider, position, Doppler, σv, précision horizontale), <b>le résultat de l'estimateur</b> (état, validité, rejet, NIS) et un instantané GNSS (satellites utilisés, C/N0 moyen, constellations, bande L5). En-tête de capacité (<code># caps sdk=… rawMeasurements=… fullTracking=…</code>) et UUID d'installation anonymisé. C'est le jeu de données du réglage GPS-5. Absent des builds release.</p>
+
+<h2 id="storage">Stockage & réglages</h2>
+<ul>
+  <li><b>Enregistrements</b> — <code>RecordingStore</code> : MediaStore.Downloads (patron IS_PENDING) sur API 29+, avecnettoyage des entrées orphelines en cas d'échec d'écriture ; noms suffixés à la milliseconde (pas de collision à la seconde).</li>
+  <li><b>Réglages</b> — <code>SettingsStore</code> (DataStore Preferences) : plage dB, FFT, fenêtres, détecteur et <b>cinématique complète</b> (JSON <code>@Serializable</code>). Restauration au démarrage avant l'armement des observateurs ; écritures débounce 500 ms.</li>
+  <li><b>Journal de diagnostic</b> — <code>DiagnosticLog</code> : rotatif local (2 × 256 kB), thread dédié, se désactive après un premier échec ; partage par FileProvider non exporté, sur action explicite de l'utilisateur.</li>
+</ul>
+
+<h2 id="audio">Audio & vidéo</h2>
+<ul>
+  <li><b>WAV</b> — parseur RIFF complet (<code>WavDataReader</code>) : chunks LIST/fact/bext tolérés, fmt extensible, downmix stéréo avec durée comptée en trames, buffers dimensionnés au chunk data. 24 bits / float / non-PCM : <b>refus typé</b> avec message clair (pas de décodage en bruit).</li>
+  <li><b>Vidéo</b> — <code>VideoAudioExtractor</code> : drainage complet après EOS (la fin de chaque vidéo était perdue), tableau court croissant (plus de ~13 M de Shorts boxing), <code>INFO_OUTPUT_FORMAT_CHANGED</code> honoré (le décodeur peut resampler — l'analyse suit le vrai format), PCM float géré, progression réelle affichée.</li>
+  <li>La durée de la timeline d'analyse est <b>min(media, PCM analysé)</b> : la tête de lecture ne quitte jamais la zone analysée, et la troncature à 5 min est annoncée par une bannière.</li>
+</ul>
+
+<nav class="pager"><a href="gnss.html" class="pager-prev">← Chaîne GNSS</a><a href="quality.html" class="pager-next">Qualité & CI →</a></nav>
+</article></div></main>
+<script src="../assets/site.js"></script>
+</body>
+</html>

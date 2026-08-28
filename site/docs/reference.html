@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Référence API — NVH Spectro</title>
+<meta name="description" content="Référence complète de l'API NVH Spectro : chaque classe, objet et fonction publique, extraits du source.">
+<link rel="icon" type="image/webp" href="../assets/icon.webp">
+<link rel="stylesheet" href="../assets/site.css">
+</head><body>
+<!--NAV-->
+<main class="docs-main"><div class="wrap docs-grid">
+<aside class="docs-toc">
+  <div class="toc-title">Sur cette page</div>
+<a href="#area-0" class="toc-link">DSP &amp; analyse spectrale <span class="toc-n">9</span></a>
+<a href="#area-1" class="toc-link">Chaîne GNSS / vitesse <span class="toc-n">23</span></a>
+<a href="#area-2" class="toc-link">Suivi d&#x27;ordres &amp; cinématique <span class="toc-n">14</span></a>
+<a href="#area-3" class="toc-link">Session &amp; analyse de fichiers <span class="toc-n">13</span></a>
+<a href="#area-4" class="toc-link">Capture, stockage &amp; persistence <span class="toc-n">35</span></a>
+<a href="#area-5" class="toc-link">UI, ViewModels &amp; exports <span class="toc-n">34</span></a>
+  <div class="toc-stats">128 types · 232 fonctions · généré du source</div>
+  <input id="ref-search" type="search" placeholder="Filtrer…" autocomplete="off" aria-label="Filtrer la référence">
+</aside>
+<article class="docs-content">
+<nav class="crumbs"><a href="../index.html">Accueil</a> › <a href="index.html">Docs</a> › Référence API</nav>
+<h1>Référence API</h1>
+<p class="lead">Chaque type et chaque fonction publique du projet — <b>extraits directement du
+source Kotlin</b> par <code>site/tools/gen_reference.py</code> (commité : la référence est
+régénérable et donc vérifiable). Les mentions entre crochets renvoient aux audits du dépôt.</p>
+<h2 id="area-0" class="ref-area">DSP &amp; analyse spectrale</h2>
+<details class="ref-type" data-s="audioconfig ">
+<summary><span class="ref-kind">object</span><span class="ref-name">AudioConfig</span><span class="ref-file">core/AudioConfig.kt</span></summary>
+<p class="ref-doc ref-typedoc">The single home of audio-format constants audit C1, plan 1.1. This is the ONLY file in app/src/main where a literal sample rate may appear — `ci/checks.sh` enforces it. Everything downstream of a loaded file must use that file&#x27;s own `LoadedWavData.sampleRate`; only the live microphone pipeline uses LIVE_SAMPLE_RATE_HZ.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="audiofilter ">
+<summary><span class="ref-kind">class</span><span class="ref-name">AudioFilter</span><span class="ref-file">app/data/AudioFilter.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="biquadfilter processsample  reset  magnitudeat module |h(e^{jω})| à freqhz — pour vérification et tests d4.">
+<summary><span class="ref-kind">class</span><span class="ref-name">BiQuadFilter</span><span class="ref-file">core/data/BiQuadFilter.kt</span></summary>
+<p class="ref-doc ref-typedoc">Filtre numérique IIR de type BiQuad. Implémentation basée sur les formules Audio EQ Cookbook de Robert Bristow-Johnson.</p>
+<div class="ref-fun"><code class="ref-sig">processSample(x: Double): Double</code></div><div class="ref-fun"><code class="ref-sig">reset()</code></div><div class="ref-fun"><code class="ref-sig">magnitudeAt(freqHz: Double): Double</code><div class="ref-doc">Module |H(e^{jω})| à freqHz — pour vérification et tests D4.</div></div>
+</details>
+<details class="ref-type" data-s="fftprocessor processfft calcule la fft sur un bloc audio. réutilisé à chaque appel — copier avant de le conserver. computettnr spectre d&#x27;émergence tonale (heuristique nvh hybride — voir audit d1 : pas une implémentation ecma-74/iso 1996-2 conforme).">
+<summary><span class="ref-kind">class</span><span class="ref-name">FFTProcessor</span><span class="ref-file">core/FFTProcessor.kt</span></summary>
+<p class="ref-doc ref-typedoc">FFT + tonal-emergence processing for ONE audio stream. Stateful (EMA integration, shock detector): create one instance per stream and never share it between live capture and file analysis audit D3. The sample rate is fixed per instance and threaded from the actual source audit C1 — never assume a rate here. plan 3.7 DSP core polish: - real FFT (DoubleFFT_1D.realForward) on preallocated, reused buffers — half the work and zero per-frame allocation of the old complexForward with zeroed imaginary parts D6. The returned magnitude array is REUSED across calls: copy it if you retain it. - No sentinel arithmetic: the TTNR scale is emergence dB with 0 = none; temporal integration runs on LINEAR power with the honest time constant TTNR_INTEGRATION_TAU_SEC (α is derived from the real frame interval, so integration time no longer changes with FFT size) D2. - The shock detector compares energy RISE RATE (dB/s), not per-call deltas, and the first frame of a stream is ANALYZED (the historical −120 initialization squelched it unconditionally) D3. - Sub-30 Hz masking is display policy and lives in the display layer (AudioConfig.DISPLAY_MIN_FREQ_HZ) — magnitudes here are true D7.</p>
+<div class="ref-fun"><code class="ref-sig">processFFT(audioData: ShortArray): DoubleArray</code><div class="ref-doc">Calcule la FFT sur un bloc audio. RÉUTILISÉ à chaque appel — copier avant de le conserver.</div></div><div class="ref-fun"><code class="ref-sig">computeTTNR(magnitudesDbFS: DoubleArray): DoubleArray</code><div class="ref-doc">Spectre d&#x27;émergence tonale (heuristique NVH hybride — voir audit D1 : PAS une implémentation ECMA-74/ISO 1996-2 conforme).</div></div>
+</details>
+<details class="ref-type" data-s="filterchain buildbiquads  renderfilteredpcm run the chain over a whole pcm buffer. checkactive is invoked every 64k samples so a cancelled render stops mid-file l2.">
+<summary><span class="ref-kind">object</span><span class="ref-name">FilterChain</span><span class="ref-file">core/data/FilterChain.kt</span></summary>
+<p class="ref-doc ref-typedoc">C10/D4, plan 2.5/3.3 Builds and runs the playback/analysis biquad chain. One rendered PCM feeds BOTH what the user hears and what the display analyzes.</p>
+<div class="ref-fun"><code class="ref-sig">buildBiquads(filters: List&lt;FilterSpec&gt;, sampleRateHz: Double): List&lt;BiQuadFilter&gt;</code></div><div class="ref-fun"><code class="ref-sig">renderFilteredPcm( pcm: ShortArray, filters: List&lt;FilterSpec&gt;, sampleRateHz: Double, checkActive: () -&gt; Unit = {} ): ShortArray</code><div class="ref-doc">Run the chain over a whole PCM buffer. checkActive is invoked every 64k samples so a cancelled render stops mid-file L2.</div></div>
+</details>
+<details class="ref-type" data-s="filterspec ">
+<summary><span class="ref-kind">class</span><span class="ref-name">FilterSpec</span><span class="ref-file">core/data/FilterChain.kt</span></summary>
+<p class="ref-doc ref-typedoc">A filter request without UI baggage — what the DSP chain needs plan 3.3.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="filtertype getdisplayname ">
+<summary><span class="ref-kind">class</span><span class="ref-name">FilterType</span><span class="ref-file">core/data/FilterType.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">getDisplayName(): String</code></div>
+</details>
+<details class="ref-type" data-s="frameresult processframe  reset l7 full state wipe on any source/config transition: shock detector, ttnr integration, persistence and retro buffer — ghost data from a previous session/config can no longer re-fire. (the companion order ema is reset on its own ordertrackingengine.reset.) doublearray p1, plan 3.5 spectrum storage/display conversion — computation stays double inside the dsp.">
+<summary><span class="ref-kind">class</span><span class="ref-name">FrameResult</span><span class="ref-file">core/LiveAnalysisEngine.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">processFrame(buffer: ShortArray): FrameResult</code></div><div class="ref-fun"><code class="ref-sig">reset()</code><div class="ref-doc">L7 Full state wipe on any source/config transition: shock detector, TTNR integration, persistence and retro buffer — ghost data from a previous session/config can no longer re-fire. (The companion order EMA is reset on its own OrderTrackingEngine.reset.)</div></div><div class="ref-fun"><code class="ref-sig">DoubleArray()</code><div class="ref-doc">P1, plan 3.5 Spectrum storage/display conversion — computation stays double inside the DSP.</div></div>
+</details>
+<details class="ref-type" data-s="liveanalysisengine ">
+<summary><span class="ref-kind">class</span><span class="ref-name">LiveAnalysisEngine</span><span class="ref-file">core/LiveAnalysisEngine.kt</span></summary>
+<p class="ref-doc ref-typedoc">C6, L3, plan 2.2 ALL mutable live-DSP state lives here — the ViewModel keeps no analysis fields. Methods are synchronized as a belt on top of the single-DSP-thread confinement (reset() may be invoked from the main thread on mode/config transitions L7). Behavior is a faithful extraction of the historical live path (persistence counters, 150 ms retro-unmask buffer, 0.75/0.25 EMA). Order-domain work (EMA blend, tag detection) lives in OrderTrackingEngine plan 3.2.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<h2 id="area-1" class="ref-area">Chaîne GNSS / vitesse</h2>
+<details class="ref-type" data-s="alphabetaspeedestimator update legacy entry point (σv unknown). prefer update with a gnssspeedsample. update  predictat speed prediction at elapsedrealtimenanos — the per-fft-frame read. estimateat gps-0.1 full estimate with age and descriptive validity. the validity thresholds are provisional (gps-1.1 makes the horizon configurable and enforced; gps-2 derives validity from covariance). nothing consumes the validity yet — the frozen-number defect stays pinned gps-01. reset ">
+<summary><span class="ref-kind">class</span><span class="ref-name">AlphaBetaSpeedEstimator</span><span class="ref-file">core/data/AlphaBetaSpeedEstimator.kt</span></summary>
+<p class="ref-doc ref-typedoc">α-β tracker over GNSS Doppler speed audit G1–G4, plan 2.4, now behind the SpeedEstimator contract plan-gps GPS-0.2. Purpose: turn ~1 Hz Doppler fixes into a continuously *predictable* speed (v + a·dt) so the live order projection needs no lookahead — this is what deletes the old 1.2 s display latency L5. Acceleration falls out of the filter as a by-product, replacing the raw 1 Hz derivative whose wall-clock dt made it spike on clock adjustments G1. Units and time base GPS-0.5: speeds m/s, accelerations m/s²; every timestamp is BOOTTIME nanoseconds (elapsedRealtimeNanos) — never UTC. Pure Kotlin — no Android imports — so it is JVM-unit-testable. Gains: α=0.5 with β=α²/(2−α)≈0.17 (critically damped pairing for ~1 Hz updates). PROVISIONAL until tuned on the Phase 0.8 field drive logs. Known limitations, deliberately pinned by `SpeedEstimatorContractTest` until the GPS plan replaces them (audit-gps §4): - beyond maxPredictAheadSeconds the numeric output freezes at v + a·cap; estimateAt *describes* that as INVALID but nothing enforces it GPS-01; - the measurement σv is recorded, not weighted — a ±5 m/s fix corrects the state exactly like a ±0.05 m/s one GPS-02; - no covariance: estimates carry null sigmas GPS-04; - a second consecutive implausible fix is accepted without testing its coherence with the first GPS-06.</p>
+<div class="ref-fun"><code class="ref-sig">update( elapsedRealtimeNanos: Long, measuredMps: Float, )</code><div class="ref-doc">Legacy entry point (σv unknown). Prefer update with a GnssSpeedSample.</div></div><div class="ref-fun"><code class="ref-sig">update(sample: GnssSpeedSample): SampleRejection?</code></div><div class="ref-fun"><code class="ref-sig">predictAt(elapsedRealtimeNanos: Long): Float</code><div class="ref-doc">Speed prediction at elapsedRealtimeNanos — the per-FFT-frame read.</div></div><div class="ref-fun"><code class="ref-sig">estimateAt(elapsedRealtimeNanos: Long): SpeedEstimate</code><div class="ref-doc">GPS-0.1 Full estimate with age and DESCRIPTIVE validity. The validity thresholds are provisional (GPS-1.1 makes the horizon configurable and enforced; GPS-2 derives validity from covariance). Nothing consumes the validity yet — the frozen-number defect stays pinned GPS-01.</div></div><div class="ref-fun"><code class="ref-sig">reset()</code></div>
+</details>
+<details class="ref-type" data-s="config update  estimateat  reset  kinematicspeedmps gps-09 the only entry point for rpm/h1/order math. null = no usable speed (invalid) — callers must suspend kinematic tracking, not coast.">
+<summary><span class="ref-kind">class</span><span class="ref-name">Config</span><span class="ref-file">core/data/GnssSpeedSession.kt</span></summary>
+<p class="ref-doc ref-typedoc">Named, testable thresholds plan-gps §2 — PROVISIONAL until Gate GPS-5 tuning.</p>
+<div class="ref-fun"><code class="ref-sig">update(sample: GnssSpeedSample): SampleRejection? = qualify(sample) ?: estimator.update(sample)</code></div><div class="ref-fun"><code class="ref-sig">estimateAt(elapsedRealtimeNanos: Long): SpeedEstimate = estimator.estimateAt(elapsedRealtimeNanos)</code></div><div class="ref-fun"><code class="ref-sig">reset() = estimator.reset()</code></div><div class="ref-fun"><code class="ref-sig">kinematicSpeedMps(elapsedRealtimeNanos: Long): Float?</code><div class="ref-doc">GPS-09 The only entry point for RPM/H1/order math. Null = no usable speed (INVALID) — callers must suspend kinematic tracking, not coast.</div></div>
+</details>
+<details class="ref-type" data-s="config update  estimateat  reset ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Config</span><span class="ref-file">core/data/KalmanSpeedEstimator.kt</span></summary>
+<p class="ref-doc ref-typedoc">Named, versionable parameters GPS-2.1; provisional until Gate GPS-5.</p>
+<div class="ref-fun"><code class="ref-sig">update(sample: GnssSpeedSample): SampleRejection?</code></div><div class="ref-fun"><code class="ref-sig">estimateAt(elapsedRealtimeNanos: Long): SpeedEstimate</code></div><div class="ref-fun"><code class="ref-sig">reset()</code></div>
+</details>
+<details class="ref-type" data-s="estimatevalidity ">
+<summary><span class="ref-kind">class</span><span class="ref-name">EstimateValidity</span><span class="ref-file">core/data/SpeedEstimation.kt</span></summary>
+<p class="ref-doc ref-typedoc">Validity of a SpeedEstimate GPS-01, GPS-09. In GPS-0 this is DESCRIPTIVE only — nothing enforces it yet; GPS-1.1 makes it gate every kinematic use.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="estimatoroutcome ">
+<summary><span class="ref-kind">class</span><span class="ref-name">EstimatorOutcome</span><span class="ref-file">core/data/SpeedEstimation.kt</span></summary>
+<p class="ref-doc ref-typedoc">What the estimator did with one fix — the per-fix trace payload GPS-0.4, GPS-2.2.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="eval ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Eval</span><span class="ref-file">core/data/SpeedReconstruction.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="gnssdiagnostics ">
+<summary><span class="ref-kind">class</span><span class="ref-name">GnssDiagnostics</span><span class="ref-file">core/data/GnssDiagnostics.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan-gps GPS-3.3 Observable GNSS signal quality, snapshotted from `GnssStatus` at each satellite-status change. These values serve DIAGNOSIS and trace analysis (multipath, canyon, windshield attenuation…). They never replace `speedAccuracy` as the mathematical variance of a fix GPS-12 — the estimator does not read them.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="gnssdiagnosticsmonitor onsatellitestatuschanged  ongnssmeasurementsreceived  register  unregister  capabilitiesline gps-3.5 capability matrix, stamped into every trace header.">
+<summary><span class="ref-kind">class</span><span class="ref-name">GnssDiagnosticsMonitor</span><span class="ref-file">app/GnssDiagnosticsMonitor.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan-gps GPS-3.3/3.4/3.5 GNSS observability around the speed chain: - snapshots `GnssStatus` (satellites, C/N0, constellations, L5) into latest for the drive traces — diagnostics only, never a variance substitute GPS-12; - requests full-tracking measurements (API 31+) ONLY while registered and only when fullTrackingRequested — the A/B switch of the GPS-5 campaign; the callback is consumed minimally (event count proves the cadence); - builds the per-device capability matrix stamped into trace headers. Owned by SpeedProvider; registered/unregistered with the LIVE session.</p>
+<div class="ref-fun"><code class="ref-sig">onSatelliteStatusChanged(status: GnssStatus)</code></div><div class="ref-fun"><code class="ref-sig">onGnssMeasurementsReceived(event: GnssMeasurementsEvent)</code></div><div class="ref-fun"><code class="ref-sig">register()</code></div><div class="ref-fun"><code class="ref-sig">unregister()</code></div><div class="ref-fun"><code class="ref-sig">capabilitiesLine(): String</code><div class="ref-doc">GPS-3.5 Capability matrix, stamped into every trace header.</div></div>
+</details>
+<details class="ref-type" data-s="gnssspeedsample ">
+<summary><span class="ref-kind">class</span><span class="ref-name">GnssSpeedSample</span><span class="ref-file">core/data/SpeedEstimation.kt</span></summary>
+<p class="ref-doc ref-typedoc">One qualified GNSS speed measurement, as delivered by Android. GPS-3 extends this with signal diagnostics (satellites, C/N0, constellations).</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="gnssspeedsession ">
+<summary><span class="ref-kind">class</span><span class="ref-name">GnssSpeedSession</span><span class="ref-file">core/data/GnssSpeedSession.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan-gps GPS-1.1, GPS-1.3 The GNSS speed session: fix qualification, validity enforcement and session lifecycle around a SpeedEstimator. This is the single gate between Android&#x27;s Location callbacks and the kinematic chain (RPM / H1 / order tracking): - every sample is qualified BEFORE it can touch the estimator — non-finite or negative speeds, mock fixes (unless allowed by Config.acceptMockFixes) and cached/backlogged fixes are rejected with a typed reason GPS-12, GPS-13; - kinematicSpeedMps is the ONLY speed the kinematic chain may consume GPS-09: it returns null — never a frozen number — once the estimate is INVALID (no fix, or beyond the prediction horizon) GPS-01; - reset starts a fresh session: callers MUST invoke it on every LIVE-mode entry/exit so no previous session&#x27;s speed survives a restart GPS-08. The estimate&#x27;s numeric fields remain populated even when INVALID — they are diagnostic values for traces and displays that show their own &quot;--&quot; state GPS-D4; computation goes through kinematicSpeedMps only. Units and time bases GPS-0.5: m/s, m/s², BOOTTIME nanoseconds. Horizontal position accuracy is deliberately absent here — it is never a mathematical substitute for speed accuracy GPS-1.3; the σv-less case is classified DEGRADED by the estimator instead. Pure Kotlin — no Android imports — JVM-unit-testable.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="kalmanspeedestimator ">
+<summary><span class="ref-kind">class</span><span class="ref-name">KalmanSpeedEstimator</span><span class="ref-file">core/data/KalmanSpeedEstimator.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan-gps GPS-2 Linear Kalman filter over GNSS Doppler speed — the uncertainty-aware replacement for the fixed-gain α-β tracker (closes GPS-02, GPS-04, GPS-05, GPS-06, GPS-14 estimator-side). Model: ``` x = v, a F(dt) = [1, dt, 0, 1] z = Android GNSS speed H = 1, 0 R = max(σv, floor)² Q(dt) = q · [dt³/3, dt²/2, dt²/2, dt] (white-jerk PSD q) ``` - Double precision core; covariance kept symmetric via a Joseph-form update; variable dt GPS-2.1. - The declared σv weights every update (R = σv²); a fix without σv gets the conservative Config.defaultSigmaMps and marks estimates DEGRADED GPS-02, GPS-1.3. - Robust rejection GPS-2.2: the normalized innovation NIS = y²/S gates each fix. A rejected fix leaves the state at its last accepted epoch, so prediction uncertainty keeps growing normally. Reacquisition needs two MUTUALLY COHERENT rejected fixes (implied acceleration plausible), a rejection streak (safety valve), or a gap long enough for a full re-seed. - Stationary state with hysteresis GPS-2.3: near zero the published speed/acceleration are an honest 0 instead of estimation flicker; the internal state is never silently saturated (no clamp substitutes for validity). Units and time bases GPS-0.5: m/s, m/s², BOOTTIME nanoseconds. Pure Kotlin — JVM-unit-testable. All parameters in Config are PROVISIONAL until the Gate GPS-5 field-tuning campaign.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="measurement smooth smooth timestamped raw fixes. returns knots at every accepted fix time, in input order; rejected/degenerate fixes produce no knot.">
+<summary><span class="ref-kind">class</span><span class="ref-name">Measurement</span><span class="ref-file">core/data/RtsSpeedSmoother.kt</span></summary>
+<p class="ref-doc ref-typedoc">One raw fix reduced to its measurement (z, R = σ²).</p>
+<div class="ref-fun"><code class="ref-sig">smooth( samples: List&lt;GnssSpeedSample&gt;, config: KalmanSpeedEstimator.Config = KalmanSpeedEstimator.Config(), ): List&lt;SmoothedPoint&gt;</code><div class="ref-doc">Smooth timestamped raw fixes. Returns knots at every ACCEPTED fix time, in input order; rejected/degenerate fixes produce no knot.</div></div>
+</details>
+<details class="ref-type" data-s="result reconstruct rebuild theoretical speeds (+σ) for samples. audiotimesnanos (v3 sidecars) gives each sample&#x27;s audio boottime; without it, samples are evaluated at their own fix time.">
+<summary><span class="ref-kind">class</span><span class="ref-name">Result</span><span class="ref-file">core/data/SpeedReconstruction.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">reconstruct( samples: List&lt;TelemetryData&gt;, audioTimesNanos: List&lt;Long&gt;?, ): Result</code><div class="ref-doc">Rebuild theoretical speeds (+σ) for samples. audioTimesNanos (v3 sidecars) gives each sample&#x27;s audio BOOTTIME; without it, samples are evaluated at their own fix time.</div></div>
+</details>
+<details class="ref-type" data-s="rtsspeedsmoother ">
+<summary><span class="ref-kind">object</span><span class="ref-name">RtsSpeedSmoother</span><span class="ref-file">core/data/RtsSpeedSmoother.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan-gps GPS-4.4 Deferred speed reconstruction: a forward Kalman pass (same model and KalmanSpeedEstimator.Config parameters as the LIVE estimator) followed by a backward Rauch–Tung–Striebel pass. A recorded analysis has the FUTURE fixes too — the smoothed trajectory uses them, which the causal LIVE filter never may plan-gps §2. Statistically implausible fixes (NIS gate) are simply dropped offline; a gap longer than the re-seed threshold splits the trace into independently smoothed segments (no information crosses a re-seed boundary). Frame-by-frame EXTRAPOLATED speeds are never fed back in as truth — input is raw fixes only. Units and time bases GPS-0.5: m/s, m/s², BOOTTIME nanoseconds. Pure Kotlin — JVM-unit-testable.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="samplerejection ">
+<summary><span class="ref-kind">class</span><span class="ref-name">SampleRejection</span><span class="ref-file">core/data/SpeedEstimation.kt</span></summary>
+<p class="ref-doc ref-typedoc">Why a sample did not update the estimator state normally GPS-06, GPS-12, GPS-13.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="smoothedpoint ">
+<summary><span class="ref-kind">class</span><span class="ref-name">SmoothedPoint</span><span class="ref-file">core/data/RtsSpeedSmoother.kt</span></summary>
+<p class="ref-doc ref-typedoc">One smoothed state knot at a fix instant.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="speedestimate ">
+<summary><span class="ref-kind">class</span><span class="ref-name">SpeedEstimate</span><span class="ref-file">core/data/SpeedEstimation.kt</span></summary>
+<p class="ref-doc ref-typedoc">The estimator&#x27;s answer at one instant — speed plus age, uncertainty and validity.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="speedestimator update feed one qualified gnss sample. returns null when the sample was accepted (including a re-seed after a long dropout), else why it was not. estimateat evaluate the state at a boottime instant. gps-1.2&#x27;s target call is `estimateat(audioframe.centertimenanos)` — never &quot;estimate now&quot; gps-03. reset cold start: forget fixes, state and validity (mode transitions — gps-08).">
+<summary><span class="ref-kind">interface</span><span class="ref-name">SpeedEstimator</span><span class="ref-file">core/data/SpeedEstimation.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan-gps GPS-0.2 The speed-estimation contract. GPS-2 swaps the α-β implementation for a Kalman filter behind this same interface.</p>
+<div class="ref-fun"><code class="ref-sig">update(sample: GnssSpeedSample): SampleRejection?</code><div class="ref-doc">Feed one qualified GNSS sample. Returns null when the sample was accepted (including a re-seed after a long dropout), else why it was not.</div></div><div class="ref-fun"><code class="ref-sig">estimateAt(elapsedRealtimeNanos: Long): SpeedEstimate</code><div class="ref-doc">Evaluate the state at a BOOTTIME instant. GPS-1.2&#x27;s target call is `estimateAt(audioFrame.centerTimeNanos)` — never &quot;estimate now&quot; GPS-03.</div></div><div class="ref-fun"><code class="ref-sig">reset()</code><div class="ref-doc">Cold start: forget fixes, state and validity (mode transitions — GPS-08).</div></div>
+</details>
+<details class="ref-type" data-s="speedprovider onlocationchanged  onstatuschanged  onproviderenabled  onproviderdisabled  start  stop  shutdown full release (viewmodel death): stop + quit the gnss thread l1. currenttelemetry thread-safe snapshot with speed predicted to now — for ui-driven reads. telemetryat gps-03 estimate evaluated at an explicit boottime instant — the dsp consumer passes the audio capture time of the frame being analyzed, so a backlogged dsp queue can no longer pair a spectrum with a speed newer than the sound. reset ">
+<summary><span class="ref-kind">class</span><span class="ref-name">SpeedProvider</span><span class="ref-file">app/SpeedProvider.kt</span></summary>
+<p class="ref-doc ref-typedoc">GNSS speed acquisition audit §3b G1–G4, plan 2.4; plan-gps GPS-1/GPS-3: - GPS_PROVIDER is the ONLY metrological source G2, GPS-07: its listener is registered even while the provider is disabled (so enable/disable state changes arrive mid-session GPS-3.2); on API 31+ the subscription is an explicit high-accuracy, zero-interval, unbatched LocationRequest GPS-3.1. The fallback provider runs only while GPS is off and is INFORMATION_ONLY — its fixes never feed the estimator unless their provider field claims GNSS provenance. - All callbacks are delivered on the dedicated &quot;nvh-gnss&quot; thread, never on main GPS-3.1; delivery latency (callback − fix time) is in every trace row GPS-13. - The estimator behind GnssSpeedSession (Kalman since GPS-2) enforces qualification and validity; telemetryAt evaluates it at the audio capture instant GPS-03. - GnssDiagnosticsMonitor snapshots signal quality for traces and owns the full-tracking A/B switch and capability matrix GPS-3.3/3.4/3.5. - Runs only while started — LIVE mode only C7; start()/stop() reset the speed session GPS-08; stop() releases every GNSS resource. Units and time bases GPS-0.5: estimator I/O is m/s and BOOTTIME nanoseconds; TelemetryData speeds are km/h for display. Location.time (UTC) is logged for labeling only — it never enters interval math G1.</p>
+<div class="ref-fun"><code class="ref-sig">onLocationChanged(location: Location) = onFix(location, source = SpeedSampleSource.GPS)</code></div><div class="ref-fun"><code class="ref-sig">onStatusChanged( provider: String?, status: Int, extras: Bundle?, )</code></div><div class="ref-fun"><code class="ref-sig">onProviderEnabled(provider: String)</code></div><div class="ref-fun"><code class="ref-sig">onProviderDisabled(provider: String)</code></div><div class="ref-fun"><code class="ref-sig">start()</code></div><div class="ref-fun"><code class="ref-sig">stop()</code></div><div class="ref-fun"><code class="ref-sig">shutdown()</code><div class="ref-doc">Full release (ViewModel death): stop + quit the GNSS thread L1.</div></div><div class="ref-fun"><code class="ref-sig">currentTelemetry(): TelemetryData</code><div class="ref-doc">Thread-safe snapshot with speed PREDICTED to now — for UI-driven reads.</div></div><div class="ref-fun"><code class="ref-sig">telemetryAt(elapsedRealtimeNanos: Long): TelemetryData</code><div class="ref-doc">GPS-03 Estimate evaluated at an explicit BOOTTIME instant — the DSP consumer passes the AUDIO CAPTURE time of the frame being analyzed, so a backlogged DSP queue can no longer pair a spectrum with a speed newer than the sound.</div></div><div class="ref-fun"><code class="ref-sig">reset()</code></div>
+</details>
+<details class="ref-type" data-s="speedreconstruction ">
+<summary><span class="ref-kind">object</span><span class="ref-name">SpeedReconstruction</span><span class="ref-file">core/data/SpeedReconstruction.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan-gps GPS-4.4 Speed reconstruction for DEFERRED analyses (WAV/video replays, recorded reports): RTS smoothing over the sidecar&#x27;s RAW fixes, evaluated at each sample&#x27;s audio instant. The recorder appends telemetry at frame rate (~43 fps) while GNSS fixes arrive at ~1 Hz, so runs of samples share one fix — the smoother sees each DISTINCT fix once, never the frame-rate copies, and never an already extrapolated per-frame speed (those must not be recycled as truth). Sidecars without usable monotonic fix times (v1, or synthetic imports) fall back to the historical corner interpolation; Result.statusLabel says which path produced the speeds — the label the report must print Gate GPS-4.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="speedsamplesource ">
+<summary><span class="ref-kind">class</span><span class="ref-name">SpeedSampleSource</span><span class="ref-file">core/data/SpeedEstimation.kt</span></summary>
+<p class="ref-doc ref-typedoc">Which subscription produced a speed sample GPS-07.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="state ">
+<summary><span class="ref-kind">class</span><span class="ref-name">State</span><span class="ref-file">core/data/RtsSpeedSmoother.kt</span></summary>
+<p class="ref-doc ref-typedoc">A v, a state with symmetric covariance (p11, p12, p22).</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="step ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Step</span><span class="ref-file">core/data/RtsSpeedSmoother.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<h2 id="area-2" class="ref-area">Suivi d&#x27;ordres &amp; cinématique</h2>
+<details class="ref-type" data-s="emergencereportentry ">
+<summary><span class="ref-kind">class</span><span class="ref-name">EmergenceReportEntry</span><span class="ref-file">core/data/KinematicsData.kt</span></summary>
+<p class="ref-doc ref-typedoc">Entrée accumulée pour le rapport synthétique d&#x27;émergences.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="frame step process one frame: fold the ttnr spectrum into order domain, blend the ema, detect emergent orders, merge them into report (mutated in place), and return the updated active-tag list (expired tags dropped, fresh detections overlaid). detection only runs above min_speed_kmh / min_rpm; tag hold-time decay runs on every call. reset l7 ghost orders from a previous stream/config must never survive a transition.">
+<summary><span class="ref-kind">class</span><span class="ref-name">Frame</span><span class="ref-file">core/OrderTrackingEngine.kt</span></summary>
+<p class="ref-doc ref-typedoc">One analysis frame, in the source&#x27;s own bin grid (df = sampleRate / fftSize).</p>
+<div class="ref-fun"><code class="ref-sig">step( frame: Frame, nowMs: Long, holdMs: Long, targetOrders: List&lt;Double&gt;, activeTags: List&lt;TrackedHarmonicTag&gt;, report: MutableList&lt;EmergenceReportEntry&gt; ): List&lt;TrackedHarmonicTag&gt;</code><div class="ref-doc">Process one frame: fold the TTNR spectrum into order domain, blend the EMA, detect emergent orders, merge them into report (mutated in place), and return the updated active-tag list (expired tags dropped, fresh detections overlaid). Detection only runs above MIN_SPEED_KMH / MIN_RPM; tag hold-time decay runs on every call.</div></div><div class="ref-fun"><code class="ref-sig">reset()</code><div class="ref-doc">L7 Ghost orders from a previous stream/config must never survive a transition.</div></div>
+</details>
+<details class="ref-type" data-s="kinematicsconfig parsedtargetorders retourne la liste des ordres cibles renseignés par l&#x27;utilisateur (ex: 7.4, 18.0, 22.2, 36.0). si la chaîne est vide, retourne une liste vide (mode détection ouverte). calculatewheelradiusmeters calcule le rayon dynamique sous charge de la roue (en mètres) à partir des dimensions pneu vendeur. geteffectivev1000 calcule la v1000 équivalente en km/h pour 1000 rpm selon le mode de saisie sélectionné. calculaterpm calcule le régime moteur (rpm) pour une vitesse donnée en km/h. calculateh1freqhz calcule la fréquence fondamentale h1 en hz (rpm / 60).">
+<summary><span class="ref-kind">class</span><span class="ref-name">KinematicsConfig</span><span class="ref-file">core/data/KinematicsData.kt</span></summary>
+<p class="ref-doc ref-typedoc">Serializable so the painstakingly-entered chain survives process death S1, plan 3.6.</p>
+<div class="ref-fun"><code class="ref-sig">parsedTargetOrders(): List&lt;Double&gt;</code><div class="ref-doc">Retourne la liste des ordres cibles renseignés par l&#x27;utilisateur (ex: 7.4, 18.0, 22.2, 36.0). Si la chaîne est vide, retourne une liste vide (mode détection ouverte).</div></div><div class="ref-fun"><code class="ref-sig">calculateWheelRadiusMeters(): Double</code><div class="ref-doc">Calcule le rayon dynamique sous charge de la roue (en mètres) à partir des dimensions pneu vendeur.</div></div><div class="ref-fun"><code class="ref-sig">getEffectiveV1000(): Double</code><div class="ref-doc">Calcule la V1000 équivalente en km/h pour 1000 RPM selon le mode de saisie sélectionné.</div></div><div class="ref-fun"><code class="ref-sig">calculateRpm(speedKmh: Float): Double</code><div class="ref-doc">Calcule le régime moteur (RPM) pour une vitesse donnée en km/h.</div></div><div class="ref-fun"><code class="ref-sig">calculateH1FreqHz(speedKmh: Float): Double</code><div class="ref-doc">Calcule la fréquence fondamentale H1 en Hz (RPM / 60).</div></div>
+</details>
+<details class="ref-type" data-s="kinematicsinputmode ">
+<summary><span class="ref-kind">class</span><span class="ref-name">KinematicsInputMode</span><span class="ref-file">core/data/KinematicsData.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="manualorderanchor ">
+<summary><span class="ref-kind">class</span><span class="ref-name">ManualOrderAnchor</span><span class="ref-file">core/data/KinematicsData.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="ordersearchpolicy sigmarpm σrpm from the speed σ, both the plan-gps gps-4.1 formulas. sigmaorderfreqhz σ of order order&#x27;s frequency, hz.">
+<summary><span class="ref-kind">object</span><span class="ref-name">OrderSearchPolicy</span><span class="ref-file">core/data/OrderSearchPolicy.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan-gps GPS-4.1, GPS-4.2 Kinematic error budget and the dynamic tracked-order search window it implies (closes GPS-10). Error budget (speeds in km/h): ``` rpm = v · 1000 / V1000 σrpm = σv · 1000 / V1000 f(Hn) = n · rpm / 60 σf(Hn) = n · σrpm / 60 ``` The historical search radius was a FIXED ±1 bin (±Δf) while σf(H18) at the default V1000 and a 0.5 m/s speed σ is ≈ 54 Hz — the true line usually sat OUTSIDE the window and the tracker read noise at the projected bin. The window is now built from the actual uncertainty: k·σf + Δf, and BOUNDED — a window wider than the bound cannot pick one order&#x27;s line apart from its neighbours&#x27;, so tracking is SUSPENDED (&quot;ordre non identifiable&quot;) instead of silently reporting an ambiguous value. V1000&#x27;s own uncertainty (dynamic tire radius, gear-ratio rounding) is NOT modeled here — it can dominate the GNSS term and is characterized separately in the plan-5.3 validation document. When σ is UNKNOWN (α-β estimator, pre-v3 sidecars) the policy falls back to the historical fixed radius — legacy analyses keep their behavior and are marked &quot;incertitude inconnue&quot; by their DEGRADED validity instead. All constants PROVISIONAL until the Gate GPS-5 campaign.</p>
+<div class="ref-fun"><code class="ref-sig">sigmaRpm( sigmaSpeedKmh: Double, v1000Kmh: Double, ): Double = sigmaSpeedKmh * RPM_REFERENCE / v1000Kmh.coerceAtLeast(MIN_V1000_KMH)</code><div class="ref-doc">σrpm from the speed σ, both the plan-gps GPS-4.1 formulas.</div></div><div class="ref-fun"><code class="ref-sig">sigmaOrderFreqHz( order: Double, sigmaSpeedKmh: Double, v1000Kmh: Double, ): Double = order * sigmaRpm(sigmaSpeedKmh, v1000Kmh)</code><div class="ref-doc">σ of order order&#x27;s frequency, Hz.</div></div>
+</details>
+<details class="ref-type" data-s="ordertrackingengine ">
+<summary><span class="ref-kind">class</span><span class="ref-name">OrderTrackingEngine</span><span class="ref-file">core/OrderTrackingEngine.kt</span></summary>
+<p class="ref-doc ref-typedoc">THE order-tracking engine audit A2, D7, plan 3.2 — the single implementation of order-domain folding, EMA smoothing, harmonic-tag detection and emergence-report accumulation. The live pipeline and the WAV sweep both consume this class; the two historical ~130-line copies (which had already drifted) are gone. Stateful (order-domain EMA): one instance per stream — the ViewModel owns one for live capture, and each WAV sweep creates a fresh local one. Methods are synchronized as a belt on top of single-thread confinement (reset() may be invoked from the main thread on transitions L7).</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="plotgeometry xforfraction data fraction (0..1 across the full data) -&gt; canvas x. yforfraction data fraction (0 = top of the band, 1 = bottom) -&gt; canvas y. fractionforx canvas x -&gt; data fraction. inverse of xforfraction. fractionfory canvas y -&gt; data fraction. inverse of yforfraction. visiblefractionx the data fractions currently visible horizontally — what the bitmap crop shows. visiblefractiony the data fractions currently visible vertically. containsplot is this canvas point inside the data area (not in the axis gutters)? containsx is this canvas x inside the data area horizontally (for full-height overlays)? containsy is this canvas y inside the data area vertically (for full-width overlays)? clamppan clamps a candidate pan so the viewport can never leave the data. at zoom 1 the only valid pan is 0: the plot exactly fills its area, and letting it slide would show blank space beside a measurement. zoomedaround zoom around a focal canvas point, keeping the data under that point in place. returns the new geometry with the pan already clamped. reset back to the unzoomed, unpanned view.">
+<summary><span class="ref-kind">class</span><span class="ref-name">PlotGeometry</span><span class="ref-file">core/PlotGeometry.kt</span></summary>
+<p class="ref-doc ref-typedoc">The one description of where a plot&#x27;s data area is, and how zoom/pan map data to pixels U3, U4, plan 4.2. Two audit findings share this object as their fix: - **U3** — margins and text sizes were raw pixel literals (`150f`, `60f`, `32f`), duplicated across two `pointerInput` blocks and the draw pass. On an xxxhdpi phone the axis gutter measured ~34 dp with ~9 sp text; on mdpi it was enormous. The caller now converts dp/sp ONCE via `Density` and hands the pixel values here, so touch handling and drawing cannot drift apart — they read the same object. - **U4** — pinch-zoom cropped the spectrogram bitmap, but the playhead, emergence beacons, harmonic tags and the H1 overlay were positioned in *unzoomed* plot coordinates, so every overlay detached from the image the moment the user zoomed. Overlays now place themselves through xForFraction/yForFraction, which apply the same transform the bitmap crop does, and containsPlot clips what falls outside the viewport. Coordinates: a *fraction* is a position in the DATA, 0..1 (u across time/frames, v down from the top of the frequency band). Pixels are canvas coordinates. Pure Kotlin: this is the geometry, not the rendering, so it is unit-testable.</p>
+<div class="ref-fun"><code class="ref-sig">xForFraction(u: Float): Float = left + (u * plotWidth * zoom + panXPx)</code><div class="ref-doc">Data fraction (0..1 across the full data) -&gt; canvas x.</div></div><div class="ref-fun"><code class="ref-sig">yForFraction(v: Float): Float = top + (v * plotHeight * zoom + panYPx)</code><div class="ref-doc">Data fraction (0 = top of the band, 1 = bottom) -&gt; canvas y.</div></div><div class="ref-fun"><code class="ref-sig">fractionForX(x: Float): Float = if (plotWidth &lt;= 0f || zoom &lt;= 0f) 0f else (x - left - panXPx) / (plotWidth * zoom)</code><div class="ref-doc">Canvas x -&gt; data fraction. Inverse of xForFraction.</div></div><div class="ref-fun"><code class="ref-sig">fractionForY(y: Float): Float = if (plotHeight &lt;= 0f || zoom &lt;= 0f) 0f else (y - top - panYPx) / (plotHeight * zoom)</code><div class="ref-doc">Canvas y -&gt; data fraction. Inverse of yForFraction.</div></div><div class="ref-fun"><code class="ref-sig">visibleFractionX(): ClosedFloatingPointRange&lt;Float&gt; = fractionForX(left)..fractionForX(right)</code><div class="ref-doc">The data fractions currently visible horizontally — what the bitmap crop shows.</div></div><div class="ref-fun"><code class="ref-sig">visibleFractionY(): ClosedFloatingPointRange&lt;Float&gt; = fractionForY(top)..fractionForY(bottom)</code><div class="ref-doc">The data fractions currently visible vertically.</div></div><div class="ref-fun"><code class="ref-sig">containsPlot( x: Float, y: Float, )</code><div class="ref-doc">Is this canvas point inside the data area (not in the axis gutters)?</div></div><div class="ref-fun"><code class="ref-sig">containsX(x: Float)</code><div class="ref-doc">Is this canvas x inside the data area horizontally (for full-height overlays)?</div></div><div class="ref-fun"><code class="ref-sig">containsY(y: Float)</code><div class="ref-doc">Is this canvas y inside the data area vertically (for full-width overlays)?</div></div><div class="ref-fun"><code class="ref-sig">clampPan( candidateX: Float, candidateY: Float, ): Pair&lt;Float, Float&gt;</code><div class="ref-doc">Clamps a candidate pan so the viewport can never leave the data. At zoom 1 the only valid pan is 0: the plot exactly fills its area, and letting it slide would show blank space beside a measurement.</div></div><div class="ref-fun"><code class="ref-sig">zoomedAround( zoomChange: Float, focusX: Float, focusY: Float, panChangeX: Float = 0f, panChangeY: Float = 0f, ): PlotGeometry</code><div class="ref-doc">Zoom around a focal canvas point, keeping the data under that point in place. Returns the new geometry with the pan already clamped.</div></div><div class="ref-fun"><code class="ref-sig">reset(): PlotGeometry = copy(zoom = 1f, panXPx = 0f, panYPx = 0f)</code><div class="ref-doc">Back to the unzoomed, unpanned view.</div></div>
+</details>
+<details class="ref-type" data-s="smartpathtracker compute  expectedbinf ">
+<summary><span class="ref-kind">object</span><span class="ref-name">SmartPathTracker</span><span class="ref-file">core/SmartPathTracker.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan 3.3, audit §13.4 Assisted manual order tracing — pure and JVM-tested. From the user&#x27;s anchor points, follows the spectral ridge between them: guide-line interpolation, local-max scoring with jump/guide penalties, sub-bin parabolic refinement, jump clamping, and a 5-point moving average.</p>
+<div class="ref-fun"><code class="ref-sig">compute(points: List&lt;ManualOrderAnchor&gt;, history: List&lt;FloatArray&gt;): List&lt;ManualOrderAnchor&gt;</code></div><div class="ref-fun"><code class="ref-sig">expectedBinF(globalFrame: Int): Float</code></div>
+</details>
+<details class="ref-type" data-s="smarttrackedorder ">
+<summary><span class="ref-kind">class</span><span class="ref-name">SmartTrackedOrder</span><span class="ref-file">app/data/SmartTrackedOrder.kt</span></summary>
+<p class="ref-doc ref-typedoc">A manually-validated tracked order (report mode). Lives in :app, not :core, because its display color is a Compose type plan 3.1.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="timelinemapper mapindex map an index between two lists that span the same time range. exact identity when the sizes match (the live-mode 1:1 case). timetoindex index of the entry at time posms in a list of size entries spanning durationms.">
+<summary><span class="ref-kind">object</span><span class="ref-name">TimelineMapper</span><span class="ref-file">core/data/TimelineMapper.kt</span></summary>
+<p class="ref-doc ref-typedoc">The single index/time mapping between parallel, uniformly-sampled timelines (FFT frames ↔ telemetry samples ↔ playback position) audit C17, plan 1.4. FFT-frame indices are NOT telemetry indices: a 5-minute WAV has ~12,900 frames but maybe 30 telemetry samples. Every cross-timeline lookup goes through these two functions — never index one list with another&#x27;s index.</p>
+<div class="ref-fun"><code class="ref-sig">mapIndex(index: Int, fromSize: Int, toSize: Int): Int</code><div class="ref-doc">Map an index between two lists that span the same time range. Exact identity when the sizes match (the live-mode 1:1 case).</div></div><div class="ref-fun"><code class="ref-sig">timeToIndex(posMs: Long, durationMs: Long, size: Int): Int</code><div class="ref-doc">Index of the entry at time posMs in a list of size entries spanning durationMs.</div></div>
+</details>
+<details class="ref-type" data-s="trackedharmonictag ">
+<summary><span class="ref-kind">class</span><span class="ref-name">TrackedHarmonicTag</span><span class="ref-file">core/data/KinematicsData.kt</span></summary>
+<p class="ref-doc ref-typedoc">Balise d&#x27;harmonique active avec timestamp de persistance pour rémanence visuelle.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="trackedorderlevels searchtrackedorder max |dbfs| / emergence in a ±radiusbins window around targetfreqhz. center bin is rounded (the historical sweep copy truncated — resolved deliberately to rounding, audit d7). d9, plan 3.7 the dbfs readout is scalloping-corrected: a parabola through the peak bin and its neighbors estimates the true tone amplitude, removing the ~1.4 db ripple the raw bin max showed as an order swept across bin boundaries.">
+<summary><span class="ref-kind">class</span><span class="ref-name">TrackedOrderLevels</span><span class="ref-file">core/OrderTrackingEngine.kt</span></summary>
+<p class="ref-doc ref-typedoc">Max level around one tracked order&#x27;s target frequency.</p>
+<div class="ref-fun"><code class="ref-sig">searchTrackedOrder( absRow: FloatArray, ttnrRow: FloatArray, targetFreqHz: Double, df: Double, radiusBins: Int ): TrackedOrderLevels</code><div class="ref-doc">Max |dBFS| / emergence in a ±radiusBins window around targetFreqHz. Center bin is ROUNDED (the historical sweep copy truncated — resolved deliberately to rounding, audit D7). D9, plan 3.7 The dBFS readout is SCALLOPING-CORRECTED: a parabola through the peak bin and its neighbors estimates the true tone amplitude, removing the ~1.4 dB ripple the raw bin max showed as an order swept across bin boundaries.</div></div>
+</details>
+<details class="ref-type" data-s="window windowfor build the search window from the tracked order&#x27;s frequency σ (from sigmaorderfreqhz) at fundamental h1freqhz. sigmafreqhz null = uncertainty unknown → the historical legacyradiusbins window, always considered identifiable (legacy behavior, honestly labeled by the estimate&#x27;s degraded validity).">
+<summary><span class="ref-kind">class</span><span class="ref-name">Window</span><span class="ref-file">core/data/OrderSearchPolicy.kt</span></summary>
+<p class="ref-doc ref-typedoc">The window the tracked-order search must use, or a suspension.</p>
+<div class="ref-fun"><code class="ref-sig">windowFor( sigmaFreqHz: Double?, h1FreqHz: Double, dfHz: Double, legacyRadiusBins: Int, ): Window</code><div class="ref-doc">Build the search window from the tracked order&#x27;s frequency σ (from sigmaOrderFreqHz) at fundamental h1FreqHz. sigmaFreqHz null = uncertainty unknown → the historical legacyRadiusBins window, always considered identifiable (legacy behavior, honestly labeled by the estimate&#x27;s DEGRADED validity).</div></div>
+</details>
+<h2 id="area-3" class="ref-area">Session &amp; analyse de fichiers</h2>
+<details class="ref-type" data-s="analysisprovenance ">
+<summary><span class="ref-kind">class</span><span class="ref-name">AnalysisProvenance</span><span class="ref-file">core/MeasurementSession.kt</span></summary>
+<p class="ref-doc ref-typedoc">Where the numbers on screen (and in the exported report) came from plan 4.5, U7. Whoever knows a fact records it here: the live path knows which microphone route the platform actually granted, the analyzer knows the file and how its speeds were reconstructed. A report that prints measurements without saying how they were produced cannot be defended after the fact.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="audioframeclock setanchor install or refresh the anchor: frame frameposition was captured at nanotime. frametimenanos boottime of sample frame frameindex, linear from the anchor at the nominal rate. callers must query indices in capture order — the monotonic clamp is applied across successive calls.">
+<summary><span class="ref-kind">class</span><span class="ref-name">AudioFrameClock</span><span class="ref-file">core/AudioFrameClock.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan-gps GPS-1.2, GPS-03 Maps audio frame indices to BOOTTIME nanoseconds from a (framePosition, nanoTime) anchor — the relation `AudioRecord.getTimestamp` exposes. Guarantees monotonic non-decreasing output across calls even when a fresh anchor steps slightly backward (hardware timestamps jitter): a regression is clamped to the last returned value instead of ever going back in time. Units and time bases GPS-0.5: frame indices are sample frames since capture start; times are BOOTTIME nanoseconds. Pure Kotlin, single-threaded use (the capture loop owns it).</p>
+<div class="ref-fun"><code class="ref-sig">setAnchor( framePosition: Long, nanoTime: Long, )</code><div class="ref-doc">Install or refresh the anchor: frame framePosition was captured at nanoTime.</div></div><div class="ref-fun"><code class="ref-sig">frameTimeNanos(frameIndex: Long): Long</code><div class="ref-doc">BOOTTIME of sample frame frameIndex, linear from the anchor at the nominal rate. Callers must query indices in capture order — the monotonic clamp is applied across successive calls.</div></div>
+</details>
+<details class="ref-type" data-s="audiosourcemode ">
+<summary><span class="ref-kind">class</span><span class="ref-name">AudioSourceMode</span><span class="ref-file">core/MeasurementSession.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="audiotimestampsource ">
+<summary><span class="ref-kind">class</span><span class="ref-name">AudioTimestampSource</span><span class="ref-file">core/CapturedAudioFrame.kt</span></summary>
+<p class="ref-doc ref-typedoc">How a frame&#x27;s capture timestamp was obtained plan-gps GPS-1.2.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="capturedaudioframe ">
+<summary><span class="ref-kind">class</span><span class="ref-name">CapturedAudioFrame</span><span class="ref-file">core/CapturedAudioFrame.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan-gps GPS-1.2, GPS-03 One analysis window with its CAPTURE time. The speed estimate for a spectrum must be evaluated at the BOOTTIME instant the sound was captured — `estimateAt(centerTimeNanos)` — never at the instant the DSP got around to processing it: a backlogged DSP queue used to silently pair a spectrum with a speed newer than the audio. Units and time bases GPS-0.5: times are BOOTTIME nanoseconds (elapsedRealtimeNanos base); pcm is 16-bit mono at sampleRateHz. Deliberately NOT a data class: pcm is a reused-content array and structural equality over it would be wrong and expensive.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="cursorstate cursorstateat state displayed at playback position posms: the fft frame under the cursor and the (interpolated) telemetry with tracked-order levels (±1 bin — the cursor uses per-frame speeds) c17: all cross-timeline lookups via timelinemapper.">
+<summary><span class="ref-kind">class</span><span class="ref-name">CursorState</span><span class="ref-file">core/WavAnalysis.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">cursorStateAt( posMs: Long, durationMs: Long, spectrogram: Spectrogram, telemetrySource: List&lt;TelemetryData&gt;, config: KinematicsConfig, ): CursorState</code><div class="ref-doc">State displayed at playback position posMs: the FFT frame under the cursor and the (interpolated) telemetry with tracked-order levels (±1 bin — the cursor uses per-frame speeds) C17: all cross-timeline lookups via TimelineMapper.</div></div>
+</details>
+<details class="ref-type" data-s="displaymode ">
+<summary><span class="ref-kind">class</span><span class="ref-name">DisplayMode</span><span class="ref-file">core/MeasurementSession.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="gpsstatus ">
+<summary><span class="ref-kind">class</span><span class="ref-name">GpsStatus</span><span class="ref-file">core/Telemetry.kt</span></summary>
+<p class="ref-doc ref-typedoc">GPS quality for the UI LED — driven by SPEED accuracy where available audit G3.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="measurementsession registermodetransitionhook called synchronously (registration order) on every setaudiosourcemode. registeranalysisresettable wiped by resetanalysisstate — engines and per-stream caches register here l7. setaudiosourcemode  forcemode analyzer-only escape hatch: the video/wav load paths historically set the mode without the full transition wipe (they clear selectively around the load). never use for user-driven mode switches. resetanalysisstate l7 no ghost ema/tags across any source or kinematics transition. clearemergencereport  clearstreams clear the rolling spectral/telemetry streams (mode change, new load, fft change). setdisplaymode  togglefreeze  setlatestttnrspectrum  appendliveframe live-mode append. u9/u10 root fix, plan 3.4 histories are canonical chronological — newest last — in every mode; only the draw layer knows the live view scrolls right-to-left. applies the 150 ms retro-unmask patch to the k most recent ttnr rows and ring-trims to maxhistory. setwavanalysis analyzer-mode replace: the full-file sweep result. settelemetrystate  settelemetryhistory  appendlivetelemetry chronological, like the spectral histories plan 3.4. settrackedharmonictags  setemergencereportentries  setkinematicsconfig raw setter — callers own the resetanalysisstate + re-sweep choreography. updateprovenance  setloadedwavdata  updatedisplaysettings c14 the dynamic range stays valid: min is clamped ≥ 5 db below max. setfftsize raw setter — the live owner guards c13 and restarts capture around it. updatedetectorsettings  postnotice  dismissnotice ">
+<summary><span class="ref-kind">class</span><span class="ref-name">MeasurementSession</span><span class="ref-file">core/MeasurementSession.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan 3.3, audit A1/L7 The shared measurement-session state machine — the ONE holder of everything the three ViewModels (live, analyzer, report) measure and display together: source mode, spectral histories, telemetry, order tags/report, kinematics and display settings. Mode/config transitions run through here so the L7 contract has a single enforcement point: registered resettables (the live DSP engines, the analyzer&#x27;s per-frame tag map) are wiped synchronously on every transition — no EMA or tag built under a previous config survives into the next one. Pure Kotlin: owners register hooks for their Android-side effects (mic enable, player release) instead of the session touching them.</p>
+<div class="ref-fun"><code class="ref-sig">registerModeTransitionHook(hook: (AudioSourceMode) -&gt; Unit): (): () -&gt; Unit</code><div class="ref-doc">Called synchronously (registration order) on every setAudioSourceMode.</div></div><div class="ref-fun"><code class="ref-sig">registerAnalysisResettable(resettable: () -&gt; Unit): (): () -&gt; Unit</code><div class="ref-doc">Wiped by resetAnalysisState — engines and per-stream caches register here L7.</div></div><div class="ref-fun"><code class="ref-sig">setAudioSourceMode(mode: AudioSourceMode)</code></div><div class="ref-fun"><code class="ref-sig">forceMode(mode: AudioSourceMode)</code><div class="ref-doc">Analyzer-only escape hatch: the video/WAV load paths historically set the mode WITHOUT the full transition wipe (they clear selectively around the load). Never use for user-driven mode switches.</div></div><div class="ref-fun"><code class="ref-sig">resetAnalysisState()</code><div class="ref-doc">L7 No ghost EMA/tags across any source or kinematics transition.</div></div><div class="ref-fun"><code class="ref-sig">clearEmergenceReport()</code></div><div class="ref-fun"><code class="ref-sig">clearStreams()</code><div class="ref-doc">Clear the rolling spectral/telemetry streams (mode change, new load, FFT change).</div></div><div class="ref-fun"><code class="ref-sig">setDisplayMode(mode: DisplayMode)</code></div><div class="ref-fun"><code class="ref-sig">toggleFreeze()</code></div><div class="ref-fun"><code class="ref-sig">setLatestTtnrSpectrum(spectrum: FloatArray)</code></div><div class="ref-fun"><code class="ref-sig">appendLiveFrame( magnitudes: FloatArray, ttnrSpectrum: FloatArray, retroUnmaskBins: List&lt;Int&gt;, retroRawRows: List&lt;FloatArray&gt;, maxHistory: Int, )</code><div class="ref-doc">Live-mode append. U9/U10 root fix, plan 3.4 Histories are CANONICAL CHRONOLOGICAL — newest LAST — in every mode; only the draw layer knows the live view scrolls right-to-left. Applies the 150 ms retro-unmask patch to the k most recent TTNR rows and ring-trims to maxHistory.</div></div><div class="ref-fun"><code class="ref-sig">setWavAnalysis( absList: List&lt;FloatArray&gt;, ttnrList: List&lt;FloatArray&gt;, )</code><div class="ref-doc">Analyzer-mode replace: the full-file sweep result.</div></div><div class="ref-fun"><code class="ref-sig">setTelemetryState(data: TelemetryData)</code></div><div class="ref-fun"><code class="ref-sig">setTelemetryHistory(history: List&lt;TelemetryData&gt;)</code></div><div class="ref-fun"><code class="ref-sig">appendLiveTelemetry( data: TelemetryData, maxHistory: Int, )</code><div class="ref-doc">Chronological, like the spectral histories plan 3.4.</div></div><div class="ref-fun"><code class="ref-sig">setTrackedHarmonicTags(tags: List&lt;TrackedHarmonicTag&gt;)</code></div><div class="ref-fun"><code class="ref-sig">setEmergenceReportEntries(entries: List&lt;EmergenceReportEntry&gt;)</code></div><div class="ref-fun"><code class="ref-sig">setKinematicsConfig(config: KinematicsConfig)</code><div class="ref-doc">Raw setter — callers own the resetAnalysisState + re-sweep choreography.</div></div><div class="ref-fun"><code class="ref-sig">updateProvenance(transform: (AnalysisProvenance) -&gt; AnalysisProvenance)</code></div><div class="ref-fun"><code class="ref-sig">setLoadedWavData(data: LoadedWavData?)</code></div><div class="ref-fun"><code class="ref-sig">updateDisplaySettings( newMinDb: Double, newMaxDb: Double, newMinFreq: Int, newMaxFreq: Int, newTimeWindowSec: Double, )</code><div class="ref-doc">C14 The dynamic range stays valid: min is clamped ≥ 5 dB below max.</div></div><div class="ref-fun"><code class="ref-sig">setFftSize(size: Int)</code><div class="ref-doc">Raw setter — the live owner guards C13 and restarts capture around it.</div></div><div class="ref-fun"><code class="ref-sig">updateDetectorSettings( enabled: Boolean, thresholdDb: Double, magnitudeGateDb: Double, )</code></div><div class="ref-fun"><code class="ref-sig">postNotice(message: String?)</code></div><div class="ref-fun"><code class="ref-sig">dismissNotice()</code></div>
+</details>
+<details class="ref-type" data-s="ordersweepresult ordersweep full-file order sweep a2, plan 3.2/3.3: per-telemetry tracked-order levels (±3-bin window — interpolated speeds carry more error), then the frame-by-frame ordertrackingengine pass on a fresh engine instance. cost is o(frames × order_bins): ~12,900 frames for a 5-minute file, each folding a full spectrum into the 1000-order grid. **never call this on the main thread** v13.2 c-1. checkactive is invoked once per telemetry sample and once per frame so a cancelled coroutine stops the sweep instead of finishing work nobody will read.">
+<summary><span class="ref-kind">class</span><span class="ref-name">OrderSweepResult</span><span class="ref-file">core/WavAnalysis.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">orderSweep( spectrogram: Spectrogram, telemetry: List&lt;TelemetryData&gt;, config: KinematicsConfig, checkActive: () -&gt; Unit = {}, ): OrderSweepResult</code><div class="ref-doc">Full-file order sweep A2, plan 3.2/3.3: per-telemetry tracked-order levels (±3-bin window — interpolated speeds carry more error), then the frame-by-frame OrderTrackingEngine pass on a fresh engine instance. Cost is O(frames × ORDER_BINS): ~12,900 frames for a 5-minute file, each folding a full spectrum into the 1000-order grid. **Never call this on the main thread** V13.2 C-1. checkActive is invoked once per telemetry sample and once per frame so a cancelled coroutine stops the sweep instead of finishing work nobody will read.</div></div>
+</details>
+<details class="ref-type" data-s="spectrogram dfhzat  computespectrogram full-file stft at 50 % overlap on a fresh fftprocessor (stateful — never share with the live stream audit d3). returns null when the pcm is shorter than one fft frame. checkactive is invoked per frame so a cancelled coroutine stops the sweep. interpolatetheoreticalspeed when an imported telemetry track carries no theoretical speed, derive one by linear interpolation between the gps speed&#x27;s corner points (historical behavior of the load path).">
+<summary><span class="ref-kind">class</span><span class="ref-name">Spectrogram</span><span class="ref-file">core/WavAnalysis.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">dfHzAt(frameIdx: Int): Double = (sampleRateHz / 2.0)</code></div><div class="ref-fun"><code class="ref-sig">computeSpectrogram( pcm: ShortArray, sampleRate: Int, fftSize: Int, checkActive: () -&gt; Unit = {}, ): Spectrogram?</code><div class="ref-doc">Full-file STFT at 50 % overlap on a fresh FFTProcessor (stateful — never share with the live stream audit D3). Returns null when the PCM is shorter than one FFT frame. checkActive is invoked per frame so a cancelled coroutine stops the sweep.</div></div><div class="ref-fun"><code class="ref-sig">interpolateTheoreticalSpeed(telemetry: List&lt;TelemetryData&gt;): List&lt;TelemetryData&gt;</code><div class="ref-doc">When an imported telemetry track carries no theoretical speed, derive one by linear interpolation between the GPS speed&#x27;s corner points (historical behavior of the load path).</div></div>
+</details>
+<details class="ref-type" data-s="telemetrydata ">
+<summary><span class="ref-kind">class</span><span class="ref-name">TelemetryData</span><span class="ref-file">core/Telemetry.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="wavanalysis ">
+<summary><span class="ref-kind">object</span><span class="ref-name">WavAnalysis</span><span class="ref-file">core/WavAnalysis.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan 3.3 The pure computation core of the WAV/video analyzer — extracted from the ViewModel so the full-file pipeline is JVM-testable: STFT sweep, theoretical-speed interpolation and the order-tracking sweep.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<h2 id="area-4" class="ref-area">Capture, stockage &amp; persistence</h2>
+<details class="ref-type" data-s="audiocaptureexception ">
+<summary><span class="ref-kind">class</span><span class="ref-name">AudioCaptureException</span><span class="ref-file">app/AudioRepository.kt</span></summary>
+<p class="ref-doc ref-typedoc">Raised when the microphone cannot be opened or keeps failing C9 — surfaced to the UI, never a crash.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="audiorepository startaudiocapture plan-gps gps-1.2 emits capturedaudioframes carrying the boottime of each window&#x27;s first and center sample, anchored on `audiorecord.gettimestamp(timebase_boottime)` (refreshed periodically); when the hardware timestamp is unavailable the anchor falls back to the read-completion clock and frames are marked audiotimestampsource.estimated (logged once). the speed chain evaluates its estimate at `centertimenanos` gps-03. stopaudiocapture ">
+<summary><span class="ref-kind">class</span><span class="ref-name">AudioRepository</span><span class="ref-file">app/AudioRepository.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">startAudioCapture(fftSize: Int = AudioConfig.DEFAULT_FFT_SIZE): Flow&lt;CapturedAudioFrame&gt;</code><div class="ref-doc">plan-gps GPS-1.2 Emits CapturedAudioFrames carrying the BOOTTIME of each window&#x27;s first and center sample, anchored on `AudioRecord.getTimestamp(TIMEBASE_BOOTTIME)` (refreshed periodically); when the hardware timestamp is unavailable the anchor falls back to the read-completion clock and frames are marked AudioTimestampSource.ESTIMATED (logged once). The speed chain evaluates its estimate at `centerTimeNanos` GPS-03.</div></div><div class="ref-fun"><code class="ref-sig">stopAudioCapture()</code></div>
+</details>
+<details class="ref-type" data-s="audiotrack ">
+<summary><span class="ref-kind">class</span><span class="ref-name">AudioTrack</span><span class="ref-file">app/data/VideoAudioExtractor.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="captureengine ">
+<summary><span class="ref-kind">class</span><span class="ref-name">CaptureEngine</span><span class="ref-file">app/CaptureEngine.kt</span></summary>
+<p class="ref-doc ref-typedoc">C5, C7, plan 2.1 The ONE owner of live microphone capture. Settings and enablement changes flow through flatMapLatest: the previous capture is cancelled (mic released via AudioRepository.awaitClose) before a new one starts — the historical bug class where every settings change stacked another producer/consumer pair is structurally impossible here. Disabled (mode != LIVE, or user stop) means no capture flow at all: the mic indicator goes off. A capture error (mic busy, init failure) is reported via onCaptureError and completes only the inner flow — a later re-enable retries cleanly.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="decodedtelemetry ">
+<summary><span class="ref-kind">class</span><span class="ref-name">DecodedTelemetry</span><span class="ref-file">core/data/TelemetryCodec.kt</span></summary>
+<p class="ref-doc ref-typedoc">Everything a deferred analysis needs from a sidecar GPS-4.4.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="decodestate feedinput  drainoutput drains one output buffer — and keeps being called after the input eos, which is exactly the tail the previous implementation threw away c12.">
+<summary><span class="ref-kind">class</span><span class="ref-name">DecodeState</span><span class="ref-file">app/data/VideoAudioExtractor.kt</span></summary>
+<p class="ref-doc ref-typedoc">The decode loop&#x27;s mutable state, split out so the loop body reads as two steps. Sample rate / channel count / PCM encoding start from the *input* track format and are corrected the moment the decoder announces its own output format — the two can differ, and believing the input one silently puts the whole analysis on the wrong frequency grid C1 class.</p>
+<div class="ref-fun"><code class="ref-sig">feedInput( codec: MediaCodec, extractor: MediaExtractor, containerDurationUs: Long, onProgress: (Float) -&gt; Unit, )</code></div><div class="ref-fun"><code class="ref-sig">drainOutput(codec: MediaCodec)</code><div class="ref-doc">Drains one output buffer — and keeps being called AFTER the input EOS, which is exactly the tail the previous implementation threw away C12.</div></div>
+</details>
+<details class="ref-type" data-s="diagnosticlog init call once at process start; safe to repeat. i  w  e  notice the user-facing notices (banner messages) are logged verbatim, so a report matches. currentfile the file to share, or null when nothing has been logged yet. sizebytes bytes currently held by both log files — shown next to the share action. clear both files, oldest first, for a share that should carry the full window.">
+<summary><span class="ref-kind">object</span><span class="ref-name">DiagnosticLog</span><span class="ref-file">app/data/DiagnosticLog.kt</span></summary>
+<p class="ref-doc ref-typedoc">A local, rotating diagnostic log V3, plan 4.7. The audit&#x27;s error-handling census: 17 `catch` blocks, 10 ending in `printStackTrace()` and the rest silent; no logging framework, no crash reporting, and — for a field tool — no way for an operator to tell anyone *what* went wrong. A failed save, an unreadable WAV or a mic that would not open meant a lost test session with no explanation and nothing to send. Deliberate properties: - **Local only.** The app has no INTERNET permission and this must not create a reason to add one. Nothing is uploaded; the file leaves the device only through an explicit, user-initiated share. - **Bounded.** Two files of MAX_BYTES; the current one rotates onto the previous, which is discarded. A measurement instrument must not fill a phone with logs. - **Off the caller&#x27;s thread.** A single writer thread, so logging from the DSP or capture path never blocks it C6. - **Never fatal.** Logging failures are swallowed after one Logcat warning: an error while reporting an error must not become the error.</p>
+<div class="ref-fun"><code class="ref-sig">init(context: Context)</code><div class="ref-doc">Call once at process start; safe to repeat.</div></div><div class="ref-fun"><code class="ref-sig">i( tag: String, message: String, ) = write(&quot;INFO &quot;, tag, message, null)</code></div><div class="ref-fun"><code class="ref-sig">w( tag: String, message: String, error: Throwable? = null, ) = write(&quot;WARN &quot;, tag, message, error)</code></div><div class="ref-fun"><code class="ref-sig">e( tag: String, message: String, error: Throwable? = null, ) = write(&quot;ERROR&quot;, tag, message, error)</code></div><div class="ref-fun"><code class="ref-sig">notice(message: String) = write(&quot;NOTE &quot;, &quot;Notice&quot;, message, null)</code><div class="ref-doc">The user-facing notices (banner messages) are logged verbatim, so a report matches.</div></div><div class="ref-fun"><code class="ref-sig">currentFile(): File? = dir?.let { File(it, CURRENT) }?.takeIf { it.exists() &amp;&amp; it.length()</code><div class="ref-doc">The file to share, or null when nothing has been logged yet.</div></div><div class="ref-fun"><code class="ref-sig">sizeBytes(): Long = dir?.let { File(it, CURRENT).length() + File(it, PREVIOUS).length()</code><div class="ref-doc">Bytes currently held by both log files — shown next to the share action.</div></div><div class="ref-fun"><code class="ref-sig">clear()</code><div class="ref-doc">Both files, oldest first, for a share that should carry the full window.</div></div>
+</details>
+<details class="ref-type" data-s="documentv3 ">
+<summary><span class="ref-kind">class</span><span class="ref-name">DocumentV3</span><span class="ref-file">core/data/TelemetryCodec.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="encoderequest encodev3 write a v3 sidecar. audiotimesnanos pairs 1:1 with samples (or empty). decode legacy-shaped entry point kept for existing import paths. decodedocument decode a sidecar of any schema. returns empty samples on malformed input — telemetry is optional and must never block an audio import.">
+<summary><span class="ref-kind">class</span><span class="ref-name">EncodeRequest</span><span class="ref-file">core/data/TelemetryCodec.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">encodeV3( request: EncodeRequest, samples: List&lt;TelemetryData&gt;, audioTimesNanos: List&lt;Long&gt;, ): String</code><div class="ref-doc">Write a v3 sidecar. audioTimesNanos pairs 1:1 with samples (or empty).</div></div><div class="ref-fun"><code class="ref-sig">decode(jsonText: String?): List&lt;TelemetryData&gt; = decodeDocument(jsonText)</code><div class="ref-doc">Legacy-shaped entry point kept for existing import paths.</div></div><div class="ref-fun"><code class="ref-sig">decodeDocument(jsonText: String?): DecodedTelemetry</code><div class="ref-doc">Decode a sidecar of any schema. Returns empty samples on malformed input — telemetry is optional and must never block an audio import.</div></div>
+</details>
+<details class="ref-type" data-s="error ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Error</span><span class="ref-file">core/data/LoadedWavData.kt</span></summary>
+<p class="ref-doc ref-typedoc">A file the app could not read at all.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="failure extractaudiofromvideouri ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Failure</span><span class="ref-file">app/data/VideoAudioExtractor.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">extractAudioFromVideoUri( context: Context, uri: Uri, onProgress: (Float) -&gt; Unit = {}, ): Result</code></div>
+</details>
+<details class="ref-type" data-s="fieldlocationlogger log gps-0.4 one row per fix: raw location fields + estimator state, validity, rejection reason and nis at delivery time.">
+<summary><span class="ref-kind">class</span><span class="ref-name">FieldLocationLogger</span><span class="ref-file">app/data/FieldLocationLogger.kt</span></summary>
+<p class="ref-doc ref-typedoc">Debug-build drive logger — AAA plan step 0.8, schema v2 per plan-gps GPS-0.4. Appends every raw GNSS/fused fix PLUS the estimator&#x27;s outcome for it to a CSV under the app&#x27;s external files dir (no storage permission needed; pull with `adb pull /sdcard/Android/data/&lt;pkg&gt;/files/field_logs`). The format is FieldTraceV2 — pure, round-trip-tested — and is the dataset the GPS-2 Kalman is tuned against GPS-13. The header carries an anonymized identity: a random per-install UUID plus the device model (needed for the GPS-5 device matrix; no serial, no account data). Time bases GPS-0.5: nanos columns are BOOTTIME; utcTimeMs is Location.time for human labeling only G1. Absent values are empty fields, never NaN. Must never affect the app: all I/O on its own single thread, all failures swallowed after one log line. Callers gate on BuildConfig.DEBUG.</p>
+<div class="ref-fun"><code class="ref-sig">log( location: Location, callbackTimeNanos: Long, isMock: Boolean, outcome: EstimatorOutcome, gnss: GnssDiagnostics?, )</code><div class="ref-doc">GPS-0.4 One row per fix: raw Location fields + estimator state, validity, rejection reason and NIS at delivery time.</div></div>
+</details>
+<details class="ref-type" data-s="fieldtracev2 ">
+<summary><span class="ref-kind">object</span><span class="ref-name">FieldTraceV2</span><span class="ref-file">core/data/FieldTraceV2.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan-gps GPS-0.4, GPS-13 Drive-trace schema v2 — the pure codec behind the debug FieldLocationLogger. Schema v1 recorded raw Location fields only and used NaN as its absence marker. v2 adds the callback delivery time, the estimator&#x27;s outcome per fix (state, validity, rejection), and an anonymized device identity in the header — exactly the data the GPS-2 Kalman is tuned and validated against. Absence is an EMPTY CSV field, never a numeric sentinel (Gate GPS-0). Units and time bases GPS-0.5: `*Nanos` columns are BOOTTIME (elapsedRealtimeNanos); `utcTimeMs` is `Location.time`, kept for human labeling only — never for interval math audit G1. Speeds m/s, accelerations m/s², distances meters, bearings degrees.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="fmtchunk ">
+<summary><span class="ref-kind">class</span><span class="ref-name">FmtChunk</span><span class="ref-file">app/data/WavDataReader.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="loadedwavdata ">
+<summary><span class="ref-kind">class</span><span class="ref-name">LoadedWavData</span><span class="ref-file">core/data/LoadedWavData.kt</span></summary>
+<p class="ref-doc ref-typedoc">The analyzed audio of a loaded WAV/video source, in its OWN sample rate audit C1.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="metadata ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Metadata</span><span class="ref-file">core/data/FieldTraceV2.kt</span></summary>
+<p class="ref-doc ref-typedoc">`model=` is last on the header line: device models may contain spaces.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="numberparsing.kt string c11, plan 1.8 locale-tolerant numeric input: french keyboards produce comma decimals, which `todoubleornull()` rejects — and silent fallbacks to defaults then corrupted every downstream rpm/h1/order computation.">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">NumberParsing.kt</span><span class="ref-file">core/data/NumberParsing.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">String()</code><div class="ref-doc">C11, plan 1.8 Locale-tolerant numeric input: French keyboards produce comma decimals, which `toDoubleOrNull()` rejects — and silent fallbacks to defaults then corrupted every downstream RPM/H1/order computation.</div></div>
+</details>
+<details class="ref-type" data-s="record ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Record</span><span class="ref-file">core/data/FieldTraceV2.kt</span></summary>
+<p class="ref-doc ref-typedoc">One raw fix + the estimator&#x27;s outcome for it. Null = value absent.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="recordingentry ">
+<summary><span class="ref-kind">class</span><span class="ref-name">RecordingEntry</span><span class="ref-file">app/data/RecordingStore.kt</span></summary>
+<p class="ref-doc ref-typedoc">One saved measurement: WAV plus optional telemetry JSON sidecar.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="recordingstore saverecording writes wav + json. throws ioexception with a readable message on failure. listrecordings newest-first list of saved recordings. best-effort: returns what it can, never throws. readtext reads a small text sidecar (telemetry json). null on any failure. insertandwrite ">
+<summary><span class="ref-kind">object</span><span class="ref-name">RecordingStore</span><span class="ref-file">app/data/RecordingStore.kt</span></summary>
+<p class="ref-doc ref-typedoc">Recording persistence audit C4/S3, plan 1.7. API 29+: MediaStore.Downloads under Download/NVH_Spectro_Exports/&lt;name&gt;/ — the supported path on scoped storage (the old direct-File writes failed silently on Android 10). Below API 29 the legacy public-directory path is used; failures there surface to the caller instead of losing data silently. All methods are blocking — call from Dispatchers.IO.</p>
+<div class="ref-fun"><code class="ref-sig">saveRecording( context: Context, baseName: String, pcm: ShortArray, sampleRate: Int, telemetryJson: String, )</code><div class="ref-doc">Writes WAV + JSON. Throws IOException with a readable message on failure.</div></div><div class="ref-fun"><code class="ref-sig">listRecordings(context: Context): List&lt;RecordingEntry&gt;</code><div class="ref-doc">Newest-first list of saved recordings. Best-effort: returns what it can, never throws.</div></div><div class="ref-fun"><code class="ref-sig">readText( context: Context, uri: Uri, ): String?</code><div class="ref-doc">Reads a small text sidecar (telemetry JSON). Null on any failure.</div></div><div class="ref-fun"><code class="ref-sig">insertAndWrite( displayName: String, mime: String, write: (java.io.OutputStream) -&gt; Unit, ): Uri</code></div>
+</details>
+<details class="ref-type" data-s="result ">
+<summary><span class="ref-kind">interface</span><span class="ref-name">Result</span><span class="ref-file">app/data/VideoAudioExtractor.kt</span></summary>
+<p class="ref-doc ref-typedoc">Typed outcome: the caller can say *why* an extraction produced nothing.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="samplev3 ">
+<summary><span class="ref-kind">class</span><span class="ref-name">SampleV3</span><span class="ref-file">core/data/TelemetryCodec.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="settings setfftsize  setenabled  frames ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Settings</span><span class="ref-file">app/CaptureEngine.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">setFftSize(fftSize: Int) = settings.update { it.copy(fftSize = fftSize)</code></div><div class="ref-fun"><code class="ref-sig">setEnabled(enabled: Boolean) = settings.update { it.copy(enabled = enabled)</code></div><div class="ref-fun"><code class="ref-sig">frames(): Flow&lt;CapturedAudioFrame&gt;</code></div>
+</details>
+<details class="ref-type" data-s="settingsstore restoreinto  startobserving ">
+<summary><span class="ref-kind">class</span><span class="ref-name">SettingsStore</span><span class="ref-file">app/data/SettingsStore.kt</span></summary>
+<p class="ref-doc ref-typedoc">S1, plan 3.6 Settings + kinematics survive process death. The historical app persisted NOTHING — an overnight OS kill silently discarded the whole test configuration, including the painstakingly-entered GMPe chain. Restore runs once at startup (before observers start, so defaults never clobber stored values); every later change is written back, debounced so slider drags do not hammer the disk.</p>
+<div class="ref-fun"><code class="ref-sig">restoreInto(session: MeasurementSession)</code></div><div class="ref-fun"><code class="ref-sig">startObserving(session: MeasurementSession, scope: CoroutineScope)</code></div>
+</details>
+<details class="ref-type" data-s="success ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Success</span><span class="ref-file">core/data/LoadedWavData.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="success ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Success</span><span class="ref-file">app/data/VideoAudioExtractor.kt</span></summary>
+
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="telemetrycodec ">
+<summary><span class="ref-kind">object</span><span class="ref-name">TelemetryCodec</span><span class="ref-file">core/data/TelemetryCodec.kt</span></summary>
+<p class="ref-doc ref-typedoc">S2, plan 3.6; plan-gps GPS-4.3 The telemetry sidecar format — kotlinx-serialization replaces the historical string-concatenation writer. Schema v2 added `schemaVersion`, `appVersion`, per-sample monotonic `elapsedRealtimeNanos`, `altitude` and `speedAccuracyMs`. Schema v3 makes the sidecar metrologically complete GPS-09/13/14 surfaces: per sample the ESTIMATED speed with its 1-σ and validity plus the paired audio-frame BOOTTIME; per document the estimator identity/parameters, the capture-time speed status (&quot;causale&quot; — deferred RTS smoothing happens at analysis, not capture GPS-4.4) and the order-search confidence level GPS-4.2. The reader decodes every version: v3 restores σ/validity; v1/v2 sidecars carry no uncertainty, so their estimates come back DEGRADED (usable, &quot;incertitude inconnue&quot;) with σ = null — never 0-as-unknown.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="trace encodeheader  encoderow locale-independent (kotlin tostring: &#x27;.&#x27; decimals); null → empty field. parse whole-file decode. returns null only when the v2 header is missing. parserow malformed rows decode to null and are skipped — a trace can end mid-line on process death.">
+<summary><span class="ref-kind">class</span><span class="ref-name">Trace</span><span class="ref-file">core/data/FieldTraceV2.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">encodeHeader(metadata: Metadata): String</code></div><div class="ref-fun"><code class="ref-sig">encodeRow(r: Record): String</code><div class="ref-doc">Locale-independent (Kotlin toString: &#x27;.&#x27; decimals); null → empty field.</div></div><div class="ref-fun"><code class="ref-sig">parse(text: String): Trace?</code><div class="ref-doc">Whole-file decode. Returns null only when the v2 header is missing.</div></div><div class="ref-fun"><code class="ref-sig">parseRow(line: String): Record?</code><div class="ref-doc">Malformed rows decode to null and are skipped — a trace can end mid-line on process death.</div></div>
+</details>
+<details class="ref-type" data-s="unsupported ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Unsupported</span><span class="ref-file">core/data/LoadedWavData.kt</span></summary>
+<p class="ref-doc ref-typedoc">A file the app can read but deliberately refuses to analyse (24-bit, float, 5.1…). detail is the offending value (bit depth, channel count) for the message.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="videoaudioextractor ">
+<summary><span class="ref-kind">object</span><span class="ref-name">VideoAudioExtractor</span><span class="ref-file">app/data/VideoAudioExtractor.kt</span></summary>
+<p class="ref-doc ref-typedoc">Decodes a video&#x27;s audio track to mono 16-bit PCM for analysis C12, plan 4.8. Four defects the audit found in the previous implementation are fixed here: - the decode loop exited as soon as the *input* side queued EOS, dropping every output buffer still in flight — the last fraction of a second of audio was silently lost; - PCM accumulated in an `ArrayList&lt;Short&gt;`, i.e. ~13 M boxed objects for a 5-minute file (hundreds of MB of object overhead and GC storms on mid-range devices); - `INFO_OUTPUT_FORMAT_CHANGED` was ignored, so the decoder&#x27;s *actual* sample rate, channel count and PCM encoding were assumed rather than read — a decoder that resamples produced a correct-looking spectrogram on the wrong frequency grid C1 class; - failures printed a stack trace and returned null, so the caller could not tell &quot;no audio track&quot; from &quot;unsupported encoding&quot;. Progress is reported through onProgress (0..1) so the UI can show real progress instead of an indeterminate spinner for the many seconds a long video takes.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="wavaudiowriter writepcmtowav écrit un tableau d&#x27;échantillons pcm 16-bit mono dans un fichier wav standard, au sample rate fourni par l&#x27;appelant audit c1 — jamais de valeur par défaut. writepcmtostream stream variant for mediastore targets plan 1.7.">
+<summary><span class="ref-kind">object</span><span class="ref-name">WavAudioWriter</span><span class="ref-file">app/data/WavAudioWriter.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">writePcmToWav(pcmData: ShortArray, outputFile: File, sampleRate: Int)</code><div class="ref-doc">Écrit un tableau d&#x27;échantillons PCM 16-bit Mono dans un fichier WAV standard, au sample rate fourni par l&#x27;appelant audit C1 — jamais de valeur par défaut.</div></div><div class="ref-fun"><code class="ref-sig">writePcmToStream(pcmData: ShortArray, out: java.io.OutputStream, sampleRate: Int)</code><div class="ref-doc">Stream variant for MediaStore targets plan 1.7.</div></div>
+</details>
+<details class="ref-type" data-s="wavdatareader readwavfile  readwavfromuri ">
+<summary><span class="ref-kind">object</span><span class="ref-name">WavDataReader</span><span class="ref-file">app/data/WavDataReader.kt</span></summary>
+<p class="ref-doc ref-typedoc">Real RIFF parser audit C2: walks chunks (tolerates LIST/fact/bext/JUNK…), takes the audio format from the `fmt ` chunk instead of assuming a canonical 44-byte layout, downmixes stereo to mono, and rejects what it cannot decode honestly (non-PCM, non-16-bit) instead of producing spectral garbage. Buffers are sized from the actual data chunk — no blind max-size allocation.</p>
+<div class="ref-fun"><code class="ref-sig">readWavFile( file: File, jsonFile: File? = null, ): WavReadResult</code></div><div class="ref-fun"><code class="ref-sig">readWavFromUri( context: Context, uri: Uri, jsonText: String? = null, ): WavReadResult</code></div>
+</details>
+<details class="ref-type" data-s="wavreaderror ">
+<summary><span class="ref-kind">class</span><span class="ref-name">WavReadError</span><span class="ref-file">core/data/LoadedWavData.kt</span></summary>
+<p class="ref-doc ref-typedoc">Why a WAV import failed audit C2, plan 1.2; §12, plan 4.4. The reader reports *what* happened; the UI decides how to say it. The messages used to be French literals built inside the RIFF walker, which made them impossible to localise and impossible to assert on without string matching.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="wavreadmessages.kt wavreaderror turns a typed wavreaderror into the sentence an operator reads §12, plan 4.4. the reader stays free of user-facing text — it reports what happened — and every message lives in `strings.xml`, so the import failures a field user actually hits can be localised (and reviewed) without touching the riff walker.">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">WavReadMessages.kt</span><span class="ref-file">app/data/WavReadMessages.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">WavReadError(): String</code><div class="ref-doc">Turns a typed WavReadError into the sentence an operator reads §12, plan 4.4. The reader stays free of user-facing text — it reports what happened — and every message lives in `strings.xml`, so the import failures a field user actually hits can be localised (and reviewed) without touching the RIFF walker.</div></div>
+</details>
+<details class="ref-type" data-s="wavreadresult ">
+<summary><span class="ref-kind">class</span><span class="ref-name">WavReadResult</span><span class="ref-file">core/data/LoadedWavData.kt</span></summary>
+<p class="ref-doc ref-typedoc">Typed outcome of a WAV import audit C2, plan 1.2.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<h2 id="area-5" class="ref-area">UI, ViewModels &amp; exports</h2>
+<details class="ref-type" data-s="analyzerviewmodel updatekinematicsconfig  updateselectedtrackedorder  addaudiofilter  removeaudiofilter  loadwavfromuri  loadvideofromuri  oncleared l1 release path on viewmodel death.">
+<summary><span class="ref-kind">class</span><span class="ref-name">AnalyzerViewModel</span><span class="ref-file">app/AnalyzerViewModel.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan 3.3 The analyzer third of the historical MainViewModel: WAV/video loading, the full-file sweep (computed in :core&#x27;s WavAnalysis), playback ownership and the audio filter chain. Shared state lives in session.</p>
+<div class="ref-fun"><code class="ref-sig">updateKinematicsConfig(config: com.example.nvhspectro.data.KinematicsConfig)</code></div><div class="ref-fun"><code class="ref-sig">updateSelectedTrackedOrder(order: Double)</code></div><div class="ref-fun"><code class="ref-sig">addAudioFilter(filter: AudioFilter)</code></div><div class="ref-fun"><code class="ref-sig">removeAudioFilter(filterId: String)</code></div><div class="ref-fun"><code class="ref-sig">loadWavFromUri( context: Context, uri: Uri, jsonUri: Uri? = null, )</code></div><div class="ref-fun"><code class="ref-sig">loadVideoFromUri( context: Context, uri: Uri, )</code></div><div class="ref-fun"><code class="ref-sig">onCleared()</code><div class="ref-doc">L1 Release path on ViewModel death.</div></div>
+</details>
+<details class="ref-type" data-s="appgraph startpersistence s1, plan 3.6 restore persisted settings/kinematics into the session, then write every later change back. idempotent; restore completes before observation starts so defaults never clobber stored values.">
+<summary><span class="ref-kind">object</span><span class="ref-name">AppGraph</span><span class="ref-file">app/AppGraph.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan 3.3 Application-scoped object graph: the ONE MeasurementSession the three ViewModels share. Recreated only with the process.</p>
+<div class="ref-fun"><code class="ref-sig">startPersistence(application: Application)</code><div class="ref-doc">S1, plan 3.6 Restore persisted settings/kinematics into the session, then write every later change back. Idempotent; restore completes before observation starts so defaults never clobber stored values.</div></div>
+</details>
+<details class="ref-type" data-s="color.kt nvhemergencecolor severity ramp for an emergence (ttnr) level, in db above the local noise floor. one definition for every surface that grades emergence — the 2d telemetry graph, the canvas beacons, the emergence-report badges and the pdf u7. the thresholds are the detector&#x27;s own reporting steps, not decoration: changing them changes what an operator is told is critical, so they live in exactly one place.">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">Color.kt</span><span class="ref-file">app/theme/Color.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">nvhEmergenceColor(emergenceDb: Double): Color</code><div class="ref-doc">Severity ramp for an emergence (TTNR) level, in dB above the local noise floor. One definition for every surface that grades emergence — the 2D telemetry graph, the canvas beacons, the emergence-report badges and the PDF U7. The thresholds are the detector&#x27;s own reporting steps, not decoration: changing them changes what an operator is told is critical, so they live in exactly one place.</div></div>
+</details>
+<details class="ref-type" data-s="diagnosticssection.kt diagnosticssection the diagnostic-log surface v3, plan 4.7. every notice the app shows an operator is also written to a local, size-bounded file. this is the only way it ever leaves the device: an explicit share, chosen by the user, to an app they pick. there is no network path — the app holds no internet permission and this feature exists precisely so that none is needed to diagnose a field failure.">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">DiagnosticsSection.kt</span><span class="ref-file">app/ui/DiagnosticsSection.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">DiagnosticsSection()</code><div class="ref-doc">The diagnostic-log surface V3, plan 4.7. Every notice the app shows an operator is also written to a local, size-bounded file. This is the only way it ever leaves the device: an explicit share, chosen by the user, to an app they pick. There is no network path — the app holds no INTERNET permission and this feature exists precisely so that none is needed to diagnose a field failure.</div></div>
+</details>
+<details class="ref-type" data-s="emergencepeak getjetcolorint retourne un int argb basé sur la colormap &quot;jet&quot; spectrogramcanvas  yforbin  yforfreq  xforframe  getfreqy  drawfilterband  mapanchortoscreen ">
+<summary><span class="ref-kind">class</span><span class="ref-name">EmergencePeak</span><span class="ref-file">app/SpectrogramColormap.kt</span></summary>
+<p class="ref-doc ref-typedoc">Data class représentant un pic d&#x27;émergence tonale détecté sur la trame courante</p>
+<div class="ref-fun"><code class="ref-sig">getJetColorInt(v: Float): Int</code><div class="ref-doc">Retourne un Int ARGB basé sur la colormap &quot;Jet&quot;</div></div><div class="ref-fun"><code class="ref-sig">SpectrogramCanvas( history: List&lt;FloatArray&gt;, absHistory: List&lt;FloatArray&gt; = emptyList(), ttnrHistory: List&lt;FloatArray&gt; = emptyList()</code></div><div class="ref-fun"><code class="ref-sig">yForBin(binIndex: Float): Float</code></div><div class="ref-fun"><code class="ref-sig">yForFreq(freqHz: Float): Float</code></div><div class="ref-fun"><code class="ref-sig">xForFrame( frameIndex: Float, frameCount: Int, ): Float = geo.xForFraction(if (frameCount &gt; 1) frameIndex / (frameCount - 1) else 0f)</code></div><div class="ref-fun"><code class="ref-sig">getFreqY(freqHz: Float): Float = yForFreq(freqHz)</code></div><div class="ref-fun"><code class="ref-sig">drawFilterBand( yTopRaw: Float, yBottomRaw: Float, )</code></div><div class="ref-fun"><code class="ref-sig">mapAnchorToScreen(anchor: ManualOrderAnchor): Offset</code></div>
+</details>
+<details class="ref-type" data-s="emergencereportdialog.kt emergencereportdialog  emergencereportrow ">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">EmergenceReportDialog.kt</span><span class="ref-file">app/ui/EmergenceReportDialog.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">EmergenceReportDialog( entries: List&lt;EmergenceReportEntry&gt;, kinematicsConfig: KinematicsConfig, onDismiss: () -&gt; Unit, onClearReport: () -&gt; Unit, )</code></div><div class="ref-fun"><code class="ref-sig">EmergenceReportRow(entry: EmergenceReportEntry)</code></div>
+</details>
+<details class="ref-type" data-s="exportdialog.kt exportdialog ">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">ExportDialog.kt</span><span class="ref-file">app/ui/ExportDialog.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">ExportDialog( onDismiss: () -&gt; Unit, telemetry: TelemetryData, onExport: (String, String) -&gt; Unit, )</code></div>
+</details>
+<details class="ref-type" data-s="infodialog.kt infodialog  infodetailrow ">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">InfoDialog.kt</span><span class="ref-file">app/ui/InfoDialog.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">InfoDialog(onDismiss: () -&gt; Unit)</code></div><div class="ref-fun"><code class="ref-sig">InfoDetailRow( label: String, value: String, )</code></div>
+</details>
+<details class="ref-type" data-s="input export renders and saves the export png. call from a background dispatcher. drawstackedgraph ">
+<summary><span class="ref-kind">class</span><span class="ref-name">Input</span><span class="ref-file">app/export/PngExporter.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">export(application: Application, input: Input)</code><div class="ref-doc">Renders and saves the export PNG. Call from a background dispatcher.</div></div><div class="ref-fun"><code class="ref-sig">drawStackedGraph(title: String, unit: String, colorInt: Int, values: List&lt;Double&gt;)</code></div>
+</details>
+<details class="ref-type" data-s="kinematicsdialog.kt kinematicsdialog ">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">KinematicsDialog.kt</span><span class="ref-file">app/ui/KinematicsDialog.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">KinematicsDialog( currentConfig: KinematicsConfig, onDismiss: () -&gt; Unit, onSave: (KinematicsConfig) -&gt; Unit, )</code></div>
+</details>
+<details class="ref-type" data-s="liveviewmodel onpermissionschanged re-applies the policy after a grant/revocation u1, plan 4.1.">
+<summary><span class="ref-kind">class</span><span class="ref-name">LiveViewModel</span><span class="ref-file">app/LiveViewModel.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan 3.3 The live-capture third of the historical MainViewModel: microphone pipeline (one consumer, DSP on the &quot;nvh-dsp&quot; thread C5, C6), GPS speed, the 30 s field recorder, and live display settings. All shared measurement state lives in session.</p>
+<div class="ref-fun"><code class="ref-sig">onPermissionsChanged() = applyResourcePolicy(session.audioSourceMode.value)</code><div class="ref-doc">Re-applies the policy after a grant/revocation U1, plan 4.1.</div></div>
+</details>
+<details class="ref-type" data-s="mainactivity oncreate ">
+<summary><span class="ref-kind">class</span><span class="ref-name">MainActivity</span><span class="ref-file">app/MainActivity.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">onCreate(savedInstanceState: Bundle?)</code></div>
+</details>
+<details class="ref-type" data-s="mainscreen.kt appnavigation  appscreen  gpsledindicator  emergencereportbutton opens the harmonic emergence report a4, plan 4.6, decision d6. sits in the gmpe banner because that is the context the report describes: it exists only while the kinematic chain is engaged, and its badge shows how many harmonics have been characterised so far. locationpermissionchip replaces the gnss led when the app has no precise-location grant u1, plan 4.1. a red led would claim &quot;signal lost&quot; for something that is not a signal problem at all; the operator needs to know it is a permission, and be able to act on it from here. kpiitem ">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">MainScreen.kt</span><span class="ref-file">app/MainScreen.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">AppNavigation()</code></div><div class="ref-fun"><code class="ref-sig">AppScreen( liveVm: LiveViewModel, analyzerVm: AnalyzerViewModel, reportVm: ReportViewModel, permissions: NvhPermissions, )</code></div><div class="ref-fun"><code class="ref-sig">GpsLedIndicator(status: GpsStatus)</code></div><div class="ref-fun"><code class="ref-sig">EmergenceReportButton( entryCount: Int, onClick: () -&gt; Unit, )</code><div class="ref-doc">Opens the harmonic Emergence Report A4, plan 4.6, decision D6. Sits in the GMPe banner because that is the context the report describes: it exists only while the kinematic chain is engaged, and its badge shows how many harmonics have been characterised so far.</div></div><div class="ref-fun"><code class="ref-sig">LocationPermissionChip( coarseOnly: Boolean, onClick: () -&gt; Unit, )</code><div class="ref-doc">Replaces the GNSS LED when the app has no precise-location grant U1, plan 4.1. A red LED would claim &quot;signal lost&quot; for something that is not a signal problem at all; the operator needs to know it is a permission, and be able to act on it from here.</div></div><div class="ref-fun"><code class="ref-sig">KpiItem( label: String, value: String, )</code></div>
+</details>
+<details class="ref-type" data-s="nvhpermissions read  remembernvhpermissions current grants, re-read every time the app comes back to the foreground. the resume refresh is what makes the &quot;open the settings&quot; path work: the user leaves for the system settings screen, flips a permission, and comes back to an app that already knows. permissiongate asks once, then hands content the resulting capability set — blocking only on the one permission without which there is nothing to show at all. microphone denied is not a dead end: the app still opens as a wav/video analyzer, so a recorded session can be re-analysed on a phone whose mic the user will not grant. context deep-link to this app&#x27;s system settings page — the only route out of a permanent denial.">
+<summary><span class="ref-kind">class</span><span class="ref-name">NvhPermissions</span><span class="ref-file">app/ui/Permissions.kt</span></summary>
+<p class="ref-doc ref-typedoc">What the app is actually allowed to do right now U1, plan 4.1. Each capability degrades on its own. The old flow demanded all three permissions and parked forever on &quot;En attente des permissions…&quot; if any was denied — with no rationale, no retry and no way to reach the system settings, so denying *location* (which a user who only wants a spectrogram will do) bricked the app until reinstall.</p>
+<div class="ref-fun"><code class="ref-sig">read(context: Context): NvhPermissions</code></div><div class="ref-fun"><code class="ref-sig">rememberNvhPermissions(): NvhPermissions</code><div class="ref-doc">Current grants, re-read every time the app comes back to the foreground. The resume refresh is what makes the &quot;open the settings&quot; path work: the user leaves for the system settings screen, flips a permission, and comes back to an app that already knows.</div></div><div class="ref-fun"><code class="ref-sig">PermissionGate( onMicrophoneUnavailable: () -&gt; Unit, content: @Composable (NvhPermissions) -&gt; Unit, )</code><div class="ref-doc">Asks once, then hands content the resulting capability set — blocking only on the one permission without which there is nothing to show at all. Microphone denied is NOT a dead end: the app still opens as a WAV/video analyzer, so a recorded session can be re-analysed on a phone whose mic the user will not grant.</div></div><div class="ref-fun"><code class="ref-sig">Context()</code><div class="ref-doc">Deep-link to this app&#x27;s system settings page — the only route out of a permanent denial.</div></div>
+</details>
+<details class="ref-type" data-s="nvhviewmodelfactory ">
+<summary><span class="ref-kind">class</span><span class="ref-name">NvhViewModelFactory</span><span class="ref-file">app/AppGraph.kt</span></summary>
+<p class="ref-doc ref-typedoc">Builds the session-sharing ViewModels plan 3.3.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="orderselectiondialog.kt orderselectiondialog ">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">OrderSelectionDialog.kt</span><span class="ref-file">app/ui/OrderSelectionDialog.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">OrderSelectionDialog( currentOrder: Double, onOrderSelected: (Double) -&gt; Unit, onDismiss: () -&gt; Unit, )</code></div>
+</details>
+<details class="ref-type" data-s="pdfreportgenerator ch  generatereport  drawcolormapbox ">
+<summary><span class="ref-kind">object</span><span class="ref-name">PdfReportGenerator</span><span class="ref-file">app/export/PdfReportGenerator.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">ch(v: Float) = (v * 255f + 0.5f).toInt().coerceIn(0, 255)</code></div><div class="ref-fun"><code class="ref-sig">generateReport()</code></div><div class="ref-fun"><code class="ref-sig">drawColormapBox( canvas: Canvas, bitmap: Bitmap?, x: Float, y: Float, width: Float, height: Float, boxTitle: String, drawBrilliance: Boolean = false, )</code></div>
+</details>
+<details class="ref-type" data-s="playbackcontroller setoriginalsource prepare a new original source (file or content uri). suspends until the player is prepared; returns the media duration in ms, or null on failure. setfilteredsource swap in a filtered rendering of the same source; original refs are kept. restoreoriginalsource back to the unfiltered original (when the filter chain empties). play  pause  seekto  release ">
+<summary><span class="ref-kind">class</span><span class="ref-name">PlaybackController</span><span class="ref-file">app/PlaybackController.kt</span></summary>
+<p class="ref-doc ref-typedoc">L1, L2, L4, L6 — plan 2.3 The one owner of the playback MediaPlayer. - prepareAsync via a suspending API — no more synchronous prepare() on the main thread L4. - Original vs filtered sources are explicit (replaces the fragile &quot;filtered_playback.wav&quot; filename check) L2. - Every acquisition path releases the previous player; release() is idempotent and called from onCleared L1.</p>
+<div class="ref-fun"><code class="ref-sig">setOriginalSource(context: Context?, file: File?, uri: Uri?): Long?</code><div class="ref-doc">Prepare a NEW original source (file or content uri). Suspends until the player is prepared; returns the media duration in ms, or null on failure.</div></div><div class="ref-fun"><code class="ref-sig">setFilteredSource(file: File): Long? = prepare(file, null)</code><div class="ref-doc">Swap in a filtered rendering of the same source; original refs are kept.</div></div><div class="ref-fun"><code class="ref-sig">restoreOriginalSource(): Long? = prepare(originalFile, originalUri)</code><div class="ref-doc">Back to the unfiltered original (when the filter chain empties).</div></div><div class="ref-fun"><code class="ref-sig">play() = safe { mediaPlayer?.start()</code></div><div class="ref-fun"><code class="ref-sig">pause()</code></div><div class="ref-fun"><code class="ref-sig">seekTo(positionMs: Int) = safe { mediaPlayer?.seekTo(positionMs)</code></div><div class="ref-fun"><code class="ref-sig">release()</code></div>
+</details>
+<details class="ref-type" data-s="plotdimens plotdimens the spectrogram&#x27;s geometry for a given canvas size and view transform u3, u4. both `pointerinput` blocks and the draw pass call this, so there is exactly one definition of where the plot is and how zoom/pan map data to pixels. plotdimens the telemetry graph&#x27;s geometry (no zoom/pan: it always shows the whole window). rememberplotdimens the plot metrics for the current density and font scale; recomputed only when those change.">
+<summary><span class="ref-kind">class</span><span class="ref-name">PlotDimens</span><span class="ref-file">app/ui/PlotDimens.kt</span></summary>
+<p class="ref-doc ref-typedoc">Every plot margin and canvas text size, in dp/sp, converted once U3, plan 4.2. The audit found these as raw pixel literals (`150f`, `60f`, `120f`, `40f`, `32f`, `26f`, `22f`) repeated in two `pointerInput` blocks and the draw pass of each canvas. Physical pixels mean the axis gutter is ~34 dp with ~9 sp text on an xxxhdpi phone and enormous on mdpi — very plausibly the &quot;layout bugs found on device&quot; class this project already hit — and duplicating them means touch handling can silently disagree with what is drawn. Canvas text also has to honour the user&#x27;s font scale: `sp.toPx()` applies it, a raw pixel size ignores it entirely, which is why the old canvases were unreadable at large font scales while the rest of the UI grew §12.</p>
+<div class="ref-fun"><code class="ref-sig">PlotDimens(): PlotGeometry</code><div class="ref-doc">The spectrogram&#x27;s geometry for a given canvas size and view transform U3, U4. Both `pointerInput` blocks and the draw pass call this, so there is exactly one definition of where the plot is and how zoom/pan map data to pixels.</div></div><div class="ref-fun"><code class="ref-sig">PlotDimens(): PlotGeometry</code><div class="ref-doc">The telemetry graph&#x27;s geometry (no zoom/pan: it always shows the whole window).</div></div><div class="ref-fun"><code class="ref-sig">rememberPlotDimens(): PlotDimens</code><div class="ref-doc">The plot metrics for the current density and font scale; recomputed only when those change.</div></div>
+</details>
+<details class="ref-type" data-s="pngexporter ">
+<summary><span class="ref-kind">object</span><span class="ref-name">PngExporter</span><span class="ref-file">app/export/PngExporter.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan 3.3, C6-export PNG snapshot export of the frozen view — bitmap rendering on a background thread, MediaStore write on IO (the historical exportData built a 1400×1850 canvas plus a per-pixel spectrogram loop on the MAIN thread).</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="reportmodescreen.kt reportmodescreen  segmentedtogglebutton  autoresizedtext ">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">ReportModeScreen.kt</span><span class="ref-file">app/ui/ReportModeScreen.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">ReportModeScreen( viewModel: ReportViewModel, onBack: () -&gt; Unit, )</code></div><div class="ref-fun"><code class="ref-sig">SegmentedToggleButton( options: List&lt;String&gt;, selectedIndex: Int, onOptionSelected: (Int) -&gt; Unit, modifier: Modifier = Modifier, activeColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary, )</code></div><div class="ref-fun"><code class="ref-sig">AutoResizedText( text: androidx.compose.ui.text.AnnotatedString, modifier: Modifier = Modifier, initialFontSize: androidx.compose.ui.unit.TextUnit = 11.sp, minFontSize: androidx.compose.ui.unit.TextUnit = 8.sp, )</code></div>
+</details>
+<details class="ref-type" data-s="reportstamp formattedtimestamp  build ">
+<summary><span class="ref-kind">class</span><span class="ref-name">ReportStamp</span><span class="ref-file">app/export/ReportStamp.kt</span></summary>
+<p class="ref-doc ref-typedoc">The traceability block printed on every exported report U7, D1, plan 4.5, DEV-43. A customer-facing engineering deliverable that carries measurements but not *when*, *by which build*, *from which source* and *with which speed reconstruction* they were produced cannot be defended once it leaves the room. The audit found the PDF carried none of it. Everything here is a fact the app already knows; nothing is inferred.</p>
+<div class="ref-fun"><code class="ref-sig">formattedTimestamp(): String = java.text.SimpleDateFormat(&quot;dd/MM/yyyy HH:mm&quot;, Locale.FRANCE).format(generatedAt)</code></div><div class="ref-fun"><code class="ref-sig">build( appVersion: String, generatedAt: Date, sourceMode: AudioSourceMode, provenance: AnalysisProvenance, sampleRateHz: Int, fftSize: Int, ): ReportStamp</code></div>
+</details>
+<details class="ref-type" data-s="reportviewmodel togglebrillancemode  togglereportmode  clearcurrentpoints  selectvalidatedorder  removevalidatedorder  addmanualtrackpoint  validatecurrentorder  exportdata c6-export png snapshot rendered on default, written via mediastore. savepdftouri ">
+<summary><span class="ref-kind">class</span><span class="ref-name">ReportViewModel</span><span class="ref-file">app/ReportViewModel.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan 3.3 The report third of the historical MainViewModel: report-mode snapshots, assisted manual order tracing (computed in :core&#x27;s SmartPathTracker) and the PNG/PDF exports (rendered off the UI thread in the export/ package). Shared state lives in session.</p>
+<div class="ref-fun"><code class="ref-sig">toggleBrillanceMode()</code></div><div class="ref-fun"><code class="ref-sig">toggleReportMode()</code></div><div class="ref-fun"><code class="ref-sig">clearCurrentPoints()</code></div><div class="ref-fun"><code class="ref-sig">selectValidatedOrder(order: SmartTrackedOrder?)</code></div><div class="ref-fun"><code class="ref-sig">removeValidatedOrder(order: SmartTrackedOrder)</code></div><div class="ref-fun"><code class="ref-sig">addManualTrackPoint( frameIndex: Int, binIndex: Int, )</code></div><div class="ref-fun"><code class="ref-sig">validateCurrentOrder(customName: String? = null)</code></div><div class="ref-fun"><code class="ref-sig">exportData( pedalPercent: String, comments: String, )</code><div class="ref-doc">C6-export PNG snapshot rendered on Default, written via MediaStore.</div></div><div class="ref-fun"><code class="ref-sig">savePdfToUri( context: Context, uri: Uri, )</code></div>
+</details>
+<details class="ref-type" data-s="saverecordingdialog.kt saverecordingdialog ">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">SaveRecordingDialog.kt</span><span class="ref-file">app/ui/SaveRecordingDialog.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">SaveRecordingDialog( durationSec: Int, onSave: (String) -&gt; Unit, onDismiss: () -&gt; Unit, )</code></div>
+</details>
+<details class="ref-type" data-s="settingsdialog.kt settingsdialog  dspinforow  addfilterdialog ">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">SettingsDialog.kt</span><span class="ref-file">app/ui/SettingsDialog.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">SettingsDialog( onDismiss: () -&gt; Unit, sampleRateHz: Int, minDb: Double, maxDb: Double, onMinDbChange: (Double) -&gt; Unit, onMaxDbChange: (Double) -&gt; Unit, fftSize: Int, onFftSizeChange: (Int) -&gt; Unit, minFreq: Int = 0, onMinFreqChange: (Int)</code></div><div class="ref-fun"><code class="ref-sig">DspInfoRow( label: String, value: String, )</code></div><div class="ref-fun"><code class="ref-sig">AddFilterDialog( existingCount: Int, onDismiss: () -&gt; Unit, onAddFilter: (AudioFilter) -&gt; Unit, )</code></div>
+</details>
+<details class="ref-type" data-s="spectrogramimageproducer renderfull full-file render (wav/report): columns sample the frame list uniformly. appendlatest live render: scroll one column left, paint the newest frame at the right edge. columnsfor  colorfor ">
+<summary><span class="ref-kind">class</span><span class="ref-name">SpectrogramImageProducer</span><span class="ref-file">app/SpectrogramImageProducer.kt</span></summary>
+<p class="ref-doc ref-typedoc">P1, P2, U2 — plan 3.5 Owns the spectrogram pixel pipeline. - Full-file renders are DOWNSAMPLED to at most MAX_COLUMNS columns — a 5-minute file no longer allocates a ~13k-column bitmap (~52 MB) painted pixel-by-pixel on the main thread. - Rendering runs on a background dispatcher (the caller dispatches); the result is double-buffered so every update returns a DIFFERENT Bitmap instance — Compose repaints on data change, replacing the historical mutate-and-hope-for-recomposition hack (the &quot;black until first interaction&quot; quirk, U2). - One pixel buffer and two bitmaps for the producer&#x27;s lifetime: zero per-frame allocation in the live path.</p>
+<div class="ref-fun"><code class="ref-sig">renderFull( history: List&lt;FloatArray&gt;, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean, maskBelowBin: Int = 0 ): Bitmap</code><div class="ref-doc">Full-file render (WAV/report): columns sample the frame list uniformly.</div></div><div class="ref-fun"><code class="ref-sig">appendLatest( latestFrame: FloatArray, minBin: Int, maxBin: Int, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean, maskBelowBin: Int = 0 ): Bitmap</code><div class="ref-doc">Live render: scroll one column left, paint the newest frame at the right edge.</div></div><div class="ref-fun"><code class="ref-sig">columnsFor(frameCount: Int): Int = minOf(frameCount, MAX_COLUMNS).coerceAtLeast(1)</code></div><div class="ref-fun"><code class="ref-sig">colorFor(magnitude: Double, effectiveMin: Double, effectiveMax: Double, isTtnr: Boolean): Int</code></div>
+</details>
+<details class="ref-type" data-s="telemetrymetric telemetrygraph ">
+<summary><span class="ref-kind">class</span><span class="ref-name">TelemetryMetric</span><span class="ref-file">app/ui/TelemetryGraph.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">TelemetryGraph( history: List&lt;TelemetryData&gt;, metric: TelemetryMetric, timeWindowSec: Double, historySize: Int = 150, ttnrSpectrum: FloatArray = FloatArray(0)</code></div>
+</details>
+<details class="ref-type" data-s="theme.kt nvhspectrotheme ">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">Theme.kt</span><span class="ref-file">app/theme/Theme.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">NVHSpectroTheme(content: @Composable () -&gt; Unit)</code></div>
+</details>
+<details class="ref-type" data-s="trackedorderreadout updatesettings  updatedetectorsettings  selectmetric  toggleh1overlay  setprojectedorder  toggleaudiorecording  cancelsaveaudiorecording  saveaudiorecording  oncleared l1 every owned resource has a release path on viewmodel death.">
+<summary><span class="ref-kind">class</span><span class="ref-name">TrackedOrderReadout</span><span class="ref-file">app/LiveViewModel.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">updateSettings( newMinDb: Double, newMaxDb: Double, newFftSize: Int, newMinFreq: Int, newMaxFreq: Int, newTimeWindow: Double, )</code></div><div class="ref-fun"><code class="ref-sig">updateDetectorSettings( enabled: Boolean, thresholdDb: Double, magnitudeGateDb: Double, ) = session.updateDetectorSettings(enabled, thresholdDb, magnitudeGateDb)</code></div><div class="ref-fun"><code class="ref-sig">selectMetric(metric: com.example.nvhspectro.ui.TelemetryMetric)</code></div><div class="ref-fun"><code class="ref-sig">toggleH1Overlay()</code></div><div class="ref-fun"><code class="ref-sig">setProjectedOrder(order: Double)</code></div><div class="ref-fun"><code class="ref-sig">toggleAudioRecording()</code></div><div class="ref-fun"><code class="ref-sig">cancelSaveAudioRecording()</code></div><div class="ref-fun"><code class="ref-sig">saveAudioRecording(userCustomName: String)</code></div><div class="ref-fun"><code class="ref-sig">onCleared()</code><div class="ref-doc">L1 Every owned resource has a release path on ViewModel death.</div></div>
+</details>
+<details class="ref-type" data-s="videoplaybackstate ">
+<summary><span class="ref-kind">class</span><span class="ref-name">VideoPlaybackState</span><span class="ref-file">app/ui/VideoPlayerView.kt</span></summary>
+<p class="ref-doc ref-typedoc">Everything the transport row and the picture need, in one value.</p>
+<div class="ref-doc ref-muted">type de données (porteur d'état, sans méthode publique)</div>
+</details>
+<details class="ref-type" data-s="videoplayerview.kt videoplayerview video mode&#x27;s picture and transport u6, plan 4.8. the picture is always muted: the audio the analyst hears is the *analysed* pcm, played by `playbackcontroller`, which is the single owner of the analysis clock. the video only ever follows it. the youtube source was deleted with decision d7 — it loaded user-supplied urls into a javascript-enabled webview and analysed nothing at all v2.">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">VideoPlayerView.kt</span><span class="ref-file">app/ui/VideoPlayerView.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">VideoPlayerView( videoUri: Uri?, videoTitle: String, state: VideoPlaybackState, onSeekTo: (Long) -&gt; Unit, onTogglePlayPause: () -&gt; Unit, onOpenVideoSelection: () -&gt; Unit, modifier: Modifier = Modifier, )</code><div class="ref-doc">Video mode&#x27;s picture and transport U6, plan 4.8. The picture is always muted: the audio the analyst hears is the *analysed* PCM, played by `PlaybackController`, which is the single owner of the analysis clock. The video only ever follows it. The YouTube source was deleted with decision D7 — it loaded user-supplied URLs into a JavaScript-enabled WebView and analysed nothing at all V2.</div></div>
+</details>
+<details class="ref-type" data-s="wavplaybackcoordinator onsourcecompleted wire to playbackcontroller.oncompletion. toggleplaypause  stopandrewind pause and rewind to 0. the player stays prepared l6. resetposition position bookkeeping only — used when a fresh source was just loaded. seekto  stepseconds ">
+<summary><span class="ref-kind">class</span><span class="ref-name">WavPlaybackCoordinator</span><span class="ref-file">app/WavPlaybackCoordinator.kt</span></summary>
+<p class="ref-doc ref-typedoc">plan 3.3 Drives the analyzer&#x27;s playback position: play/pause/seek state, the per-frame position poll that feeds the spectrum cursor, and the analyzed-end stop C3. The MediaPlayer itself is owned by PlaybackController; the loaded data lives in the session.</p>
+<div class="ref-fun"><code class="ref-sig">onSourceCompleted()</code><div class="ref-doc">Wire to PlaybackController.onCompletion.</div></div><div class="ref-fun"><code class="ref-sig">togglePlayPause()</code></div><div class="ref-fun"><code class="ref-sig">stopAndRewind()</code><div class="ref-doc">Pause and rewind to 0. The player stays prepared L6.</div></div><div class="ref-fun"><code class="ref-sig">resetPosition()</code><div class="ref-doc">Position bookkeeping only — used when a fresh source was just loaded.</div></div><div class="ref-fun"><code class="ref-sig">seekTo(posMs: Long)</code></div><div class="ref-fun"><code class="ref-sig">stepSeconds(offsetSec: Int)</code></div>
+</details>
+<details class="ref-type" data-s="wavplayerbar.kt wavplayerbar ">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">WavPlayerBar.kt</span><span class="ref-file">app/ui/WavPlayerBar.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">WavPlayerBar( fileName: String, currentPosMs: Long, totalDurationMs: Long, isPlaying: Boolean, onPlayToggle: () -&gt; Unit, onSeekTo: (Long) -&gt; Unit, onStepSeconds: (Int) -&gt; Unit, )</code></div>
+</details>
+<details class="ref-type" data-s="wavselectiondialog.kt wavselectiondialog recording picker plan 1.7: entries come from recordingstore (mediastore on api 29+, legacy folder fallback), listed off the main thread — the old version walked the filesystem inside composition.">
+<summary><span class="ref-kind">fichier</span><span class="ref-name">WavSelectionDialog.kt</span><span class="ref-file">app/ui/WavSelectionDialog.kt</span></summary>
+
+<div class="ref-fun"><code class="ref-sig">WavSelectionDialog( onDismiss: () -&gt; Unit, onSelectEntry: (wavUri: Uri, jsonUri: Uri?) -&gt; Unit, onImportExternal: () -&gt; Unit, )</code><div class="ref-doc">Recording picker plan 1.7: entries come from RecordingStore (MediaStore on API 29+, legacy folder fallback), listed off the main thread — the old version walked the filesystem inside composition.</div></div>
+</details>
+
+<nav class="pager"><a href="quality.html" class="pager-prev">← Qualité & CI</a><span></span></nav>
+</article></div></main>
+<!--FOOTER-->
+<script src="../assets/site.js"></script>
+<script>
+(function(){var q=document.getElementById('ref-search');if(!q)return;
+q.addEventListener('input',function(){var v=q.value.toLowerCase();
+document.querySelectorAll('.ref-type').forEach(function(d){
+d.style.display=(!v||d.dataset.s.indexOf(v)>=0)?'':'none';});
+document.querySelectorAll('.ref-area').forEach(function(h){
+var vis=false,sec=document.getElementById(h.id).nextElementSibling;
+while(sec&&!sec.classList.contains('ref-area')){if(sec.style.display!=='none')vis=true;sec=sec.nextElementSibling;}
+h.style.display=vis?'':'none';});});})();
+</script>
+</body></html>

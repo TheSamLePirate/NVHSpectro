@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Méthodes DSP — NVH Spectro</title>
+<link rel="icon" type="image/webp" href="../assets/icon.webp">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav-slot"></div>
+<main class="docs-main"><div class="wrap docs-grid">
+<aside class="docs-toc">
+  <div class="toc-title">Sur cette page</div>
+  <a class="toc-link" href="#fft">FFT & calibration</a>
+  <a class="toc-link" href="#emergence">Indice d'émergence</a>
+  <a class="toc-link" href="#integration">Intégration temporelle</a>
+  <a class="toc-link" href="#orders">Suivi d'ordres</a>
+  <a class="toc-link" href="#filters">Filtres DSP</a>
+  <a class="toc-link" href="#limits">Limites assumées</a>
+</aside>
+<article class="docs-content">
+<nav class="crumbs"><a href="../index.html">Accueil</a> › <a href="index.html">Docs</a> › Méthodes DSP</nav>
+<h1>Méthodes DSP</h1>
+<p class="lead">Ce que fait le moteur spectral, avec les constantes et leurs justifications — et les limites assumées. La référence complète est <code>doc/ARCHITECTURE_AND_DSP_METHODS.md</code> dans le dépôt.</p>
+
+<h2 id="fft">FFT & calibration d'amplitude</h2>
+<ul>
+  <li><b>Fenêtre de Hann</b> sur chaque trame, recouvrement 50 % (STFT standard).</li>
+  <li><b>FFT réelle</b> (<code>DoubleFFT_1D.realForward</code>) sur buffers préalloués — zéro allocation par trame dans la FFT elle-même.</li>
+  <li><b>Calibration <code>mag / (N/4)</code></b> : un sinus pleine échelle tombant exactement sur un bin lit <b>0 dBFS</b>. La valeur affichée est une amplitude, pas une énergie — c'est voulu et testé (cas 0 / −20 / −60 dBFS).</li>
+  <li>La fréquence d'échantillonnage est <b>threadée depuis la source</b> (live ou fichier) : aucun « 44100 » littéral hors <code>AudioConfig</code>, la CI le fait échouer.</li>
+  <li>Le masque sous 30 Hz est une <b>politique d'affichage</b> (<code>DISPLAY_MIN_FREQ_HZ</code>) : les données sous 30 Hz restent vraies, seules la colormap, le PNG et le PDF les planquent.</li>
+</ul>
+
+<h2 id="emergence">Indice d'émergence NVH</h2>
+<p>Le mode « Émergence NVH » met en évidence les composantes tonales qui dépassent le bruit local. C'est un <b>indicateur maison</b> (échelle 0–30 dB, 0 = rien) qui combine :</p>
+<ul>
+  <li>une porte d'amplitude profilée en fréquence (−75 dBFS en BF, −85 dBFS entre 0,5 et 4 kHz) ;</li>
+  <li>un test de <b>pic local strict</b> ;</li>
+  <li>une bande de masquage locale (formule de Terhardt, bornée [150, 350] Hz) ;</li>
+  <li>un ratio ton/bruit (ton net = pic ±2 bins moins le bruit local) hybridé avec une émergence locale PSD.</li>
+</ul>
+<div class="callout warn"><b>Ce n'est pas un TTNR ECMA-74 / ISO 1996-2.</b> Le côté tonal et le côté bruit ne sont pas calibrés dans le même système d'unités (somme cohérente de leakage contre densité spectrale sans correction ENBW), ce qui introduit un biais fixe d'environ 1,8 dB. L'application l'assume : aucun libellé normatif n'est utilisé, et le rapport PDF porte la mention en bas de page. Voir l'audit V13.2, §6 D-a.</div>
+
+<h2 id="integration">Intégration temporelle & détection de chocs</h2>
+<ul>
+  <li>L'émergence est intégrée sur <b>puissance linéaire</b> (τ = 52 ms, α dérivé de l'intervalle de trame réel — l'intégration ne change pas avec la taille de FFT). Un ton qui disparaît décroît exponentiellement ; pas d'arithmétique de sentinelles.</li>
+  <li><b>Détecteur de chocs</b> : un taux de montée &gt; 258 dB/s (≡ 6 dB/trame à 43 fps) gèle l'intégration pendant la trame. La <b>première trame d'un flux est analysée</b> (pas de référence factice à −120 dB).</li>
+  <li>Un <b>rétro-masquage</b> de 150 ms rehausse les trames précédentes quand un ton est validé 6 trames de suite — l'apparition d'un ordre remonte en arrière au lieu de « naître » tard.</li>
+</ul>
+
+<h2 id="orders">Suivi d'ordres</h2>
+<ul>
+  <li><b>Pliage</b> du spectre dans le domaine des ordres (0–99,9 par pas de 0,1) à partir de H1 = RPM/60 ; EMA (α = 0,10 ≈ 2,3 s à 63 %).</li>
+  <li>Détection = maximum local + seuil + liste blanche (tolérance 0,25 ordre) ou seuil renforcé en détection ouverte.</li>
+  <li><b>Lecture de l'ordre tracé</b> : fenêtre de recherche pilotée par l'incertitude de vitesse (voir <a href="gnss.html">Chaîne GNSS</a>), bornée à mi-distance de l'ordre voisin — au-delà, l'ordre est <b>« non identifiable »</b>.</li>
+  <li><b>Correction de scalloping</b> : parabole sur le pic (±1 bin) — un ton à mi-bin n'est plus sous-estimé de 1,42 dB (résiduel ≤ ~0,35 dB). Les corrections non physiques (&gt; 1,8 dB) sont rejetées : ce n'était pas un ton.</li>
+  <li>Une seule implémentation (<code>OrderTrackingEngine</code>) sert le direct ET le balayage plein fichier — les deux copies historiques qui divergeaient sont supprimées (audit A2).</li>
+</ul>
+
+<h2 id="filters">Filtres DSP</h2>
+<p>Cascade de biquades Direct Form I, Butterworth 8ᵉ ordre vérifié analytiquement (−3,01 dB aux coupures, −48 dB/oct). Le passe-bande est reconstruit comme HP×LP (pas de formule bande/octave). Les filtres s'appliquent <b>à la fois</b> au rendu audio et au PCM analysé : l'affichage montre ce que vous entendez. Fonctions de vérification : <code>BiQuadFilter.magnitudeAt()</code>, testées contre les réponses analytiques.</p>
+
+<h2 id="limits">Limites assumées</h2>
+<ul>
+  <li>L'indice d'émergence comporte un biais fixe non corrigé (~1,8 dB) — indicateur de suivi, pas métrologie absolue.</li>
+  <li>La palette Jet est conservée par convention NVH ; perceptuellement non uniforme.</li>
+  <li>La capture live est fixée à 44,1 kHz mono 16 bits (UNPROCESSED si le matériel l'annonce, sinon VOICE_RECOGNITION — la route réelle est enregistrée dans les métadonnées et imprimée sur le rapport).</li>
+  <li>Le microphone d'un téléphone n'est pas un micro de mesure calibré : les dBFS sont des <b>niveaux relatifs</b>, comparables entre eux au sein d'un même essai.</li>
+</ul>
+
+<nav class="pager"><a href="architecture.html" class="pager-prev">← Architecture</a><a href="gnss.html" class="pager-next">Chaîne GNSS →</a></nav>
+</article></div></main>
+<script src="../assets/site.js"></script>
+</body>
+</html>

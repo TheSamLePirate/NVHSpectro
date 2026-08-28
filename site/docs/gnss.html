@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chaîne de vitesse GNSS — NVH Spectro</title>
+<link rel="icon" type="image/webp" href="../assets/icon.webp">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav-slot"></div>
+<main class="docs-main"><div class="wrap docs-grid">
+<aside class="docs-toc">
+  <div class="toc-title">Sur cette page</div>
+  <a class="toc-link" href="#chain">La chaîne en 5 étages</a>
+  <a class="toc-link" href="#qualification">Qualification des fixes</a>
+  <a class="toc-link" href="#kalman">Kalman [v, a]</a>
+  <a class="toc-link" href="#validity">Validité & affichage</a>
+  <a class="toc-link" href="#budget">Budget d'erreur vers les ordres</a>
+  <a class="toc-link" href="#rts">Reconstruction RTS</a>
+  <a class="toc-link" href="#validation">Validation — ce qui manque</a>
+</aside>
+<article class="docs-content">
+<nav class="crumbs"><a href="../index.html">Accueil</a> › <a href="index.html">Docs</a> › Chaîne GNSS</nav>
+<h1>Chaîne de vitesse GNSS</h1>
+<p class="lead">La vitesse est <b>l'entrée de référence de toute la mesure</b> : chaque projection d'ordre en dérive. C'est aussi le sous-système le plus abouti du projet — et celui dont les constantes attendent leur validation terrain.</p>
+
+<h2 id="chain">La chaîne en 5 étages</h2>
+<ol>
+  <li><b>Acquisition</b> — <code>GPS_PROVIDER</code> exclusivement (le fournisseur fusionné n'est qu'un secours « INFORMATION_ONLY » qui n'alimente jamais l'estimateur sans provenance GNSS). API 31+ : requête explicite haute précision, zéro intervalle, sans batching. Callbacks sur le thread <code>nvh-gnss</code>.</li>
+  <li><b>Qualification</b> — <code>GnssSpeedSession.qualify()</code> rejette avant tout calcul : vitesse non finie ou négative, fix simulé, fix en retard de livraison (&gt; 2 s).</li>
+  <li><b>Estimation</b> — <code>KalmanSpeedEstimator</code> [vitesse, accélération], dt variable, R = max(σv, plancher)², bruit de jerk blanc, mise à jour en forme de Joseph. La σv du chipset <b>pondère réellement</b> chaque correction.</li>
+  <li><b>Validité</b> — une estimation est <code>VALID</code> (frais, σv ≤ 1,5 m/s), <code>DEGRADED</code> (σv inconnu ou entre 1,5 et 3 m/s) ou <code>INVALID</code> (pas de fix ou horizon de 2 s dépassé). INVALID ⇒ <code>kinematicSpeedMps()</code> rend <code>null</code> : le suivi d'ordres est suspendu, jamais prolongé sur un chiffre figé.</li>
+  <li><b>Appariement temporel</b> — la vitesse est évaluée à l'instant BOOTTIME <b>du centre du buffer audio</b> (ancré sur l'horloge matérielle d'AudioRecord) : un DSP en retard ne peut pas apparier un spectre avec une vitesse plus récente que le son.</li>
+</ol>
+
+<h2 id="qualification">Qualification des fixes (GPS-12/13)</h2>
+<ul>
+  <li>Vitesse non finie ou négative → rejet typé <code>NON_FINITE_SPEED</code> / <code>NEGATIVE_SPEED</code>.</li>
+  <li>Fix simulé (mock) → rejeté par défaut ; autorisable uniquement pour les builds de test (<code>acceptMockFixes</code>).</li>
+  <li>Fix « du passé » (latence de livraison &gt; 2 s) → <code>STALE_FIX</code>.</li>
+  <li>La σv n'est <b>jamais</b> remplacée par la précision horizontale : une précision position n'est pas une précision de vitesse (le voyant pré-API 26 l'utilise pour l'affichage uniquement).</li>
+</ul>
+
+<h2 id="kalman">Kalman [vitesse, accélération] (GPS-2)</h2>
+<ul>
+  <li>État [v, a], dt variable, modèle à jerk blanc (Q(dt)), plancher de R pour les σv aberrantes.</li>
+  <li><b>Porte NIS</b> (χ²(1) = 9) : un fix incohérent est rejeté sans détruire l'état ; ré-acquisition exige deux fixes mutuellement cohérents (accélération implicite ≤ 12 m/s²), une soupape à 4 rejets, ou un re-semis après &gt; 5 s.</li>
+  <li><b>Arrêt</b> : hystérésis 0,25 / 0,6 m/s publie un vrai 0 près de l'arrêt, sans mentir sur σ.</li>
+  <li>L'ancien estimateur α-β reste disponible comme baseline A/B pour le réglage par rejeu de traces.</li>
+  <li>Les paramètres (jerk PSD = 0,5, seuils de validité) sont <b>PROVISOIRES</b>, nommés dans <code>Config</code>, jusqu'à la campagne GPS-5.</li>
+</ul>
+
+<h2 id="validity">Validité & affichage</h2>
+<ul>
+  <li>Le voyant GNSS est <b>keyé sur la précision de vitesse</b> (≤ 0,5 m/s = ● bon, ≤ 1,5 = ▲, sinon ✕) — pas sur la précision position, qui peut être verte pendant que le Doppler est dégradé.</li>
+  <li>À l'écran, <b>« -- » ≠ 0,0 km/h</b> : l'absence de mesure et un véhicule à l'arrêt sont deux états distincts.</li>
+  <li>Changement de provider, sortie du mode LIVE, permission retirée : la session est <b>réinitialisée immédiatement</b> — aucune valeur fantôme avant le premier fix frais (GPS-08).</li>
+</ul>
+
+<h2 id="budget">Budget d'erreur vers les ordres (GPS-4)</h2>
+<div class="codebox"><pre>σrpm   = σv · 1000 / V1000
+σf(Hn) = n · σrpm / 60
+fenêtre de recherche = k·σf + Δf      (k = 2 ≈ bande 95 %)
+suspension si k·σf &gt; h1 / 2            (« ordre non identifiable »)</pre></div>
+<p>Exemple audit (V1000 = 10 km/h, σv = 1,8 km/h) : σf(H18) ≈ 54 Hz — l'ancienne fenêtre fixe de ±1 bin (±21,5 Hz) contenait du bruit, pas la raie. Désormais la fenêtre suit l'incertitude réelle, et si elle ne peut pas distinguer l'ordre de ses voisins, le suivi s'arrête au lieu d'inventer.</p>
+<div class="callout warn"><b>V1000 n'a pas encore de σ.</b> L'incertitude propre de V1000 (rayon dynamique du pneu, arrondis de rapport) n'est pas modélisée : elle peut dominer le terme GNSS. Caractérisation prévue (plan 5.3 / GPS-5).</div>
+
+<h2 id="rts">Reconstruction RTS au rejeu (GPS-4.4)</h2>
+<p>À la capture, le sidecar stocke la vitesse <b>causale</b> (le Kalman ne voit que le passé). À l'analyse d'un fichier, <code>SpeedReconstruction</code> + <code>RtsSpeedSmoother</code> relisent la piste : Kalman avant + lissage RTS arrière, rejet des points aberrants hors ligne, découpe aux trous &gt; 5 s. Le statut (« lissée (RTS) » vs « brute (interpolée) » pour les sidecars v1/v2) est affiché et <b>imprimé sur le rapport</b>. Le futur est utilisé au rejeu — l'erreur en début de rampe est plus faible qu'en direct, et c'est documenté.</p>
+
+<h2 id="validation">Validation — ce qui manque</h2>
+<div class="callout warn">Tous les seuils ci-dessus proviennent de <b>profils de simulation sur un seul chipset (émulateur)</b>. La campagne GPS-5 (3 téléphones vs vérité terrain, biais/MAE/RMSE/P95, couverture σ, A/B full-tracking, gel des paramètres) n'a pas encore eu lieu. Tant qu'elle n'a pas eu lieu, cette chaîne est <b>exploitable en essai exploratoire, pas comme référence qualifiée</b> — le code le dit explicitement (<code>PROVISIONAL</code>).</div>
+
+<nav class="pager"><a href="dsp.html" class="pager-prev">← Méthodes DSP</a><a href="data-formats.html" class="pager-next">Formats de données →</a></nav>
+</article></div></main>
+<script src="../assets/site.js"></script>
+</body>
+</html>

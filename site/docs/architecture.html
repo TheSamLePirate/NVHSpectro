@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture & flux de données — NVH Spectro</title>
+<link rel="icon" type="image/webp" href="../assets/icon.webp">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav-slot"></div>
+<main class="docs-main"><div class="wrap docs-grid">
+<aside class="docs-toc">
+  <div class="toc-title">Sur cette page</div>
+  <a class="toc-link" href="#modules">Modules</a>
+  <a class="toc-link" href="#session">MeasurementSession</a>
+  <a class="toc-link" href="#threads">Threads & concurrence</a>
+  <a class="toc-link" href="#lifecycle">Cycle de vie des ressources</a>
+  <a class="toc-link" href="#report">Mode rapport</a>
+  <a class="toc-link" href="#reference">Référence</a>
+</aside>
+<article class="docs-content">
+<nav class="crumbs"><a href="../index.html">Accueil</a> › <a href="index.html">Docs</a> › Architecture</nav>
+<h1>Architecture & flux de données</h1>
+<p class="lead">Deux modules Gradle, une session de mesure partagée, trois ViewModels spécialisés et deux threads dédiés. La séparation est imposée par la CI : <code>:core</code> n'a pas le droit d'importer Android.</p>
+
+<h2 id="modules">Modules</h2>
+<table class="tbl">
+  <tr><th>Module</th><th>Contenu</th><th>Garantie</th></tr>
+  <tr><td><code>:core</code></td><td>FFT, émergence, suivi d'ordres, Kalman, cinématique, session, analyse WAV, codec télémétrie</td><td>Kotlin pur, testé JVM, ≥ 90 % de couverture de ligne (<code>koverVerify</code> en CI)</td></tr>
+  <tr><td><code>:app</code></td><td>UI Compose, ViewModels, capture micro, GNSS, lecture, stockage, exports PNG/PDF</td><td>Lint zéro erreur sans baseline ; texte et couleurs imposés par des gates</td></tr>
+</table>
+
+<h2 id="session">MeasurementSession — l'état de mesure partagé</h2>
+<p><code>MeasurementSession</code> (<code>core/…/MeasurementSession.kt</code>) est <b>l'unique détenteur</b> de l'état de mesure : mode de source, historiques spectraux, télémétrie, étiquettes d'ordres, rapport d'émergence, cinématique, réglages d'affichage, provenance et notices. Les trois ViewModels y accèdent en lecture par <code>StateFlow</code> et passent par ses méthodes pour écrire.</p>
+<p>Le contrat central est <b>L7</b> : <i>aucun état d'analyse fantôme ne survit à une transition de source ou de configuration</i>. Concrètement :</p>
+<ul>
+  <li>les moteurs DSP (<code>LiveAnalysisEngine</code>, <code>OrderTrackingEngine</code>) s'enregistrent comme <i>resettables</i> — ils sont effacés synchronement à chaque transition ;</li>
+  <li>les propriétaires de ressources (micro, GPS, lecteur) s'enregistrent comme <i>hooks</i> de transition de mode — la session ne touche jamais Android elle-même ;</li>
+  <li>la provenance (source, route micro, statut de vitesse) est réinitialisée avec le mode, pour qu'aucun rapport ne nomme la mauvaise source.</li>
+</ul>
+<div class="callout">Le mode d'analyse (WAV/vidéo) dispose d'une échappatoire <code>forceMode()</code> documentée « jamais pour un changement de mode utilisateur » : les chargements de fichiers gèrent eux-mêmes leur effacement sélectif.</div>
+
+<h2 id="threads">Threads & concurrence</h2>
+<table class="tbl">
+  <tr><th>Thread</th><th>Rôle</th><th>Garantie</th></tr>
+  <tr><td>Main</td><td>UI, écriture des <code>StateFlow</code>, décisions de mode</td><td>aucun DSP, aucune I/O lourde</td></tr>
+  <tr><td><code>nvh-dsp</code></td><td>UN consommateur de frames : FFT, émergence, suivi d'ordres, enregistrement</td><td>un seul consommateur (structuralement : <code>flatMapLatest</code>), file bornée à 64 frames <code>DROP_OLDEST</code></td></tr>
+  <tr><td><code>nvh-gnss</code></td><td>callbacks de localisation + diagnostic GNSS</td><td>jamais le main ; latence de livraison tracée</td></tr>
+  <tr><td>IO / Default</td><td>chargements WAV/vidéo, STFT plein fichier, filtres, exports PNG/PDF</td><td>annulables, avec progression annoncée</td></tr>
+</table>
+<p><code>CaptureEngine</code> est le <b>seul propriétaire du microphone</b>. Les changements de réglages transitent par <code>flatMapLatest</code> : la capture précédente est annulée (micro libéré via <code>awaitClose</code>) avant que la nouvelle démarre. La classe de bug historique — un consommateur empilé par changement de réglage — y est structurellement impossible. Des compteurs d'intégrité (<code>produced / consumed / restarts</code>) sont journalisés en debug toutes les 256 frames : <code>produced == consumed</code> prouve l'absence de perte.</p>
+<h3>Flux d'une frame live</h3>
+<ol>
+  <li><code>AudioRepository</code> lit 1024 échantillons (50 % d'overlap), ancre l'horloge sur <code>AudioRecord.getTimestamp(TIMEBASE_BOOTTIME)</code> et émet un <code>CapturedAudioFrame</code> (temps du 1er échantillon et du centre).</li>
+  <li><code>CaptureEngine</code> pousse la frame dans la file bornée.</li>
+  <li>Le consommateur <code>nvh-dsp</code> évalue la vitesse <b>au temps de capture</b> (<code>SpeedProvider.telemetryAt(centerTimeNanos)</code>), fait tourner <code>LiveAnalysisEngine</code> puis <code>OrderTrackingEngine</code>, et écrit les historiques dans la session.</li>
+</ol>
+
+<h2 id="lifecycle">Cycle de vie des ressources</h2>
+<ul>
+  <li><b>Micro & GNSS</b> ne tournent qu'en mode LIVE <b>et</b> avec la permission correspondante (<code>LiveViewModel.applyResourcePolicy</code>) — revérifié à chaque retour au premier plan. Une permission révoquée en settings est appliquée au resume.</li>
+  <li><b>MediaPlayer</b> est possédé par <code>PlaybackController</code> : préparation suspendue (<code>prepareAsync</code>), sources originale/filtrée explicites, <code>release()</code> idempotent appelé dans <code>onCleared</code>.</li>
+  <li><b>Persistence</b> : <code>SettingsStore</code> restaure réglages et cinématique au démarrage <i>avant</i> d'armer les observateurs (les défauts ne peuvent pas écraser les valeurs stockées), puis réécrit chaque changement (débounce 500 ms).</li>
+  <li><b>Session applicative</b> : <code>AppGraph</code> est process-scoped — l'état de mesure survit à la recréation de l'Activity (choix documenté DEV-25) ; les ViewModels dé-enregistrent leurs hooks dans <code>onCleared</code>.</li>
+</ul>
+
+<h2 id="report">Mode rapport & exports</h2>
+<ul>
+  <li><code>toggleReportMode</code> fige les historiques courants dans <code>ReportViewModel</code> ; le tracé manuel des ordres est calculé par <code>SmartPathTracker</code> (<code>:core</code>, testé).</li>
+  <li><code>PngExporter</code> rend la vue figée (spectrogramme + graphes empilés) hors du thread UI, échelle temporelle = données réelles.</li>
+  <li><code>PdfReportGenerator</code> produit le rapport client avec le <b>cartouche de traçabilité</b> (<code>ReportStamp</code>) : date, version, source + route micro, paramètres d'analyse, estimateur de vitesse + statut (« causale » / « lissée (RTS) »), confiance k, et la mention non-ECMA de l'indice d'émergence.</li>
+</ul>
+
+<h2 id="reference">Aller plus loin</h2>
+<p>Chaque classe et fonction de cette architecture est documentée dans la <a href="reference.html">référence API</a> (générée du source). Les méthodes DSP sont détaillées dans <a href="dsp.html">Méthodes DSP</a>, la vitesse dans <a href="gnss.html">Chaîne GNSS</a>.</p>
+
+<nav class="pager"><a href="index.html" class="pager-prev">← Vue d'ensemble</a><a href="dsp.html" class="pager-next">Méthodes DSP →</a></nav>
+</article></div></main>
+<script src="../assets/site.js"></script>
+</body>
+</html>

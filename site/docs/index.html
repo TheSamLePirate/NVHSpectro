@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentation — NVH Spectro</title>
+<meta name="description" content="Documentation complète de NVH Spectro : architecture, méthodes DSP, chaîne GNSS, formats de données, qualité et référence API.">
+<link rel="icon" type="image/webp" href="../assets/icon.webp">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav-slot"></div>
+<main class="docs-main"><div class="wrap docs-grid">
+<aside class="docs-toc">
+  <div class="toc-title">Documentation</div>
+  <a class="toc-link active" href="index.html">Vue d'ensemble</a>
+  <a class="toc-link" href="architecture.html">Architecture & flux</a>
+  <a class="toc-link" href="dsp.html">Méthodes DSP</a>
+  <a class="toc-link" href="gnss.html">Chaîne GNSS</a>
+  <a class="toc-link" href="data-formats.html">Formats de données</a>
+  <a class="toc-link" href="quality.html">Qualité & CI</a>
+  <a class="toc-link" href="reference.html">Référence API</a>
+  <div class="toc-stats">docs · v14.0.0</div>
+</aside>
+<article class="docs-content">
+<nav class="crumbs"><a href="../index.html">Accueil</a> › Documentation</nav>
+<h1>Documentation</h1>
+<p class="lead">Tout ce que l'application mesure, comment elle le mesure, et ce qu'elle ne sait pas encore mesurer. Chaque page est vérifiable dans le code — les mentions en <code>fichier:ligne</code> renvoient au dépôt.</p>
+
+<div class="cards c2">
+  <a class="card" href="architecture.html" style="display:block"><h3>🏗️ Architecture & flux de données</h3><p>Les deux modules, la session de mesure partagée, les threads (nvh-dsp, nvh-gnss), le cycle de vie des ressources et le mode rapport.</p></a>
+  <a class="card" href="dsp.html" style="display:block"><h3>🔬 Méthodes DSP</h3><p>Fenêtrage Hann, calibration d'amplitude, indice d'émergence NVH (et pourquoi ce n'est pas un TTNR), suivi d'ordres et correction de scalloping.</p></a>
+  <a class="card" href="gnss.html" style="display:block"><h3>🛰️ Chaîne de vitesse GNSS</h3><p>Qualification des fixes, Kalman [v, a] à covariance, règle de validité, budget d'erreur vers les ordres, reconstruction RTS au rejeu.</p></a>
+  <a class="card" href="data-formats.html" style="display:block"><h3>📦 Formats de données</h3><p>Sidecar télémétrie v3 (lecture v1/v2), trace terrain v2, réglages DataStore, WAV et captures vidéo.</p></a>
+  <a class="card" href="quality.html" style="display:block"><h3>✅ Qualité, CI & audits</h3><p>Les 9 gates d'hygiène, la suite de tests, la couverture imposée, et les audits publics du projet.</p></a>
+  <a class="card" href="reference.html" style="display:block"><h3>📚 Référence API</h3><p>128 types et 232 fonctions publiques, extraits automatiquement du source Kotlin, filtrables.</p></a>
+</div>
+
+<h2>Utiliser l'application</h2>
+<h3>Un essai type, en 4 étapes</h3>
+<ol>
+  <li><b>Configurer le véhicule</b> — bouton <code>GMPe</code> : choisir V1000 direct, rapport global ou chaîne détaillée ; saisir les harmoniques cibles (ex. <code>7.4, 18, 22.2</code>) et l'ordre à tracer (ex. H18).</li>
+  <li><b>Mesurer en direct</b> — mode LIVE : le spectrogramme défile, les ordres émergents sont étiquetés en continu. Le voyant GNSS (●/▲/✕) dit si la vitesse est exploitable ; sinon les KPI affichent <code>--</code>.</li>
+  <li><b>Enregistrer & analyser</b> — bouton d'enregistrement (30 s audio + télémétrie), puis rejeu depuis <code>Audio (WAV)</code> : la vitesse est <b>relissée par RTS</b> et le curseur suit la lecture.</li>
+  <li><b>Rapport</b> — mode <code>Rapport Manuel</code> : tracer un ordre à la main (tracé assisté), le valider, exporter PNG ou PDF avec cartouche de traçabilité.</li>
+</ol>
+
+<h3>Les réglages qui comptent</h3>
+<ul>
+  <li><b>FFT 512 → 4096</b> — résolution fréquentielle contre cadence temporelle : Δf = 44100/N, Δt = N/2 / 44100. Le tableau « expert » du dialogue Réglages affiche les deux en direct.</li>
+  <li><b>Plage dynamique</b> — min/max dB de la colormap ; le min reste ≥ 5 dB sous le max (contrainte imposée, pas décorative).</li>
+  <li><b>Seuils du détecteur</b> — niveau d'émergence minimal et porte dBFS du détecteur d'harmoniques.</li>
+</ul>
+
+<div class="callout warn"><b>Limite d'emploi.</b> Tant que la campagne de validation terrain n'a pas eu lieu, les constantes de l'estimateur GNSS et les seuils sont <b>provisoires</b> (marqués comme tels dans le code). Les résultats sont exploitables en essai exploratoire ; aucune revendication de précision ne doit dépasser la preuve collectée.</div>
+
+<nav class="pager"><span></span><a href="architecture.html" class="pager-next">Architecture & flux →</a></nav>
+</article></div></main>
+<script src="../assets/site.js"></script>
+</body>
+</html>
