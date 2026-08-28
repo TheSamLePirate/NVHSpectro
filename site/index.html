@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NVH Spectro — L'instrument NVH dans votre poche</title>
+<meta name="description" content="NVH Spectro transforme un téléphone Android en chaîne de mesure NVH : spectrogramme temps réel, suivi d'ordres moteur, vitesse GNSS par Kalman, rapports PDF traçables. 100 % hors ligne.">
+<meta property="og:title" content="NVH Spectro — l'instrument NVH dans votre poche">
+<meta property="og:description" content="Spectrogramme temps réel, suivi d'ordres, GNSS Kalman, rapports traçables. Un instrument NVH Android, 100 % hors ligne.">
+<meta property="og:image" content="assets/capture-ecran-telephone.png">
+<link rel="icon" type="image/webp" href="assets/icon.webp">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body data-root=".">
+<div id="nav-slot"></div>
+
+<!-- ======================= HERO ======================= -->
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="wrap hero-grid">
+    <div>
+      <div class="badges">
+        <span class="badge"><b>v14.0.0</b></span>
+        <span class="badge">Android 7.0+</span>
+        <span class="badge">Kotlin · Compose</span>
+        <span class="badge badge-good">🔒 Zéro accès réseau</span>
+      </div>
+      <h1>L'instrument NVH<br>dans votre <span class="hl">poche</span>.</h1>
+      <p class="sub">NVH Spectro transforme un téléphone Android en chaîne de mesure acoustique :
+        <b>spectrogramme temps réel</b>, <b>suivi d'ordres moteur</b> projeté depuis la
+        <b>vitesse GNSS</b> (filtre de Kalman), et rapports PDF traçables — pour les essais
+        véhicule thermiques, hybrides et électriques.</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <a class="btn btn-primary" href="https://github.com/TheSamLePirate/NVHSpectro">★ Voir sur GitHub</a>
+        <a class="btn btn-ghost" href="docs/index.html">Explorer la documentation →</a>
+      </div>
+      <p style="margin-top:26px;font-size:13.5px;color:var(--muted)">
+        Gratuit · open source · aucune donnée ne quitte l'appareil (pas de permission INTERNET, vérifié par la CI).
+      </p>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:22px">
+      <div class="phone"><img src="assets/capture-ecran-telephone.png" alt="Capture d'écran NVH Spectro : spectrogramme, lecture WAV, données GPS et suivi d'ordre H18"></div>
+      <canvas id="hero-fft" width="640" height="90" style="width:100%;max-width:420px;border-radius:10px;border:1px solid var(--outline);background:#05080C" aria-label="Démonstration animée d'un spectre avec suivi d'ordre"></canvas>
+      <div style="font-size:12px;color:var(--muted)">démonstration : spectre + fenêtre de recherche de l'ordre H18 pilotée par σ</div>
+    </div>
+  </div>
+</header>
+
+<!-- ======================= PROOF STRIP ======================= -->
+<section class="block" style="padding:44px 0">
+  <div class="wrap cards c2" style="grid-template-columns:repeat(4,1fr);gap:14px" id="proof">
+    <div class="card reveal" style="text-align:center;padding:20px"><div style="font-size:30px;font-weight:800;color:var(--primary)">202</div><div style="font-size:13px;color:var(--muted)">tests JVM, joués à chaque push</div></div>
+    <div class="card reveal" style="text-align:center;padding:20px"><div style="font-size:30px;font-weight:800;color:var(--good)">≥ 90 %</div><div style="font-size:13px;color:var(--muted)">couverture du moteur, imposée par la CI</div></div>
+    <div class="card reveal" style="text-align:center;padding:20px"><div style="font-size:30px;font-weight:800;color:var(--warn)">0</div><div style="font-size:13px;color:var(--muted)">erreur lint, sans baseline</div></div>
+    <div class="card reveal" style="text-align:center;padding:20px"><div style="font-size:30px;font-weight:800;color:var(--accent)">9</div><div style="font-size:13px;color:var(--muted)">gates d'hygiène qui cassent la build</div></div>
+  </div>
+</section>
+
+<!-- ======================= FEATURES ======================= -->
+<section class="block alt" id="features">
+  <div class="wrap">
+    <span class="kicker reveal">Fonctionnalités</span>
+    <h2 class="reveal">Une chaîne de mesure complète</h2>
+    <p class="lead reveal">Du microphone du téléphone au rapport client, chaque étape est outillée — et chaque nombre sait d'où il vient.</p>
+    <div class="cards c3">
+      <div class="card reveal"><span class="ico">🌈</span><h3>Spectrogramme temps réel</h3><p>FFT 512→4096, calibration Hann exacte (0 dBFS lu 0 dBFS). Deux vues : niveau absolu et <b>indice d'émergence NVH</b>. Fenêtre, plage dB et plage fréquence réglables en direct.</p></div>
+      <div class="card reveal"><span class="ico">⚙️</span><h3>Suivi d'ordres GMPe</h3><p>Cinématique V1000, rapport global ou chaîne détaillée (réducteur × pont × pneu). Projection H1/Hn, étiquetage des harmoniques émergentes, rapport d'émergence accumulé.</p></div>
+      <div class="card reveal"><span class="ico">🛰️</span><h3>Vitesse GNSS par Kalman</h3><p>Vitesse Doppler du GPS interne, filtre Kalman [vitesse, accélération] avec covariance, rejet des fixes aberrants. Chaque estimation porte son âge, son σ et sa validité.</p></div>
+      <div class="card reveal"><span class="ico">📂</span><h3>Analyse WAV & vidéo</h3><p>Import WAV (parser RIFF complet) et extraction audio des vidéos locales, analysés <b>à leur propre fréquence d'échantillonnage</b>. Télémétrie rejouée par lissage RTS.</p></div>
+      <div class="card reveal"><span class="ico">📄</span><h3>Rapports traçables</h3><p>Enregistrement 30 s audio + télémétrie, mode rapport manuel avec tracé assisté, export PNG et PDF avec cartouche : date, build, source, route micro, paramètres, statut de vitesse.</p></div>
+      <div class="card reveal"><span class="ico">♿</span><h3>Conçu pour le terrain</h3><p>Thème sombre calibré habitacle, contrastes WCAG testés par la CI, TalkBack, cibles 48 dp, dégradation par permission annoncée à l'écran.</p></div>
+    </div>
+    <figure class="shot reveal">
+      <img src="assets/capture-spectrogramme.png" alt="Spectrogramme complet d'un fichier de 5 minutes en mode émergence NVH">
+      <figcaption>Vue émergence NVH d'un fichier de 5 minutes — curseur fréquence, balises d'harmoniques, axe temporel complet. Les sous-30 Hz sont masqués à l'affichage ; les données restent vraies.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================= HOW IT WORKS ======================= -->
+<section class="block" id="how">
+  <div class="wrap">
+    <span class="kicker reveal">Comment ça marche</span>
+    <h2 class="reveal">Deux capteurs, une projection</h2>
+    <p class="lead reveal">Le téléphone capte deux signaux : le <b>son habitacle</b> (microphone non traité) et la <b>vitesse</b> (Doppler GNSS). La physique du véhicule relie les deux.</p>
+    <div class="diagram reveal">
+      <svg viewBox="0 0 960 300" width="100%" style="min-width:760px" role="img" aria-label="Chaîne de mesure : micro vers FFT vers spectrogramme ; GNSS vers Kalman vers cinématique vers projection d'ordres">
+        <defs>
+          <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#4FC3F7"/></marker>
+          <marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#00E676"/></marker>
+        </defs>
+        <g font-family="Inter,sans-serif">
+          <rect x="20" y="40" width="150" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="95" y="67" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">🎙️ Micro</text>
+          <text x="95" y="87" fill="#A9B6C4" font-size="11" text-anchor="middle">UNPROCESSED</text>
+          <line x1="170" y1="72" x2="230" y2="72" stroke="#4FC3F7" stroke-width="2" marker-end="url(#ar)"/>
+          <rect x="235" y="40" width="170" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="320" y="67" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">FFT + Hann</text>
+          <text x="320" y="87" fill="#A9B6C4" font-size="11" text-anchor="middle">calibration 0 dBFS</text>
+          <line x1="405" y1="72" x2="465" y2="72" stroke="#4FC3F7" stroke-width="2" marker-end="url(#ar)"/>
+          <rect x="470" y="40" width="190" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="565" y="67" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">Spectrogramme</text>
+          <text x="565" y="87" fill="#A9B6C4" font-size="11" text-anchor="middle">50 % overlap, temps réel</text>
+          <line x1="660" y1="72" x2="720" y2="72" stroke="#4FC3F7" stroke-width="2" marker-end="url(#ar)"/>
+          <rect x="725" y="40" width="215" height="64" rx="10" fill="#0F2A3D" stroke="#4FC3F7"/>
+          <text x="832" y="67" fill="#4FC3F7" font-size="14" font-weight="700" text-anchor="middle">Spectrogramme + ordres</text>
+          <text x="832" y="87" fill="#A9B6C4" font-size="11" text-anchor="middle">étiquettes Hk, émergence</text>
+          <rect x="20" y="190" width="150" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="95" y="217" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">🛰️ GNSS</text>
+          <text x="95" y="237" fill="#A9B6C4" font-size="11" text-anchor="middle">Doppler + σv</text>
+          <line x1="170" y1="222" x2="230" y2="222" stroke="#00E676" stroke-width="2" marker-end="url(#ar2)"/>
+          <rect x="235" y="190" width="170" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="320" y="217" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">Kalman [v, a]</text>
+          <text x="320" y="237" fill="#A9B6C4" font-size="11" text-anchor="middle">covariance + rejet NIS</text>
+          <line x1="405" y1="222" x2="465" y2="222" stroke="#00E676" stroke-width="2" marker-end="url(#ar2)"/>
+          <rect x="470" y="190" width="190" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="565" y="217" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">Cinématique</text>
+          <text x="565" y="237" fill="#A9B6C4" font-size="11" text-anchor="middle">V1000 → RPM → H1</text>
+          <line x1="660" y1="222" x2="720" y2="222" stroke="#00E676" stroke-width="2" marker-end="url(#ar2)"/>
+          <rect x="725" y="190" width="215" height="64" rx="10" fill="#0D2B1E" stroke="#00E676"/>
+          <text x="832" y="217" fill="#00E676" font-size="14" font-weight="700" text-anchor="middle">f(Hₖ) = k · RPM / 60</text>
+          <text x="832" y="237" fill="#A9B6C4" font-size="11" text-anchor="middle">fenêtre k·σf bornée</text>
+          <path d="M 832 104 L 832 190" stroke="#FFB300" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ar2)"/>
+          <text x="845" y="152" fill="#FFB300" font-size="11" font-weight="600">projection</text>
+        </g>
+      </svg>
+    </div>
+    <div class="cards c2">
+      <div class="card reveal"><h3 style="color:var(--primary)">Le budget d'erreur, pas un simple curseur</h3><p>L'incertitude de vitesse σv se propage en RPM puis en fréquence : σf(Hₙ) = n · σv · 1000 / (60 · V1000). La fenêtre de recherche du pic vaut k·σf + Δf — assez large pour contenir la vraie raie, <b>bornée à mi-distance de l'ordre voisin</b> : au-delà, le suivi s'affiche « non identifiable » plutôt que d'inventer une valeur.</p></div>
+      <div class="card reveal"><h3 style="color:var(--good)">Le temps, pris au sérieux</h3><p>La vitesse est évaluée <b>à l'instant de capture du buffer audio</b> (horloge BOOTTIME matérielle d'AudioRecord), pas à l'instant du calcul. Un fix périmé rend la vitesse indisponible : l'écran affiche <b>"--"</b> plutôt qu'un dernier chiffre figé.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= HONESTY ======================= -->
+<section class="block alt" id="honest">
+  <div class="wrap">
+    <span class="kicker warn reveal">Une mesure qui connaît ses limites</span>
+    <h2 class="reveal">La confiance se construit en disant non</h2>
+    <p class="lead reveal">Un instrument crédible refuse de répondre quand il ne peut pas répondre. NVH Spectro applique cette règle partout.</p>
+    <div class="cards c2">
+      <div class="card reveal" style="background:var(--bg)"><h3>🔒 Zéro réseau, par construction</h3><p>La permission INTERNET n'est pas déclarée — et la CI <b>échoue la build</b> si elle réapparaît, comme toute surface WebView/JS. Enregistrements, télémétrie et journaux ne quittent l'appareil que par un export explicite.</p></div>
+      <div class="card reveal" style="background:var(--bg)"><h3>📉 "--" plutôt qu'un chiffre mensonger</h3><p>Vitesse périmée, GNSS désactivé, fix simulé : la vitesse devient indisponible au lieu d'être figée. Un 0,0 km/h réel est affiché tel quel — l'absence de mesure et l'arrêt du véhicule sont deux informations différentes.</p></div>
+      <div class="card reveal" style="background:var(--bg)"><h3>🏷️ Des métriques nommées honnêtement</h3><p>L'<b>indice d'émergence NVH</b> est un indicateur maison, pas un TTNR ECMA-74 : le rapport PDF le dit en toutes lettres en bas de page. Aucun libellé normatif ne couvre un calcul non conforme.</p></div>
+      <div class="card reveal" style="background:var(--bg)"><h3>🧾 Chaque rapport dit comment il a été fait</h3><p>Cartouche de traçabilité : date, version, source, route micro réellement obtenue (UNPROCESSED / VOICE_RECOGNITION), estimateur de vitesse et ses paramètres, statut « causale » ou « lissée (RTS) », niveau de confiance k.</p></div>
+    </div>
+    <div class="callout warn reveal" style="margin-top:28px">
+      <b>Transparence totale :</b> le projet porte ses propres audits — un audit d'origine à 74 constats, un audit GNSS dédié, et un audit courant à 31 constats, tous publics dans le dépôt, constats cités en <code>fichier:ligne</code>.
+    </div>
+  </div>
+</section>
+
+<!-- ======================= ARCHITECTURE ======================= -->
+<section class="block" id="arch">
+  <div class="wrap">
+    <span class="kicker reveal">Sous le capot</span>
+    <h2 class="reveal">Deux modules, une séparation vérifiée</h2>
+    <p class="lead reveal">Le moteur de mesure est du Kotlin pur, testé sur JVM à chaque push. La couche Android ne fait que l'interface et les capteurs.</p>
+    <div class="cards c2">
+      <div class="card reveal">
+        <h3 style="color:var(--primary)">:core — Kotlin pur, zéro import Android</h3>
+        <p style="line-height:2.1"><code>FFTProcessor</code> · <code>OrderTrackingEngine</code> · <code>OrderSearchPolicy</code><br><code>KalmanSpeedEstimator</code> · <code>GnssSpeedSession</code><br><code>MeasurementSession</code> · <code>WavAnalysis</code> · <code>TelemetryCodec</code></p>
+        <p style="color:var(--good)"><b>≥ 90 % de couverture de ligne, imposée par la CI.</b> Un import Android qui réapparaît casse la build.</p>
+      </div>
+      <div class="card reveal">
+        <h3>:app — Android & Compose</h3>
+        <p style="line-height:2.1"><code>CaptureEngine</code> (un seul propriétaire du micro) · <code>SpeedProvider</code><br><code>LiveViewModel</code> · <code>AnalyzerViewModel</code> · <code>ReportViewModel</code><br><code>RecordingStore</code> · <code>SettingsStore</code> · <code>export/</code> (PNG, PDF)</p>
+        <p>202 tests JVM, snapshot doré DSP (tolérance 1e-9), zéro erreur lint sans baseline.</p>
+      </div>
+    </div>
+    <div style="margin-top:24px;display:flex;gap:14px;flex-wrap:wrap">
+      <a class="btn btn-ghost" href="docs/architecture.html">Architecture détaillée →</a>
+      <a class="btn btn-ghost" href="docs/reference.html">Référence API complète (128 types) →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= DOCS PREVIEW ======================= -->
+<section class="block alt" id="docs-preview">
+  <div class="wrap">
+    <span class="kicker reveal">Documentation</span>
+    <h2 class="reveal">Tout est écrit, tout est public</h2>
+    <p class="lead reveal">Le projet est piloté par des documents versionnés : audit → plan → journal d'exécution avec preuves. Rien n'est déclaré fait sans preuve d'appareil.</p>
+    <div class="cards c2">
+      <a class="card reveal" href="docs/dsp.html" style="display:block"><h3>🔬 Méthodes DSP & émergence</h3><p>Calibration FFT, modèle d'émergence, suivi d'ordres — les maths, avec leurs limites assumées.</p></a>
+      <a class="card reveal" href="docs/gnss.html" style="display:block"><h3>🛰️ Chaîne de vitesse GNSS</h3><p>Qualification des fixes, Kalman à covariance, fenêtres σ, reconstruction RTS.</p></a>
+      <a class="card reveal" href="docs/architecture.html" style="display:block"><h3>🏗️ Architecture & flux de données</h3><p>Modules, session partagée, threads, cycle de vie des ressources.</p></a>
+      <a class="card reveal" href="docs/quality.html" style="display:block"><h3>✅ Qualité, CI & audits</h3><p>Les gates, les 202 tests, les audits publics et les notes affichées.</p></a>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= START ======================= -->
+<section class="block" id="start">
+  <div class="wrap">
+    <span class="kicker reveal">Démarrer</span>
+    <h2 class="reveal">Compiler en 3 commandes</h2>
+    <p class="lead reveal">Prérequis : JDK 17 et le SDK Android (compileSdk 36, minSdk 24).</p>
+    <div class="codebox reveal"><pre><span class="cm"># cloner</span>
+git clone https://github.com/TheSamLePirate/NVHSpectro.git <span class="cm">&amp;&amp;</span> cd NVHSpectro
+
+<span class="cm"># vérifier (tests, couverture ≥ 90 % :core, lint, gates d'hygiène)</span>
+./gradlew :core:test :app:testDebugUnitTest :core:koverVerify :app:lintDebug
+
+<span class="cm"># installer sur l'appareil connecté</span>
+./gradlew :app:installDebug</pre></div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:28px">
+      <a class="btn btn-primary" href="https://github.com/TheSamLePirate/NVHSpectro">Ouvrir le dépôt GitHub ↗</a>
+      <a class="btn btn-ghost" href="docs/index.html">Premiers pas dans l'app →</a>
+    </div>
+    <p style="margin-top:18px;color:var(--muted);font-size:13.5px">Au premier lancement, accordez micro et localisation précise : le micro devient la source de mesure, le GPS alimente la projection d'ordres. Sans eux, l'app reste utilisable en analyse de fichiers — et elle l'explique à l'écran.</p>
+  </div>
+</section>
+
+<script src="assets/site.js"></script>
+<script>
+/* -------- hero : spectre animé + fenêtre de recherche H18 pilotée par σ -------- */
+(function(){
+  var c=document.getElementById('hero-fft');if(!c)return;
+  var ctx=c.getContext('2d'),W=c.width,H=c.height;
+  var cols=[],maxCols=160,h1=52,phase=0,drift=0.35;
+  function speed(){return 62+14*Math.sin(phase*0.017);}
+  function col(){
+    var v=speed(),rpm=v*100, h1f=rpm/60, noise=[];
+    var a=new Uint8Array(64);
+    for(var i=0;i<64;i++){
+      var f=i/64*5000;
+      var n=8+Math.random()*10+(f<900?14*(1-f/900):0);
+      for(var k=1;k<=6;k++){
+        var fk=k*h1f;
+        if(Math.abs(f-fk)<40)n+=26*Math.exp(-Math.pow((f-fk)/16,2))*(k===1?1.25:1);
+      }
+      a[i]=Math.min(255,n*2.1);
+    }
+    return a;
+  }
+  function jet(t){
+    t=Math.min(1,Math.max(0,t));
+    if(t<0.35)return[0,0,Math.round(140+t/0.35*115)];
+    if(t<0.6){var u=(t-0.35)/0.25;return[0,Math.round(u*230),Math.round(255-u*30)];}
+    if(t<0.85){var u2=(t-0.6)/0.25;return[0,Math.round(230-u2*0),0];}
+    var u3=(t-0.85)/0.15;return[Math.round(u3*255),Math.round(255*(1-u3)),0];
+  }
+  function draw(){
+    phase++;
+    cols.push(col());
+    if(cols.length>maxCols)cols.shift();
+    ctx.fillStyle='#05080C';ctx.fillRect(0,0,W,H);
+    var cw=W/maxCols,bh=H/64;
+    for(var x=0;x<cols.length;x++){
+      for(var y=0;y<64;y++){
+        var v=cols[x][63-y]/255;
+        if(v<0.06)continue;
+        var rgb=jet(v);
+        ctx.fillStyle='rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+','+Math.min(1,v*1.6)+')';
+        ctx.fillRect(x*cw,y*bh,cw+0.5,bh+0.5);
+      }
+    }
+    var v=speed(),rpm=v*100,h1f=rpm/60,t18=18*h1f,y18=H-(t18/5000)*H;
+    var sigma=2+1.4*Math.sin(phase*0.05);
+    var yTop=H-((t18+sigma*2)/5000)*H,yBot=H-((t18-sigma*2)/5000)*H;
+    ctx.strokeStyle='rgba(255,179,0,.85)';ctx.lineWidth=1.5;
+    ctx.strokeRect(cols.length*cw-46,yTop,44,yBot-yTop);
+    ctx.fillStyle='rgba(255,179,0,.95)';ctx.font='10px Inter,sans-serif';
+    ctx.fillText('H18 ±2σ',cols.length*cw-44,yTop-4);
+    requestAnimationFrame(function(){setTimeout(draw,50);});
+  }
+  if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches)draw();
+})();
+</script>
+</body>
+</html>

@@ -225,41 +225,60 @@ object WavAnalysis {
     )
 
     /**
+     * First pass of [orderSweep]: per-telemetry-sample tracked-order levels,
+     * read straight off the spectrogram at each sample's mapped frame.
+     */
+    private fun trackedOrderLevels(
+        spectrogram: Spectrogram,
+        telemetry: List<TelemetryData>,
+        config: KinematicsConfig,
+        checkActive: () -> Unit,
+    ): List<TelemetryData> =
+        telemetry.mapIndexed { i, telem ->
+            checkActive()
+            val absIdx = TimelineMapper.mapIndex(i, telemetry.size, spectrogram.absList.size)
+            val reset =
+                telem.copy(
+                    trackedOrderDbFS = NO_SIGNAL_DBFS,
+                    trackedOrderEmergenceDb = 0.0,
+                    trackedOrderIdentifiable = true,
+                )
+            if (telem.theoreticalSpeedKmh > 1.0f) {
+                // [GPS-10] ±3-bin legacy fallback here — interpolated
+                // sweep speeds carry more error [audit D7].
+                withTrackedOrderReadout(
+                    reset,
+                    config,
+                    spectrogram,
+                    absIdx,
+                    legacyRadiusBins = OrderTrackingEngine.TRACKED_SEARCH_RADIUS_SWEEP_BINS,
+                )
+            } else {
+                reset
+            }
+        }
+
+    /**
      * Full-file order sweep [A2, plan 3.2/3.3]: per-telemetry tracked-order
      * levels (±3-bin window — interpolated speeds carry more error), then the
      * frame-by-frame [OrderTrackingEngine] pass on a fresh engine instance.
+     *
+     * Cost is O(frames × ORDER_BINS): ~12,900 frames for a 5-minute file, each
+     * folding a full spectrum into the 1000-order grid. **Never call this on
+     * the main thread** [V13.2 C-1]. [checkActive] is invoked once per
+     * telemetry sample and once per frame so a cancelled coroutine stops the
+     * sweep instead of finishing work nobody will read.
      */
     fun orderSweep(
-        absHistory: List<FloatArray>,
-        ttnrHistory: List<FloatArray>,
+        spectrogram: Spectrogram,
         telemetry: List<TelemetryData>,
         config: KinematicsConfig,
-        sampleRate: Int,
+        checkActive: () -> Unit = {},
     ): OrderSweepResult {
-        val spectrogram = Spectrogram(absHistory, ttnrHistory, sampleRate)
-        val updatedHistory =
-            telemetry.mapIndexed { i, telem ->
-                val absIdx = TimelineMapper.mapIndex(i, telemetry.size, absHistory.size)
-                val reset =
-                    telem.copy(
-                        trackedOrderDbFS = NO_SIGNAL_DBFS,
-                        trackedOrderEmergenceDb = 0.0,
-                        trackedOrderIdentifiable = true,
-                    )
-                if (telem.theoreticalSpeedKmh > 1.0f) {
-                    // [GPS-10] ±3-bin legacy fallback here — interpolated
-                    // sweep speeds carry more error [audit D7].
-                    withTrackedOrderReadout(
-                        reset,
-                        config,
-                        spectrogram,
-                        absIdx,
-                        legacyRadiusBins = OrderTrackingEngine.TRACKED_SEARCH_RADIUS_SWEEP_BINS,
-                    )
-                } else {
-                    reset
-                }
-            }
+        val absHistory = spectrogram.absList
+        val ttnrHistory = spectrogram.ttnrList
+        val sampleRate = spectrogram.sampleRateHz
+        val updatedHistory = trackedOrderLevels(spectrogram, telemetry, config, checkActive)
 
         val targetOrders = config.parsedTargetOrders()
         val maxHoldMs = (config.holdTimeSec * 1000.0).toLong().coerceAtLeast(1000L)
@@ -274,6 +293,7 @@ object WavAnalysis {
         val df = (sampleRate / 2.0) / binCount
 
         for (frameIdx in absHistory.indices) {
+            checkActive()
             val nowMs = (frameIdx * stepDurationMs).toLong()
             val telemIdx = TimelineMapper.mapIndex(frameIdx, absHistory.size, updatedHistory.size)
             val speedKmh = updatedHistory[telemIdx].theoreticalSpeedKmh

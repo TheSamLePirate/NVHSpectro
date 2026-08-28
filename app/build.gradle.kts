@@ -6,8 +6,8 @@ plugins {
 
 // Single source of truth for the app version [audit B1].
 // The About dialog reads BuildConfig.VERSION_NAME; the APK name derives from it.
-val appVersionName = "13.2.0"
-val appVersionCode = 13
+val appVersionName = "14.0.0"
+val appVersionCode = 14
 
 base {
     archivesName.set("APP_NVH_Spectro_v$appVersionName")
@@ -111,4 +111,14 @@ dependencies {
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.espresso.core)
 
+}
+
+// StringFormatContractTest reads res/values/strings.xml from the source tree at
+// runtime, so Gradle would not otherwise know the test is stale when a string
+// changes — the gate would silently skip exactly when it matters. Declare it.
+tasks.withType<Test>().configureEach {
+  inputs
+    .file("src/main/res/values/strings.xml")
+    .withPropertyName("stringsXml")
+    .withPathSensitivity(PathSensitivity.RELATIVE)
 }

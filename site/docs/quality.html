@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qualité, CI & audits — NVH Spectro</title>
+<link rel="icon" type="image/webp" href="../assets/icon.webp">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav-slot"></div>
+<main class="docs-main"><div class="wrap docs-grid">
+<aside class="docs-toc">
+  <div class="toc-title">Sur cette page</div>
+  <a class="toc-link" href="#ci">Pipeline CI</a>
+  <a class="toc-link" href="#gates">Les 9 gates</a>
+  <a class="toc-link" href="#tests">Tests & couverture</a>
+  <a class="toc-link" href="#audits">La culture d'audit</a>
+  <a class="toc-link" href="#state">État actuel, sans maquillage</a>
+</aside>
+<article class="docs-content">
+<nav class="crumbs"><a href="../index.html">Accueil</a> › <a href="index.html">Docs</a> › Qualité & CI</nav>
+<h1>Qualité, CI & audits</h1>
+<p class="lead">Ce projet affiche ses notes, y compris les mauvaises. La qualité n'y est pas un badge : c'est un ensemble de barrières qui cassent la build, et un journal public des preuves.</p>
+
+<h2 id="ci">Pipeline CI</h2>
+<p>Chaque push exécute <code>.github/workflows/ci.yml</code> : gates d'hygiène → ktlint → detekt → tests (<code>:core</code> + <code>:app</code>) → couverture (<code>koverVerify</code>) → Android lint → assemblage debug <b>et release minifié (R8)</b>. L'APK release est un artefact CI : la configuration ProGuard est prouvée à chaque push.</p>
+
+<h2 id="gates">Les 9 gates (<code>ci/checks.sh</code>)</h2>
+<table class="tbl">
+  <tr><th>Gate</th><th>Ce qu'elle interdit</th></tr>
+  <tr><td>Binaires</td><td>APK/AAB ou sorties de build versionnés</td></tr>
+  <tr><td>Scripts jetables</td><td>patchs one-off à la racine (l'édit direct est la règle)</td></tr>
+  <tr><td>gradlew</td><td>perte du bit exécutable</td></tr>
+  <tr><td>Version</td><td>versionName/versionCode non single-sourcés</td></tr>
+  <tr><td>Fréquence</td><td>un « 44100 » littéral hors <code>AudioConfig</code></td></tr>
+  <tr><td>Pureté :core</td><td>le moindre import Android dans <code>:core</code></td></tr>
+  <tr><td>Couleurs</td><td>un littéral <code>Color(0x…)</code> hors <code>theme/Color.kt</code></td></tr>
+  <tr><td>Texte</td><td>du texte utilisateur en dur dans un fichier Compose</td></tr>
+  <tr><td>Résurrection</td><td>le retour de code mort purgé (Webview/INTERNET compris)</td></tr>
+</table>
+
+<h2 id="tests">Tests & couverture</h2>
+<ul>
+  <li><b>202 tests JVM</b>, dont 158 dans <code>:core</code> à <b>≥ 90 % de couverture de ligne</b> (gate CI).</li>
+  <li><b>Snapshots dorés DSP</b> : spectre complet à graine fixe, tolérance 1e-9 — toute dérive numérique est détectée.</li>
+  <li><b>Tests analytiques</b> : calibration 0/−20/−60 dBFS, réponses Butterworth (−3,01 dB aux coupures, −48 dB/oct), scalloping de Hann (−1,42 dB mi-bin, corrigé +0,32 dB).</li>
+  <li><b>Tests GPS par scénarios</b> : constantes, rampes, freinage −6 m/s², pertes 1–60 s, σ 0,05–5 m/s, outliers multiples, RMSE lissé &lt; causal &lt; brut, migration sidecar v1/v2/v3.</li>
+  <li><b>Convention de nommage</b> : les tests portent l'ID du constat d'audit qu'ils gèlent ou corrigent (<code>c1_…</code>, <code>gps2_…</code>) — traçabilité totale.</li>
+</ul>
+<p>Limite assumée : <b>zéro test instrumenté</b> à ce jour (la couverture CI ne mesure que <code>:core</code>) ; la vérification appareil est faite manuellement à chaque phase et consignée avec preuves dans <code>AAA-TRACKING.md</code>.</p>
+
+<h2 id="audits">La culture d'audit</h2>
+<ul>
+  <li><code>V13.1-audit.md</code> — 74 constats avec preuves <code>fichier:ligne</code> (gelé) ; l'origine de toute la refonte.</li>
+  <li><code>audit-gps.md</code> — audit dédié de la chaîne de vitesse (GPS-01…GPS-15, gelé).</li>
+  <li><a href="ui-ux-audit.html"><code>V14-ui-ux-audit.md</code></a> — audit de la couche présentation : 34 constats sur 11 axes (A− couleur, D typographie, F iconographie), <a href="ui-ux-audit.html">lisible en ligne</a>.</li>
+  <li><code>V13.2-audit.md</code> — audit de l'état courant : 31 constats, notes par domaine, verdict affiché (B− ingénierie, C instrument).</li>
+  <li><code>AAA-TRACKING.md</code> — journal d'exécution : chaque phase, chaque commit, chaque <b>déviation</b> (DEV-1…DEV-52) et chaque preuve de gate. Zéro décision invisible.</li>
+</ul>
+
+<h2 id="state">État actuel, sans maquillage</h2>
+<div class="callout warn">L'audit courant est clair : la classe de défauts de <b>mesure</b> de la V13.1 est close, mais <b>aucun chiffre affiché n'est encore validé contre une vérité terrain</b>. Constantes GNSS provisoires, indice d'émergence non calibré, zéro test instrumenté, release non signée : c'est écrit, c'est suivi, c'est le travail des prochaines phases (GPS-5, plan 5.x). Un instrument AAA se prouve sur le terrain — pas dans une page web.</div>
+
+<nav class="pager"><a href="data-formats.html" class="pager-prev">← Formats de données</a><a href="reference.html" class="pager-next">Référence API →</a></nav>
+</article></div></main>
+<script src="../assets/site.js"></script>
+</body>
+</html>
