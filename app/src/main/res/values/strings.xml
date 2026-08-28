@@ -313,7 +313,8 @@
     <string name="notice_error">❌ %1$s</string>
     <string name="notice_extracting_video">⏳ Extraction de l\'audio de la vidéo…</string>
     <string name="notice_extracting_video_progress">⏳ Extraction de l\'audio de la vidéo… %1$d %%</string>
-    <string name="notice_processing_spectrogram">⏳ Traitement du spectrogramme en cours…\nDurée %1$d m %2$d s | Temps estimé : %3$d s</string>
+    <string name="notice_processing_spectrogram">⏳ Traitement du spectrogramme en cours…\nDurée %1$d m %2$d s | Temps estimé : %3$s s</string>
+    <string name="notice_recalculating_orders">⏳ Recalcul du suivi d\'ordres…</string>
     <string name="notice_speed_source">🛰️ Vitesse GNSS : %1$s</string>
     <string name="notice_gps_enabled">📡 GPS réactivé — acquisition en cours</string>
     <string name="notice_gps_disabled">📡 GPS désactivé — vitesse GNSS indisponible</string>

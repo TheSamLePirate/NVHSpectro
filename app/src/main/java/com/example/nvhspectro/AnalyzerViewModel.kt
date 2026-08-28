@@ -48,6 +48,9 @@ class AnalyzerViewModel(
         ).also { p -> playback.onCompletion = { p.onSourceCompleted() } }
 
     private var processingJob: Job? = null
+
+    /** [V13.2 C-1] The off-main order sweep; a new one cancels the last. */
+    private var orderSweepJob: Job? = null
     private var filterJob: Job? = null
     private var wavPlaybackJob: Job? = null
     private var wavLoadGeneration = 0
@@ -68,6 +71,7 @@ class AnalyzerViewModel(
         unregisterHook =
             session.registerModeTransitionHook {
                 processingJob?.cancel()
+                orderSweepJob?.cancel()
                 player.stopAndRewind()
                 playback.release()
                 _loadedWavFileName.value = null
@@ -123,8 +127,10 @@ class AnalyzerViewModel(
 
     private fun rerunWavTrackingIfLoaded() {
         if (session.audioSourceMode.value == AudioSourceMode.WAV_ANALYZER && session.loadedWavData.value != null) {
-            recalculateOrderTrackingForWav()
+            // The cursor readout reflects the new kinematics immediately; the
+            // sweep that repopulates the tags catches up when it lands.
             processWavFrameAt(player.positionMs.value)
+            launchOrderSweep()
         }
     }
 
@@ -208,6 +214,7 @@ class AnalyzerViewModel(
 
     private fun prepareForWavLoad(): Int {
         processingJob?.cancel()
+        orderSweepJob?.cancel() // [V13.2 C-1] derived from the outgoing analysis
         player.stopAndRewind()
         session.dismissNotice()
         _loadedVideoUri.value = null
@@ -258,6 +265,7 @@ class AnalyzerViewModel(
         uri: Uri,
     ) {
         processingJob?.cancel()
+        orderSweepJob?.cancel() // [V13.2 C-1] derived from the outgoing analysis
         player.stopAndRewind()
         session.dismissNotice()
         _loadedVideoUri.value = uri
@@ -355,29 +363,61 @@ class AnalyzerViewModel(
                             session.updateProvenance { it.copy(speedStatusLabel = null) }
                             session.setTelemetryHistory(List(spectro.absList.size) { TelemetryData(gpsStatus = GpsStatus.NONE) })
                         }
-                        recalculateOrderTrackingForWav()
                     }
                     _isProcessingVideo.value = false
                     _processingEstimateMessage.value = null
                     processWavFrameAt(0L)
+                    if (spectro != null) launchOrderSweep()
                 }
             }
     }
 
-    private fun recalculateOrderTrackingForWav() {
+    /**
+     * [V13.2 C-1] The full-file order sweep, off the main thread.
+     *
+     * It used to run inline on whichever thread called it — and both callers
+     * were the main thread, so every file load and every kinematics edit froze
+     * the UI for the O(frames × order-bins) duration of the sweep (hundreds of
+     * ms to seconds on a 5-minute file). This is V13.1's C6 freeze, which the
+     * plan-3.3 extraction into :core made *dispatchable* without ever
+     * dispatching it: the call sites stayed where they were, and a pure
+     * function call reads as cheap.
+     *
+     * Inputs are snapshotted on the caller's thread, the sweep runs on
+     * [Dispatchers.Default], and **nothing reaches the session until it
+     * completes** — a cancelled sweep publishes nothing rather than half a
+     * result. A newer sweep cancels the one in flight, so dragging a V1000
+     * slider queues one recomputation, not one per frame.
+     */
+    private fun launchOrderSweep() {
         val config = session.kinematicsConfig.value
         val absHistory = session.fftHistoryAbsolute.value
         val ttnrHistory = session.fftHistoryTTNR.value
         val telemHistory = session.telemetryHistory.value
         val sampleRate = session.loadedWavData.value?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ
+        orderSweepJob?.cancel()
         if (absHistory.isEmpty() || telemHistory.isEmpty() || !config.isEnabled) return
 
-        session.clearEmergenceReport()
-        val sweep = WavAnalysis.orderSweep(absHistory, ttnrHistory, telemHistory, config, sampleRate)
-        session.setTelemetryHistory(sweep.updatedTelemetry)
-        session.setLoadedWavData(session.loadedWavData.value?.copy(telemetryList = sweep.updatedTelemetry))
-        wavTagsByFrame = sweep.tagsByFrame
-        session.setEmergenceReportEntries(sweep.report)
+        _processingEstimateMessage.value = res(R.string.notice_recalculating_orders)
+        orderSweepJob =
+            viewModelScope.launch(Dispatchers.Default) {
+                val sweep =
+                    WavAnalysis.orderSweep(
+                        WavAnalysis.Spectrogram(absHistory, ttnrHistory, sampleRate),
+                        telemHistory,
+                        config,
+                    ) { ensureActive() }
+
+                withContext(Dispatchers.Main) {
+                    session.clearEmergenceReport()
+                    session.setTelemetryHistory(sweep.updatedTelemetry)
+                    session.setLoadedWavData(session.loadedWavData.value?.copy(telemetryList = sweep.updatedTelemetry))
+                    wavTagsByFrame = sweep.tagsByFrame
+                    session.setEmergenceReportEntries(sweep.report)
+                    _processingEstimateMessage.value = null
+                    processWavFrameAt(player.positionMs.value)
+                }
+            }
     }
 
     private fun processWavFrameAt(posMs: Long) {
@@ -409,6 +449,7 @@ class AnalyzerViewModel(
         unregisterResettable()
         filterJob?.cancel()
         processingJob?.cancel()
+        orderSweepJob?.cancel()
         playback.release()
         super.onCleared()
     }

@@ -500,3 +500,116 @@ customer will see them before they trust a number.
 **Unchanged by this commit:** every finding in `V13.2-audit.md` is still open,
 C-1 (WAV order sweep on the main thread) included. Publishing an audit is not
 acting on it — the remediation table is phase-5 work.
+
+---
+
+## V13.2 C-1 — the full-file order sweep runs off the main thread (2026-08-28)
+
+**The defect.** `recalculateOrderTrackingForWav()` was an ordinary synchronous
+function with no dispatcher, so it ran on whichever thread called it — and both
+callers were the main thread:
+
+| Call site | Path |
+|---|---|
+| `AnalyzerViewModel.kt:358` (was) | inside `withContext(Dispatchers.Main)` at the end of `processFullWavSpectrogram` — i.e. after **every** WAV/video load |
+| `AnalyzerViewModel.kt:112–126` (was) | `updateKinematicsConfig` / `updateSelectedTrackedOrder` → `rerunWavTrackingIfLoaded()`, called inline from Compose dialog callbacks |
+
+`WavAnalysis.orderSweep` is O(frames × ORDER_BINS) — ~12,900 frames for a
+5-minute file, each folding a full spectrum into a 1000-order grid plus an EMA,
+a local-max/tag scan and a report merge. Hundreds of ms to seconds of frozen UI
+on every load and on **every nudge of V1000, gear mode or tracked order**, with
+no progress state.
+
+**Why it existed.** This is V13.1's C6 freeze, reintroduced by its own fix.
+Plan 3.3 extracted the computation into `:core` so it would be pure, testable
+*and dispatchable*; the testability arrived, the dispatch did not. The call
+sites never moved, and a pure function call reads as cheap at the call site —
+nothing at the old line 358 looked like a second of work.
+
+**The fix.**
+
+| Change | File |
+|---|---|
+| `recalculateOrderTrackingForWav()` → `launchOrderSweep()`: snapshots inputs on the caller's thread, runs the sweep on `Dispatchers.Default`, publishes on Main | `AnalyzerViewModel.kt` |
+| Dedicated `orderSweepJob`; a newer sweep cancels the one in flight, so dragging a slider queues one recomputation, not one per frame | `AnalyzerViewModel.kt` |
+| Cancelled at every point the analysis it derives from is abandoned: mode transition, `prepareForWavLoad`, `loadVideoFromUri`, `onCleared` | `AnalyzerViewModel.kt` |
+| Nothing reaches the session until the sweep completes — a cancelled sweep publishes **nothing** rather than half a result; `clearEmergenceReport()` moved after the computation so the report never flashes empty | `AnalyzerViewModel.kt` |
+| `orderSweep(…, checkActive: () -> Unit = {})`, invoked once per telemetry sample and once per frame — same cooperative-cancellation contract `computeSpectrogram` already had | `core/WavAnalysis.kt` |
+| Progress state on the existing overlay: `notice_recalculating_orders` (“⏳ Recalcul du suivi d'ordres…”), externalised like every other string [§12] | `strings.xml` |
+| The cursor readout now repaints **before** the sweep is queued, so a kinematics edit feels immediate and the tags catch up when the sweep lands | `AnalyzerViewModel.kt` |
+
+**Tests** (204 total, was 202): `v132c1_orderSweep_checkActive_abortsTheSweep`
+and `v132c1_orderSweep_checkActive_runsOncePerTelemetrySampleAndFrame`. Named
+`v132c1_` rather than `c1_` because V13.1's C1 (sample-rate corruption) already
+owns that prefix — finding IDs now cross audits [V13.2 T-c].
+
+| ID | Deviation | Rationale |
+|---|---|---|
+| DEV-54 | `orderSweep` now takes the `Spectrogram` it used to rebuild internally, dropping two parameters | Adding `checkActive` pushed it to 6 params and detekt's `LongParameterList` fired. Baselining a violation in code written in the same commit is exactly what AGENTS.md forbids; the type already existed and the function was re-constructing one from the arguments it was handed |
+| DEV-55 | First pass extracted to `private fun trackedOrderLevels(…)` | `LongMethod` at 61/60 lines after the edit. Same reasoning as DEV-54 — the function genuinely had two passes |
+| DEV-56 | `OrderTrackingEngine.step`'s `toInt()` truncation bias and its per-frame `FloatArray(ORDER_BINS)` allocation, both named in C-1's remediation note, are **not** in this commit | Truncation→rounding moves every order assignment by up to 0.05 order — a DSP behaviour change that alters the golden snapshot and needs its own analytical justification. Bundling it with a threading fix would make both unreviewable. Still open |
+
+### A P0 crash found while verifying C-1 — long files never loaded at all
+
+Reproducing C-1 needs a long file, so a 5-minute WAV was generated and loaded
+on the emulator. **The app died instantly**, on the build that was on `master`:
+
+```
+FATAL EXCEPTION: DefaultDispatcher-worker-2
+java.util.IllegalFormatConversionException: d != java.lang.String
+  at AnalyzerViewModel.res(AnalyzerViewModel.kt:62)
+  at AnalyzerViewModel.processFullWavSpectrogram(AnalyzerViewModel.kt:317)
+```
+
+`notice_processing_spectrogram` declared `%3$d`; the call site passes the
+result of `String.format("%.1f", …)` — a `String`. **Loading any WAV or video
+of 60 s or more killed the process.** Fixed here (`%3$s`).
+
+Why five device gates and 202 tests missed it:
+
+- the message is only built when `durationSec >= 60.0`, and **every device gate
+  to date used an 8–9 s recording**. The flagship 5-minute case in the plan was
+  never once loaded on a device;
+- lint's `StringFormatMatches` **is** armed as an error (plan 4.4), but every
+  string is read through `res(id, vararg args: Any)`, and that indirection
+  hides the argument types from the check. The gate was armed and blind.
+
+`StringFormatContractTest` now formats the real strings.xml entries with the
+argument types their real call sites pass, and `app/build.gradle.kts` declares
+`strings.xml` as a test input — without that, Gradle treats the test as
+up-to-date when only the XML changes, i.e. it would skip exactly when it
+matters. Verified both ways: the test fails on the old string, passes on the
+new one, and re-runs on a plain `./gradlew test` after an XML edit.
+
+### Gate C-1 verification (2026-08-28, emulator NVH_Pixel_7_API_37, debug)
+
+- ✅ **The 5-minute flagship case loads.** 26.5 MB / 300 s WAV, harmonic sweep
+  30→120 Hz. Full 00:00/05:00 timeline, 299.9 s axis, spectrogram correct.
+  Zero FATAL. On the pre-fix build the same file killed the process.
+- ✅ **Sweep cost measured** on the JVM at the real scale — 12,917 frames ×
+  1024 bins, 3,000 telemetry samples ramping 0→120 km/h: **199 ms** on an M-series
+  laptop, producing 12,917 tag frames. That is the duration the main thread was
+  blocked for, per load and **per kinematics edit**, on a machine far faster than
+  any phone, with a flat synthetic spectrum — so it is a **floor**, not a typical
+  value.
+- ✅ **A/B builds proven distinct** by dex symbol diff: pre-fix carries
+  `recalculateOrderTrackingForWav`, post-fix carries `launchOrderSweep` +
+  `orderSweepJob`.
+- ✅ RTS reload path still works (9 s recording with real telemetry: "🛰️ Vitesse
+  GNSS : lissée (RTS)"), no crash, no ANR.
+- ❌ **The freeze itself was NOT reproduced on the emulator, and the fix was
+  therefore not demonstrated end-to-end by observation.** The sweep's cost lives
+  in `OrderTrackingEngine.step`, which does nothing at rpm 0; the emulator's GNSS
+  is stationary, an imported WAV carries no telemetry, and the picker lists only
+  recordings the app itself owns, so an adb-pushed synthetic drive is not
+  loadable. Two SIGQUIT thread dumps taken immediately after a kinematics toggle
+  caught no frame in `orderSweep` — consistent with a sweep that is cheap at zero
+  speed, and **not** evidence that it is off the main thread.
+- ⏳ **Owed:** one drive (or an injected moving fix) with kinematics enabled on a
+  long file, confirming the "Recalcul du suivi d'ordres…" overlay appears, the UI
+  stays interactive during it, and the tags repopulate afterwards. Folded into
+  the GPS-5 campaign, which is the only context where a moving vehicle exists.
+
+| ID | Deviation | Rationale |
+|---|---|---|
+| DEV-57 | The `%3$d`/`String` crash is fixed in the same commit as C-1 rather than its own | It blocked C-1 verification outright — no long file could be loaded to test against. Splitting it would have meant committing a fix I could not exercise |

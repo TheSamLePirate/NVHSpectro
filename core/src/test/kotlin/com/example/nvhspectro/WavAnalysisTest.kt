@@ -163,7 +163,7 @@ class WavAnalysisTest {
         val ttnrHistory = List(frames) { ttnrRow }
         val telemetry = List(4) { TelemetryData(speedKmh = 18f, theoreticalSpeedKmh = 18f) }
 
-        val sweep = WavAnalysis.orderSweep(absHistory, ttnrHistory, telemetry, config, sampleRate)
+        val sweep = WavAnalysis.orderSweep(WavAnalysis.Spectrogram(absHistory, ttnrHistory, sampleRate), telemetry, config)
 
         assertEquals("every telemetry sample gets tracked-order levels", -40.0, sweep.updatedTelemetry[0].trackedOrderDbFS, 1e-6)
         assertEquals(frames, sweep.tagsByFrame.size)
@@ -172,17 +172,56 @@ class WavAnalysisTest {
         assertEquals(17.9, sweep.report[0].orderValue, 1e-9)
     }
 
+    /**
+     * [V13.2 C-1] The sweep froze the UI because it ran inline on the main
+     * thread. The dispatch lives in the ViewModel; what :core owes is the
+     * cancellation hook that lets a superseded sweep stop instead of burning
+     * a full file's worth of work nobody will read.
+     */
+    @Test
+    fun v132c1_orderSweep_checkActive_abortsTheSweep() {
+        val frames = 40
+        val row = FloatArray(64)
+        var calls = 0
+        try {
+            WavAnalysis.orderSweep(
+                WavAnalysis.Spectrogram(List(frames) { row }, List(frames) { row }, sampleRate),
+                List(4) { TelemetryData(speedKmh = 18f, theoreticalSpeedKmh = 18f) },
+                config,
+            ) { if (++calls >= 3) throw InterruptedException("cancelled") }
+            throw AssertionError("sweep must stop when checkActive throws")
+        } catch (e: InterruptedException) {
+            assertEquals(3, calls)
+        }
+    }
+
+    @Test
+    fun v132c1_orderSweep_checkActive_runsOncePerTelemetrySampleAndFrame() {
+        val frames = 12
+        val telemetrySamples = 4
+        val row = FloatArray(64)
+        var calls = 0
+        WavAnalysis.orderSweep(
+            WavAnalysis.Spectrogram(List(frames) { row }, List(frames) { row }, sampleRate),
+            List(telemetrySamples) { TelemetryData(speedKmh = 18f, theoreticalSpeedKmh = 18f) },
+            config,
+        ) { calls++ }
+        assertEquals(
+            "cancellation must be checkable at every unit of work",
+            telemetrySamples + frames,
+            calls,
+        )
+    }
+
     @Test
     fun a2_orderSweep_stoppedVehicle_producesNothing() {
         val frames = 20
         val row = FloatArray(64)
         val sweep =
             WavAnalysis.orderSweep(
-                List(frames) { row },
-                List(frames) { row },
+                WavAnalysis.Spectrogram(List(frames) { row }, List(frames) { row }, sampleRate),
                 List(4) { TelemetryData(speedKmh = 0f) },
                 config,
-                sampleRate,
             )
         assertTrue(sweep.report.isEmpty())
         assertTrue(sweep.tagsByFrame.values.all { it.isEmpty() })
