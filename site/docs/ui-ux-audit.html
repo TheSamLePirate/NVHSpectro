@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit UI/UX — NVH Spectro</title>
+<meta name="description" content="Audit complet de la mise en page, de l'interface et de l'expérience utilisateur de NVH Spectro : 34 constats sur 11 axes, avec feuille de route en 7 phases.">
+<link rel="icon" type="image/webp" href="../assets/icon.webp">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body data-root="..">
+<div id="nav-slot"></div>
+<main class="docs-main"><div class="wrap docs-grid">
+<aside class="docs-toc">
+  <div class="toc-title">Sur cette page</div>
+  <a class="toc-link" href="#verdict">Verdict</a>
+  <a class="toc-link" href="#notes">Notes par axe</a>
+  <a class="toc-link" href="#bloquants">Constats bloquants <span class="toc-n">3</span></a>
+  <a class="toc-link" href="#majeurs">Constats majeurs <span class="toc-n">11</span></a>
+  <a class="toc-link" href="#autres">Modérés &amp; mineurs <span class="toc-n">20</span></a>
+  <a class="toc-link" href="#garder">Ce qui est déjà juste</a>
+  <a class="toc-link" href="#route">Feuille de route</a>
+  <a class="toc-link" href="#methode">Méthode &amp; limites</a>
+  <div class="toc-stats">34 constats · 11 axes · 2026-08-28</div>
+</aside>
+<article class="docs-content">
+<nav class="crumbs"><a href="../index.html">Accueil</a> › <a href="index.html">Documentation</a> › Audit UI/UX</nav>
+
+<span class="kicker">Audit de la couche présentation</span>
+<h1>Audit UI/UX</h1>
+<p class="lead">Cette application a <b>un axe de design excellent et quatre axes manquants</b>. Le système de couleurs est de qualité référence — documenté, contrôlé en contraste, verrouillé par la CI, partagé entre l'écran et le PDF. La typographie est restée le gabarit d'Android&nbsp;Studio. Il n'y a aucune iconographie, aucune échelle de formes, aucune échelle d'espacement, et quasiment aucun mouvement. L'écart jusqu'à « une application Android parfaite » n'est pas une question de goût : c'est du <b>travail de système</b>.</p>
+
+<div class="badges">
+  <span class="badge"><b>34</b> constats</span>
+  <span class="badge" style="border-color:rgba(255,82,82,.4);color:var(--bad)"><b>3</b> bloquants</span>
+  <span class="badge" style="border-color:rgba(255,179,0,.4);color:var(--warn)"><b>11</b> majeurs</span>
+  <span class="badge"><b>13</b> modérés</span>
+  <span class="badge"><b>7</b> mineurs</span>
+  <span class="badge">24 fichiers Compose · ~5&nbsp;100 lignes</span>
+</div>
+
+<h2 id="verdict">Verdict</h2>
+<p>Périmètre : la couche présentation telle qu'elle existe aujourd'hui — branche <code>aaa/phase0</code>, les 24 fichiers Compose de <code>ui/</code> et <code>theme/</code>, plus <code>MainScreen.kt</code>, <code>MainActivity.kt</code>, <code>themes.xml</code> et <code>strings.xml</code>. Le DSP, la métrologie et les ViewModels sont hors périmètre sauf là où ils contraignent la mise en page.</p>
+
+<p><code>theme/Color.kt</code> est le meilleur travail de design du dépôt, et l'un des meilleurs systèmes de couleurs qu'on trouve dans une application d'instrumentation : 60 tokens nommés, chacun documenté avec son ratio de contraste mesuré <i>contre la surface précise sur laquelle il est employé</i>, une décision produit assumée et argumentée de refuser la couleur dynamique et le thème clair (D4), une source de vérité unique en ARGB partagée entre l'écran et le PDF — le rapport ne peut pas contredire l'affichage sur la couleur d'un ordre suivi — et un <code>PaletteContrastTest</code> qui casse le build quand un ratio régresse. <b>Il ne faut pas y toucher.</b> C'est le modèle de ce que les autres axes devraient être.</p>
+
+<p>Tout le reste du système de design est soit un gabarit, soit absent :</p>
+<ol>
+  <li><b><code>theme/Type.kt</code> est le gabarit d'Android&nbsp;Studio, mot pour mot.</b> Il définit exactement 1 des 15 rôles typographiques de Material&nbsp;3 (<code>bodyLarge</code>) et laisse les 14 autres en commentaire de remplissage. L'application compense avec <b>159 littéraux <code>fontSize</code></b> répartis sur 20 fichiers — dont <b>23 sites entre 9.sp et 10.5.sp</b>, sous le plus petit rôle défini par Material (<code>labelSmall</code>, 11.sp) et sous tout seuil de lisibilité défendable pour un appareil lu à bout de bras dans un véhicule en mouvement.</li>
+  <li><b>Il n'y a aucune iconographie.</b> Pas un seul appel <code>Icon()</code> dans l'application ; l'artefact <code>material-icons</code> n'est même pas une dépendance. Chaque affordance est soit un libellé texte, soit un <b>emoji intégré dans une ressource de chaîne traduisible</b>.</li>
+  <li><b>Aucune échelle de formes, aucune échelle d'espacement.</b> Aucun <code>Shapes()</code> n'est passé à <code>MaterialTheme</code>, donc 8 rayons d'angle différents (3 à 16&nbsp;dp) sont appliqués au cas par cas. <b>275 littéraux <code>dp</code></b> portent l'espacement, dont 36 en <code>2.dp</code> et 22 en <code>1.dp</code> — hors de toute grille de 4&nbsp;dp, et la raison pour laquelle l'interface paraît serrée plutôt que dense.</li>
+  <li><b>Il n'y a quasiment aucun mouvement.</b> Six appels d'animation existent dans toute l'application ; trois sont la pulsation des balises du canvas et trois sont un fondu de couleur dans <code>ReportModeScreen</code>. Les changements de mode, le figeage, les menus et l'apparition du lecteur WAV surgissent d'un coup. Sur Android, cette absence <i>est</i> une esthétique — elle se lit comme « inachevé ».</li>
+</ol>
+
+<div class="callout warn"><b>Le mécanisme derrière presque tous les constats.</b> <code>MainScreen.kt</code> fait 1&nbsp;484 lignes, et <code>AppScreen</code> est un composable unique de ~1&nbsp;020 lignes qui inclut en ligne le chrome, les deux panneaux, cinq popups et huit appels de dialogue — en choisissant couleur, taille et espacement à chaque site. Il n'y a pas de couche de composants : ni <code>NvhButton</code>, ni <code>NvhCard</code>, ni <code>NvhSectionHeader</code>. Chaque décision visuelle est donc prise ~30 fois et peut dériver de ~30 manières. <b>Corriger les tokens sans extraire les composants ne tiendra pas</b> — c'est pourquoi la feuille de route place le système de design (phase&nbsp;1) avant le travail de mise en page (phase&nbsp;4).</div>
+
+<h2 id="notes">Notes par axe</h2>
+<p>L'écart entre les notes <i>est</i> le constat : <b>la couleur a été traitée comme un vrai problème d'ingénierie ; tous les autres axes sont restés à ce que le gabarit livrait.</b></p>
+
+<table class="tbl">
+<thead><tr><th>Axe</th><th class="audit-c">Note</th><th>Constat</th></tr></thead>
+<tbody>
+<tr><td>Système de couleurs</td><td class="audit-c"><span class="audit-grade a-good">A−</span></td><td class="audit-w">60 tokens documentés, contraste mesuré par token <i>et par surface</i>, verrouillé par <code>PaletteContrastTest</code>, source ARGB partagée écran + PDF. Exemplaire.<div class="audit-meter"><i class="a-good" style="width:91%;background:var(--good)"></i></div></td></tr>
+<tr><td>Typographie</td><td class="audit-c"><span class="audit-grade a-bad">D</span></td><td class="audit-w">Fichier gabarit. 1 rôle sur 15 défini. 159 littéraux <code>fontSize</code>, dont 23 sous 11.sp.<div class="audit-meter"><i style="width:58%;background:var(--bad)"></i></div></td></tr>
+<tr><td>Iconographie</td><td class="audit-c"><span class="audit-grade a-bad">F</span></td><td class="audit-w">Zéro appel <code>Icon()</code>. Aucune dépendance d'icônes. Emojis utilisés comme icônes, dans des chaînes traduisibles.<div class="audit-meter"><i style="width:25%;background:var(--bad)"></i></div></td></tr>
+<tr><td>Formes</td><td class="audit-c"><span class="audit-grade a-bad">D</span></td><td class="audit-w">Aucun <code>Shapes()</code> ; 8 rayons (3–16&nbsp;dp) sur 40 sites d'appel.<div class="audit-meter"><i style="width:60%;background:var(--bad)"></i></div></td></tr>
+<tr><td>Espacement &amp; densité</td><td class="audit-c"><span class="audit-grade a-mid">C−</span></td><td class="audit-w">Aucune échelle. 275 littéraux <code>dp</code>, dont 58 en 1–2&nbsp;dp. Cela produit du serrage, pas de la densité.<div class="audit-meter"><i style="width:68%;background:var(--warn)"></i></div></td></tr>
+<tr><td>Mise en page &amp; réactivité</td><td class="audit-c"><span class="audit-grade a-mid">C−</span></td><td class="audit-w">Structure à deux panneaux saine. Mais un seul point de rupture sur le ratio d'aspect, pas de <code>WindowSizeClass</code>, poids imbriqués morts, largeurs de popup figées en dp.<div class="audit-meter"><i style="width:68%;background:var(--warn)"></i></div></td></tr>
+<tr><td>Contrôles &amp; affordances</td><td class="audit-c"><span class="audit-grade a-mid">C</span></td><td class="audit-w">Cibles de 48&nbsp;dp respectées partout. Annulé par l'état d'activation rendu comme un simple échange de couleur de conteneur, l'absence de hiérarchie de boutons, deux idiomes de dialogue concurrents.<div class="audit-meter"><i style="width:74%;background:var(--warn)"></i></div></td></tr>
+<tr><td>Mouvement</td><td class="audit-c"><span class="audit-grade a-bad">D</span></td><td class="audit-w">6 appels d'animation ; 3 sont une pulsation de canvas. Aucune transition d'état, de navigation ou de visibilité.<div class="audit-meter"><i style="width:58%;background:var(--bad)"></i></div></td></tr>
+<tr><td>Occupation de l'écran</td><td class="audit-c"><span class="audit-grade a-mid">C</span></td><td class="audit-w">La barre inférieure dépense sa propre largeur en marges de 2&nbsp;dp et libellés de 10&nbsp;sp. Pas de redimensionnement des panneaux, pas de mode immersif pour le canvas.<div class="audit-meter"><i style="width:74%;background:var(--warn)"></i></div></td></tr>
+<tr><td>Accessibilité</td><td class="audit-c"><span class="audit-grade a-ok">B−</span></td><td class="audit-w">Réellement soignée : planchers de 48&nbsp;dp, <code>contentDescription</code> sur chaque contrôle emoji, la couleur n'est jamais le seul canal. Annulé par le texte sous 11.sp et <code>softWrap = false</code>.<div class="audit-meter"><i style="width:79%;background:var(--primary)"></i></div></td></tr>
+<tr><td>Outillage &amp; process</td><td class="audit-c"><span class="audit-grade a-bad">F</span></td><td class="audit-w">0 composable <code>@Preview</code>. 0 test de capture d'écran. 0 test instrumenté. Itérer visuellement coûte une installation complète par regard.<div class="audit-meter"><i style="width:20%;background:var(--bad)"></i></div></td></tr>
+</tbody>
+</table>
+
+<h2 id="bloquants">Constats bloquants</h2>
+<p>L'un est un défaut fonctionnel qui part en production aujourd'hui. L'un contredit le soin d'accessibilité pris dans les mêmes fichiers. L'un bloque directement l'objectif : <b>« visuellement parfait » s'atteint en itérant, et itérer coûte ici une installation Gradle complète par regard.</b></p>
+
+<div class="finding block">
+<span class="sev sev-block">UX-B1</span>
+<h3>Les décalages de <code>Popup</code> sont en pixels : les deux menus de la barre inférieure sont mal placés sur chaque appareil</h3>
+<p class="loc">MainScreen.kt:300-306, 359-365</p>
+<div class="codebox"><pre>Popup(
+    alignment = Alignment.TopCenter,
+    offset = IntOffset(0, <span class="hl">-100</span>),   <span class="cm">// bouton Exporter</span>
+)
+Popup(
+    alignment = Alignment.TopCenter,
+    offset = IntOffset(0, <span class="hl">-250</span>),   <span class="cm">// menu de source audio</span>
+    onDismissRequest = { showAudioModeMenu = false },
+)</pre></div>
+<p>Le paramètre <code>offset: IntOffset</code> de <code>Popup</code> est appliqué en <b>pixels bruts</b>, pas en unités indépendantes de la densité. Ces valeurs ont visiblement été réglées à l'œil sur un seul appareil.</p>
+<ul>
+  <li>Sur un téléphone à 2,75× (440&nbsp;dpi, tout à fait courant) : le bouton Exporter censé se placer ~100&nbsp;dp au-dessus du bouton Figer se place ~36&nbsp;dp au-dessus — il <b>chevauche la barre</b>.</li>
+  <li>Le menu de source à trois entrées censé dégager la barre de ~250&nbsp;dp ne la dégage que de ~91&nbsp;dp : <b>ses entrées basses recouvrent la barre inférieure qui les a ouvertes</b>.</li>
+  <li>Sur une tablette à 1×, le même menu flotte ~250&nbsp;dp plus haut, détaché de son déclencheur.</li>
+</ul>
+<p class="fix"><b>Correction</b> — ce ne sont pas des popups : c'est un menu et une action contextuelle. <code>DropdownMenu</code> se positionne contre son ancre, s'anime et se ferme au toucher extérieur, gratuitement. Si un <code>Popup</code> doit rester, il faut convertir via <code>LocalDensity</code> : <code>with(LocalDensity.current) { IntOffset(0, -(100.dp).roundToPx()) }</code>.</p>
+</div>
+
+<div class="finding block">
+<span class="sev sev-block">UX-B2</span>
+<h3>23 sites de texte sont rendus sous 11.sp, sur un appareil lu à bout de bras dans un véhicule</h3>
+<p class="loc">MainScreen.kt (13 sites) · KinematicsDialog.kt (7) · EmergenceReportDialog.kt (2) · SettingsDialog.kt (1)</p>
+<table class="tbl">
+<thead><tr><th>Taille</th><th class="audit-c">Nombre</th><th>État</th></tr></thead>
+<tbody>
+<tr><td>9.sp</td><td class="audit-c">7</td><td class="audit-w" style="color:var(--bad)">Sous toute recommandation de lisibilité</td></tr>
+<tr><td>9.5.sp</td><td class="audit-c">1</td><td class="audit-w" style="color:var(--bad)">Sous toute recommandation de lisibilité</td></tr>
+<tr><td>10.sp</td><td class="audit-c">12</td><td class="audit-w" style="color:var(--bad)">Sous le plus petit rôle de Material</td></tr>
+<tr><td>10.5.sp</td><td class="audit-c">3</td><td class="audit-w" style="color:var(--bad)">Sous le plus petit rôle de Material</td></tr>
+<tr><td>11.sp</td><td class="audit-c">51</td><td class="audit-w"><code>labelSmall</code> — le plancher, utilisé comme taille de corps par défaut</td></tr>
+<tr><td>12.sp</td><td class="audit-c">30</td><td class="audit-w">—</td></tr>
+<tr><td>13–40.sp</td><td class="audit-c">~55</td><td class="audit-w">—</td></tr>
+</tbody>
+</table>
+<p><code>labelSmall</code> (11.sp) est le <i>plus petit rôle que Material&nbsp;3 définisse</i>, destiné à des étiquettes rares. Cette application l'utilise comme sa taille la plus fréquente, puis passe dessous 23 fois. Les sites à 9.sp de <code>KinematicsDialog.kt</code> sont des affichages de rapports et de paramètres — des nombres qu'un ingénieur doit lire correctement pour faire confiance à un régime moteur.</p>
+<p>Cela contredit directement le soin pris ailleurs dans les mêmes fichiers : <code>MIN_TOUCH_TARGET = 48.dp</code> est documenté comme étant destiné aux opérateurs « portant des gants, dans un véhicule en mouvement » — et le même opérateur, dans les mêmes conditions, doit lire du texte à 9.sp.</p>
+<p class="fix"><b>Correction</b> — définir l'échelle typographique (UX-M1), poser le plancher à <code>labelMedium</code> (12.sp) pour toute étiquette et <code>bodyMedium</code> (14.sp) pour toute valeur lue comme une mesure, puis supprimer les 159 littéraux au profit des rôles.</p>
+</div>
+
+<div class="finding block">
+<span class="sev sev-block">UX-B3</span>
+<h3>Aucune preview et aucun test de capture : le travail visuel n'a ni boucle de retour ni filet</h3>
+<p class="loc">grep -rn "@Preview" app/src/main/java → 0 résultat · app/src/androidTest → n'existe pas</p>
+<p><code>ci/checks.sh</code> verrouille les hexadécimaux de couleur, les binaires suivis et l'unicité de la version. <code>PaletteContrastTest</code> verrouille les ratios de contraste. Les deux sont bons. Mais <b>aucun gate et aucun outil n'observe la mise en page.</b></p>
+<p>Il n'existe aucun moyen de voir un dialogue sans compiler et installer, aucun moyen de vérifier un composant à l'échelle de police 1,3 ou 2,0, aucun moyen de vérifier le paysage sans faire tourner un appareil, et rien qui échoue quand un changement d'espacement tronque un libellé. Les dépendances de test Compose sont déjà déclarées dans <code>app/build.gradle.kts:101-102</code> — et ne sourcent rien.</p>
+<p class="fix"><b>Correction, dans l'ordre</b> — (a) <code>@Preview</code> pour chaque dialogue et les deux panneaux, avec <code>@PreviewFontScale</code> et <code>@PreviewScreenSizes</code> ; (b) câbler <code>androidTest</code> et vérifier les invariants qui comptent — aucun libellé tronqué à l'échelle 2,0, cibles de 48&nbsp;dp, les deux orientations ; (c) Roborazzi ou Paparazzi pour que les régressions de mise en page échouent en CI sans appareil.</p>
+</div>
+
+<h2 id="majeurs">Constats majeurs</h2>
+
+<div class="finding major">
+<span class="sev sev-major">UX-M1</span>
+<h3><code>theme/Type.kt</code> est le gabarit d'Android Studio, mot pour mot</h3>
+<p class="loc">theme/Type.kt:1-36</p>
+<div class="codebox"><pre>val Typography = Typography(
+    bodyLarge = TextStyle(<span class="cm">/* … */</span>)
+    <span class="cm">/* Other default text styles to override
+    titleLarge = TextStyle(…),
+    labelSmall = TextStyle(…)
+    */</span>
+)</pre></div>
+<p>Quatorze des quinze rôles sont les valeurs par défaut de Material, et aucune famille de police n'est choisie. Critique pour cette application : <b>il n'y a aucun rôle monospace ni à chiffres tabulaires.</b> Un instrument qui affiche régime, km/h, Hz et dB en lecture continue a besoin de chiffres qui ne se décalent pas horizontalement quand les valeurs changent — or tous les affichages numériques sont en sans-serif à chiffres proportionnels, donc la ligne de KPI tremble à chaque mise à jour.</p>
+<p class="fix"><b>Correction</b> — définir les quinze rôles ; ajouter un rôle <code>NvhTypography.readout</code> avec <code>fontFeatureSettings = "tnum"</code> pour chaque valeur de mesure ; envisager une famille condensée pour la barre inférieure afin que les libellés tiennent sans descendre à 10&nbsp;sp.</p>
+</div>
+
+<div class="finding major">
+<span class="sev sev-major">UX-M2</span>
+<h3>Zéro icône ; des emojis en guise d'iconographie, dans des chaînes traduisibles</h3>
+<p class="loc">res/values/strings.xml (30+ sites) · WavPlayerBar.kt:98,111,118 · MainScreen.kt:1368,1425</p>
+<div class="codebox"><pre><span class="cm">&lt;!-- strings.xml --&gt;</span>
+&lt;string name="gmpe_button"&gt;⚙️ GMPe&lt;/string&gt;
+&lt;string name="export_frozen"&gt;📸 Exporter&lt;/string&gt;
+&lt;string name="player_reading"&gt;📂 LECTURE : %1$s&lt;/string&gt;
+&lt;string name="notice_with_close"&gt;%1$s   ✕&lt;/string&gt;
+
+<span class="cm">// WavPlayerBar.kt</span>
+IconButton(onClick = …) { <span class="hl">Text("⏪", fontSize = 14.sp)</span> }</pre></div>
+<p>Six problèmes indépendamment disqualifiants :</p>
+<ol>
+  <li><b>Non thématisable.</b> Les emojis sont rendus dans la police emoji système, à ses propres couleurs — <code>color = NvhOnSurface</code> sur <code>Text("⏸")</code> est ignoré. La palette soigneusement spécifiée de l'application s'arrête à l'icône.</li>
+  <li><b>Dépendant de l'appareil.</b> Samsung, Pixel, Xiaomi et Huawei livrent des polices emoji différentes. <code>⚙️</code>, <code>🚘</code> et <code>📸</code> diffèrent matériellement sur chacun ; certains diffèrent assez pour changer le sens perçu.</li>
+  <li><b>Mauvaises métriques.</b> Les emojis portent leur propre ligne de base et leur propre avance — d'où le réglage de <code>fontSize</code> glyphe par glyphe, et leur décentrage visuel dans un <code>IconButton</code> de 48&nbsp;dp.</li>
+  <li><b>Dans des ressources traduisibles.</b> Un traducteur reçoit <code>📸 Exporter</code> et peut réordonner, supprimer ou dupliquer le glyphe. Une icône n'est pas une langue.</li>
+  <li><b><code>✕</code> comme affordance de fermeture</b> vit à l'intérieur d'une chaîne formatée — ce n'est pas une cible tactile, pas 48&nbsp;dp, pas étiqueté indépendamment.</li>
+  <li><b>Glyphes texte pour l'état</b> — <code>●</code>/<code>▲</code>/<code>✕</code> dans <code>GpsLedIndicator</code>. L'<i>intention</i> est admirable et documentée (la forme comme second canal pour un opérateur daltonien) et doit être préservée — mais avec trois formes vectorielles, pas trois caractères en <code>FontWeight.Black</code>.</li>
+</ol>
+<p class="fix"><b>Correction</b> — ajouter <code>material-icons-extended</code>, ou mieux pour un instrument, dessiner ~20 vecteurs pour que le jeu soit délibéré et propre en licence. Retirer chaque emoji de <code>strings.xml</code>. Chaque <code>contentDescription</code> existant est conservé tel quel.</p>
+</div>
+
+<div class="finding major">
+<span class="sev sev-major">UX-M3</span>
+<h3>Aucun <code>Shapes()</code> dans le thème ; huit rayons d'angle appliqués au cas par cas</h3>
+<p class="loc">theme/Theme.kt:44-50 (aucun argument <code>shapes =</code>) · 40 sites d'appel</p>
+<p>Mesuré : <code>8.dp</code>×15, <code>4.dp</code>×8, <code>6.dp</code>×7, <code>12.dp</code>×4, <code>16.dp</code>×3, plus un chacun de <code>3.dp</code>, <code>10.dp</code>, <code>14.dp</code>. <code>MaterialTheme</code> utilise donc les formes par défaut pour ses propres composants, tandis que les surfaces construites à la main autour d'eux emploient 3 à 16&nbsp;dp — une <code>Card</code> à 12&nbsp;dp contenant une <code>Surface</code> à 4&nbsp;dp dans un dialogue à 16&nbsp;dp, à côté d'un <code>Button</code> au défaut de Material. Quatre rayons dans un seul groupe visuel.</p>
+<p class="fix"><b>Correction</b> — passer un <code>Shapes(extraSmall = 4.dp, small = 8.dp, medium = 12.dp, large = 16.dp, extraLarge = 28.dp)</code> explicite, utiliser <code>MaterialTheme.shapes.*</code> partout, et laisser <code>ci/checks.sh</code> verrouiller les <code>RoundedCornerShape(</code> bruts hors du paquet <code>theme</code> — exactement le motif déjà éprouvé pour les couleurs.</p>
+</div>
+
+<div class="finding major">
+<span class="sev sev-major">UX-M4</span>
+<h3>Aucune échelle d'espacement ; 275 littéraux dp, et les petits provoquent le serrage</h3>
+<p class="loc">tout le dépôt</p>
+<table class="tbl">
+<thead><tr><th>Valeur</th><th class="audit-c">Emplois</th><th>Valeur</th><th class="audit-c">Emplois</th></tr></thead>
+<tbody>
+<tr><td>8.dp</td><td class="audit-c">50</td><td class="audit-w"><code>2.dp</code></td><td class="audit-c" style="color:var(--bad)">36</td></tr>
+<tr><td>6.dp</td><td class="audit-c">44</td><td class="audit-w"><code>1.dp</code></td><td class="audit-c" style="color:var(--bad)">22</td></tr>
+<tr><td>4.dp</td><td class="audit-c">42</td><td class="audit-w"><code>16 / 12 / 10.dp</code></td><td class="audit-c">14 chacun</td></tr>
+</tbody>
+</table>
+<p>Deux problèmes distincts. D'abord, <code>1</code>, <code>2</code>, <code>3</code>, <code>5</code>, <code>6</code>, <code>10</code> et <code>14&nbsp;dp</code> sont hors de toute grille de 4&nbsp;dp, donc rien ne s'aligne sur rien et aucun rythme vertical ne s'établit.</p>
+<p>Ensuite, et c'est plus visible : <b>58 emplois d'espacement de 1 à 2&nbsp;dp</b> — dont le <code>contentPadding = PaddingValues(horizontal = 2.dp, …)</code> de la barre inférieure sur cinq boutons — ne sont pas « denses », ils sont <i>collés</i>. Les interfaces professionnelles denses (Bloomberg, Ableton, Logic) emploient un rythme serré mais <i>constant</i> de 4/8&nbsp;px avec un espacement interne <i>généreux</i> sur les contrôles. Cette application fait l'inverse : marges externes lâches, et des contrôles dont les libellés touchent leur propre bordure.</p>
+<p class="fix"><b>Correction</b> — <code>object NvhSpacing { val xs = 4.dp; val sm = 8.dp; val md = 12.dp; val lg = 16.dp; val xl = 24.dp }</code>, plancher d'espacement interne à <code>sm</code>, et verrouillage des dp bruts hors du paquet <code>theme</code>.</p>
+</div>
+
+<div class="finding major">
+<span class="sev sev-major">UX-M5</span>
+<h3>La barre inférieure se dispute sa propre place</h3>
+<p class="loc">MainScreen.kt:237-518</p>
+<p>Cinq contrôles se partagent la barre en <code>Modifier.weight(1f)</code> chacun, avec <code>contentPadding = PaddingValues(horizontal = 2.dp, …)</code>, des libellés à 10–11&nbsp;sp, <code>maxLines = 1</code> et <code>softWrap = false</code>. <b>Chacune de ces cinq décisions est le symptôme d'une même cause :</b> les libellés sont trop longs pour la place, et plutôt que de les raccourcir ou de passer aux icônes, on a réduit la typographie et supprimé l'espacement jusqu'à ce que ça rentre sur l'appareil du développeur.</p>
+<ul>
+  <li><code>weight(1f)</code> donne à « Rapport Manuel » (15 caractères) la même largeur qu'à « Figer » (5) — l'un est tronqué pendant que l'autre a du mou.</li>
+  <li><code>softWrap = false</code> avec <code>maxLines = 1</code> signifie une <b style="color:var(--bad)">troncature brutale, pas une ellipse</b>, dès que l'échelle de police dépasse 1,0. Le libellé devient un fragment.</li>
+  <li>2&nbsp;dp de marge horizontale placent le texte à ~2&nbsp;dp du bord du bouton — visuellement, le libellé est <i>hors</i> de son propre conteneur.</li>
+  <li>La barre est la navigation principale et le sélecteur de mode de l'application, et c'est la surface la moins lisible de l'application.</li>
+</ul>
+<p class="fix"><b>Correction</b> — avec quatre modes persistants plus une action de figeage, <code>NavigationBar</code> pour les modes et un <code>FloatingActionButton</code> pour figer/exporter est la réponse Android idiomatique, et elle libère toute la largeur de la barre.</p>
+</div>
+
+<div class="finding major">
+<span class="sev sev-major">UX-M6</span>
+<h3>L'état d'activation est communiqué en échangeant la couleur de conteneur d'un bouton plein</h3>
+<p class="loc">MainScreen.kt:250-256, 274-280, 337-343, 385-405</p>
+<div class="codebox"><pre>containerColor = if (kinematicsConfig.isEnabled) NvhActiveContainer else colorScheme.primary
+containerColor = if (isReportModeActive)          NvhReportMode     else colorScheme.primary
+containerColor = if (isFrozen)                    NvhRecording      else colorScheme.secondary</pre></div>
+<p>Un bouton plein bleu qui devient plein vert est un signal marche/arrêt faible : les deux états paraissent également « pressables », aucun ne paraît « engagé », et le sens doit être appris. L'application le sait en partie — <code>gmpe_button_active</code> ajoute le mot <code>(Actif)</code> — ce qui est le bon réflexe appliqué au mauvais widget.</p>
+<p>Material&nbsp;3 possède des contrôles faits pour cela, qui rendent la sélection sans ambiguïté par conteneur + contour + coche optionnelle. <b>Et <code>FilterChip</code> est déjà employé correctement ailleurs dans ce même fichier</b> (<code>MainScreen.kt:1145-1160</code>, le sélecteur de métrique) — l'application contient donc sa propre solution et ne l'applique pas à ses contrôles les plus importants.</p>
+<p class="fix"><b>Correction</b> — <code>SegmentedButton</code> pour les modes de source exclusifs, <code>FilterChip</code> pour les bascules de fonctionnalité, <code>IconToggleButton</code> pour le figeage.</p>
+</div>
+
+<div class="finding major">
+<span class="sev sev-major">UX-M7</span>
+<h3>Deux idiomes de dialogue concurrents, et aucune bottom sheet</h3>
+<p class="loc">7 fichiers utilisent <code>AlertDialog</code> · 3 utilisent un <code>Dialog { Card { … } }</code> brut</p>
+<p>Deux langages visuels pour le même travail — rayons, typographie de titre, placement des boutons et marges différents, choisis fichier par fichier. Et <code>SettingsDialog</code> (571 lignes, trois sections <code>Card</code> bordées, cinq <code>Slider</code>, un <code>AddFilterDialog</code> imbriqué) est un <b><code>AlertDialog</code> défilant</b> : le conteneur le moins approprié de la plateforme pour une surface de réglages de cette taille, plafonné à ~60&nbsp;% de la hauteur d'écran avec sa propre barre de défilement dans un dialogue dans un voile.</p>
+<p class="fix"><b>Correction</b> — un seul wrapper <code>NvhDialog</code> pour les vraies confirmations ; déplacer <code>SettingsDialog</code>, <code>KinematicsDialog</code> et <code>EmergenceReportDialog</code> vers <code>ModalBottomSheet</code> (poignée, expansion pleine hauteur, conscient de l'edge-to-edge) ou vers un véritable <i>écran</i> de réglages.</p>
+</div>
+
+<div class="finding major">
+<span class="sev sev-major">UX-M8</span>
+<h3>Le mouvement est absent, et son absence se lit</h3>
+<p class="loc">6 appels d'animation : <code>animateFloat</code>×3 (pulsation canvas) · <code>animateColorAsState</code>×3 (ReportModeScreen)</p>
+<p>Rien d'autre ne bouge. Aucune transition ne couvre :</p>
+<ul>
+  <li>L'entrée et la sortie du mode rapport — un <b>remplacement plein écran</b> à <code>MainScreen.kt:196-199</code> qui coupe net.</li>
+  <li>L'apparition du menu de source audio ; l'apparition du bouton Exporter au figeage.</li>
+  <li>L'apparition de <code>WavPlayerBar</code> au chargement d'un fichier — il surgit dans la mise en page et pousse la carte de télémétrie vers le bas.</li>
+  <li>Les changements de couleur de mode sur la barre inférieure.</li>
+</ul>
+<p class="fix"><b>Correction</b> — <code>AnimatedContent</code> sur le basculement de mode rapport ; <code>AnimatedVisibility</code> avec <code>expandVertically</code> sur le lecteur et le bouton Exporter ; <code>animateColorAsState</code> sur chaque couleur de conteneur dépendant du mode. Budget 150–250&nbsp;ms. <b>C'est le meilleur rendement visuel par ligne de code de tout l'audit.</b></p>
+</div>
+
+<div class="finding major">
+<span class="sev sev-major">UX-M9</span>
+<h3>La réactivité tient à un seul test de ratio d'aspect ; aucun <code>WindowSizeClass</code></h3>
+<p class="loc">MainScreen.kt:1206-1223</p>
+<div class="codebox"><pre>BoxWithConstraints(…) {
+    if (<span class="hl">maxWidth &gt; maxHeight</span>) { Row { spectrogramPane(…); vehicleDataPane(…) } }
+    else                    { Column { spectrogramPane(…); vehicleDataPane(…) } }
+}</pre></div>
+<p>Le motif « deux panneaux déclarés une seule fois » est réellement bon, et le commentaire documente un vrai bug qu'il a corrigé. Mais le ratio d'aspect est le mauvais axe. Une tablette de 10 pouces en portrait fait 800×1280&nbsp;dp — <code>maxWidth &lt; maxHeight</code>, donc elle reçoit <b>l'empilement téléphone</b>, dans une fenêtre assez large pour trois panneaux. Un grand pliable déplié subit la même chose. À l'inverse, un petit téléphone en paysage (640×360) reçoit la division côte à côte avec un spectrogramme de 352&nbsp;dp de large.</p>
+<p class="fix"><b>Correction</b> — <code>material3-window-size-class</code> n'est pas une dépendance actuellement. L'ajouter et brancher sur <code>WindowWidthSizeClass</code> : Compact → empilement, Medium → division, Expanded → division avec un panneau de réglages visible en permanence au lieu d'un dialogue. Conserver le test d'aspect seulement comme critère de départage.</p>
+</div>
+
+<div class="finding major">
+<span class="sev sev-major">UX-M10</span>
+<h3>Des poids imbriqués morts rendent les proportions du panneau de données fictives</h3>
+<p class="loc">MainScreen.kt:884-925, 913-916</p>
+<div class="codebox"><pre>Column(modifier = paneModifier) {
+    if (…) { WavPlayerBar(…) }                  <span class="cm">// sans poids, hauteur intrinsèque</span>
+    Card(modifier = Modifier.<span class="hl">weight(0.45f)</span> …)   <span class="cm">// le SEUL enfant pondéré</span>
+}</pre></div>
+<p><code>weight(0.45f)</code> sur l'unique enfant pondéré d'une <code>Column</code> lui distribue <b>tout</b> l'espace restant — le <code>0.45f</code> n'a aucun effet. La même constante morte figure sur <code>VideoPlayerView</code>. La prochaine personne qui règlera cette mise en page croira raisonnablement que la carte prend 45&nbsp;% du panneau et que 55&nbsp;% vont ailleurs ; cet ailleurs n'existe pas.</p>
+<p>Pendant ce temps, le comportement réel — <code>WavPlayerBar</code> prenant sa hauteur intrinsèque en haut et la carte absorbant le reste — fait que charger un WAV rétrécit silencieusement le graphique de télémétrie de toute la hauteur du lecteur, sans transition (UX-M8).</p>
+<p class="fix"><b>Correction</b> — supprimer les poids sans effet (<code>fillMaxSize()</code> exprime le comportement réel), ou introduire le second enfant pondéré que les constantes sous-entendent.</p>
+</div>
+
+<div class="finding major">
+<span class="sev sev-major">UX-M11</span>
+<h3><code>themes.xml</code> configure les barres système via des API que targetSdk 36 ignore</h3>
+<p class="loc">res/values/themes.xml:19-21 · MainActivity.kt:22</p>
+<div class="codebox"><pre>&lt;item name="<span class="hl">android:statusBarColor</span>"&gt;@color/nvh_primary_container&lt;/item&gt;
+&lt;item name="<span class="hl">android:navigationBarColor</span>"&gt;@color/nvh_background&lt;/item&gt;</pre></div>
+<p>Ces deux attributs sont <b>dépréciés et ignorés depuis l'API 35</b>, et l'application est en <code>targetSdk = 36</code> avec <code>enableEdgeToEdge()</code>. Les deux entrées sont de la configuration morte. L'edge-to-edge est donc actif avec une apparence de barres système non gérée, et <b>aucune gestion de <code>WindowInsets</code> n'existe dans l'application</b> au-delà de ce que <code>Scaffold</code>, <code>TopAppBar</code> et <code>BottomAppBar</code> appliquent par défaut. (<code>windowSplashScreenBackground</code> juste au-dessus reste correct et fonctionne.)</p>
+<p>Les défauts de Material&nbsp;3 dégagent probablement le contenu des barres, mais rien ne le vérifie, l'application n'exprime jamais d'intention sur le contraste des icônes de barre d'état, et les <code>Popup</code> de UX-B1 sont entièrement hors du périmètre d'insets de <code>Scaffold</code>.</p>
+<p class="fix"><b>Correction</b> — supprimer les entrées mortes, piloter l'apparence des icônes via <code>WindowInsetsControllerCompat.isAppearanceLightStatusBars</code>, et ajouter une vérification d'insets aux tests UI (actuellement absents).</p>
+</div>
+
+<h2 id="autres">Constats modérés &amp; mineurs</h2>
+<table class="tbl">
+<thead><tr><th>ID</th><th>Constat</th><th>Emplacement</th></tr></thead>
+<tbody>
+<tr><td>UX-D1</td><td class="audit-w"><b>Aucune couche de composants.</b> <code>AppScreen</code> est un composable unique de ~1&nbsp;020 lignes incluant chrome, deux panneaux, 5 popups et 8 appels de dialogue, avec couleur/taille/espacement choisis par site. C'est le <i>mécanisme</i> derrière UX-M1/M3/M4.</td><td class="audit-w">MainScreen.kt:96-1347</td></tr>
+<tr><td>UX-D2</td><td class="audit-w"><b>Largeurs dp figées sur le contenu des popups</b> — <code>105.dp</code>, <code>115.dp</code>, <code>130.dp</code> — combinées à <code>softWrap = false</code>. Troncature garantie à partir de l'échelle 1,3, dans les contrôles dont la <i>hauteur</i> a été correctement rendue flexible.</td><td class="audit-w">MainScreen.kt:288-291, 372</td></tr>
+<tr><td>UX-D3</td><td class="audit-w"><b>Aucune hiérarchie de boutons.</b> 29 <code>Button</code> pleins, 12 <code>TextButton</code>, 6 <code>OutlinedButton</code>, 6 <code>IconButton</code>. Le plein est le défaut partout, donc rien n'est visuellement primaire ; <code>FilledTonalButton</code> et <code>ElevatedButton</code> ne sont pas utilisés.</td><td class="audit-w">tout le dépôt</td></tr>
+<tr><td>UX-D4</td><td class="audit-w"><b>Élévation non systématique</b> — <code>defaultElevation</code> 4/6&nbsp;dp et <code>tonalElevation</code> 4/6&nbsp;dp, mêlés à des <code>border(1.dp, …)</code> manuels. Deux mécanismes pour une seule hiérarchie. Choisir l'élévation tonale seule — correcte en thème sombre, où les ombres sont presque invisibles.</td><td class="audit-w">MainScreen.kt:924, WavPlayerBar.kt:53</td></tr>
+<tr><td>UX-D5</td><td class="audit-w"><b><code>FontWeight.Bold</code> est le poids par défaut.</b> Appliqué si largement qu'il ne marque plus l'emphase. <code>FontWeight.Black</code> apparaît une fois, pour couvrir le gras environnant. L'emphase doit venir de l'échelle et de la couleur.</td><td class="audit-w">tout le dépôt</td></tr>
+<tr><td>UX-D6</td><td class="audit-w"><b>Le canvas — surface principale — n'a pas de mode immersif.</b> Un <code>Box</code> à poids fixe 0,55, encadré en permanence. ~45&nbsp;% d'un écran de téléphone est du chrome + télémétrie en permanence.</td><td class="audit-w">MainScreen.kt:522-527, 1456</td></tr>
+<tr><td>UX-D7</td><td class="audit-w"><b>Division des panneaux figée à 0,55/0,45 sans contrôle utilisateur.</b> Lire le spectrogramme et surveiller le régime veulent des divisions différentes. Un séparateur déplaçable est l'affordance attendue.</td><td class="audit-w">MainScreen.kt:1456-1459</td></tr>
+<tr><td>UX-D8</td><td class="audit-w"><b>Les actions du <code>TopAppBar</code> sont deux <code>TextButton</code></b> plus un logo — l'un en italique sans raison énoncée, et la seule italique de l'application. Trois éléments concurrents consommant l'essentiel de la largeur.</td><td class="audit-w">MainScreen.kt:210-234</td></tr>
+<tr><td>UX-D9</td><td class="audit-w"><b>Français uniquement, dans le dossier de ressources par défaut.</b> Les 293 chaînes sont en français dans <code>values/</code> sans <code>values-en/</code>. La mise en page n'a jamais été éprouvée contre des chaînes anglaises/allemandes plus longues — ce que la barre en <code>softWrap = false</code> ne supportera pas.</td><td class="audit-w">res/values/strings.xml</td></tr>
+<tr><td>UX-D10</td><td class="audit-w"><b>Les glyphes d'état sont du texte non mis à l'échelle</b> dans une <code>Row</code> avec un libellé, donc le poids visuel du voyant change avec l'échelle de police indépendamment de son libellé. Un vecteur à taille <code>dp</code> fixe est la construction correcte.</td><td class="audit-w">MainScreen.kt:1362-1372, 1416-1432</td></tr>
+<tr><td>UX-D11</td><td class="audit-w"><b><code>EmergenceReportButton</code> est une <code>Surface</code> avec <code>Modifier.clickable</code></b> à 4&nbsp;dp de rayon, 6×2&nbsp;dp d'espacement et 10.sp — une puce faite main bien sous 48&nbsp;dp, sans bornes de ripple ni sémantique <code>Role.Button</code>. <code>AssistChip</code> fournit tout cela correctement.</td><td class="audit-w">MainScreen.kt:1387-1405</td></tr>
+<tr><td>UX-D12</td><td class="audit-w"><b>Les sections de <code>SettingsDialog</code> sont Card + bordure manuelle + titre coloré 12.sp</b>, répétées trois fois avec des accents différents et aucun composant partagé — les trois sections d'un même dialogue diffèrent en espacement de son propre rythme.</td><td class="audit-w">SettingsDialog.kt:89-300</td></tr>
+<tr><td>UX-D13</td><td class="audit-w"><b>Aucun design d'état vide/chargement/erreur.</b> Un voile sur le canvas, une bannière de notice, du texte avec un emoji : trois traitements visuels sans lien pour « rien à afficher ou quelque chose a échoué ».</td><td class="audit-w">MainScreen.kt, strings.xml:61</td></tr>
+</tbody>
+</table>
+
+<div class="callout"><b>Les 7 constats mineurs.</b> Espacements verticaux de 1&nbsp;dp qui s'arrondissent à zéro en 1× · <code>HorizontalDivider(thickness = 0.5.dp)</code> au rendu inconstant selon la densité · <code>logo_vibratec.png</code> en raster mono-densité mis à l'échelle 28&nbsp;dp (flou en xxxhdpi ; devrait être un vecteur) · <code>WAV_NAME_MAX_CHARS = 14</code> tronquant par nombre de caractères et non par mise en page, donc le point de coupe ignore la largeur disponible · valeurs d'<code>alpha</code> réglées à la main (0,22 / 0,6 / 0,7 / 0,8) plutôt qu'un jeu défini · aucun retour haptique, sur un appareil que la doc de l'application dit opéré sans regarder · <code>Arrangement.spacedBy</code> variant entre conteneurs frères qui se lisent comme pairs.</div>
+
+<h2 id="garder">Ce qui est déjà juste</h2>
+<p>Listé explicitement pour que la remédiation ne le régresse pas. <b>Plusieurs de ces points sont meilleurs que ce que livrent la plupart des applications Android en production</b> — et l'un d'eux, la décision D4, doit être activement défendu contre les recommandations de cet audit lui-même.</p>
+<ol>
+  <li><b><code>theme/Color.kt</code> en entier.</b> 60 tokens documentés, ratios de contraste mesurés par token <i>et par surface</i>, <code>PaletteContrastTest</code>, le gate CI sur les hexadécimaux, et la liste <code>NvhOrderTraceArgb</code> partagée qui rend l'accord PDF/écran démontrable. Travail de qualité référence, et le modèle pour tous les autres axes.</li>
+  <li><b>Décision D4 — sombre fixe, pas de couleur dynamique.</b> Correctement argumentée : une couleur dérivée du fond d'écran rendrait les tracés d'ordres et les badges de criticité dépendants de l'appareil, ce qu'une UI de mesure ne peut pas accepter. Toute suggestion « ajouter un thème clair / Material You » doit être refusée sur ce fondement — <i>y compris pendant l'application des recommandations ci-dessus</i>.</li>
+  <li><b>Cibles tactiles de 48&nbsp;dp</b>, avec le raisonnement documenté sur les opérateurs gantés en véhicule, et la note que les hauteurs fixes de 34–38&nbsp;dp précédentes tronquaient leurs propres libellés à échelle de police élevée.</li>
+  <li><b>La couleur n'est jamais le seul canal.</b> <code>GpsLedIndicator</code> associe à chaque état une forme distincte <i>et</i> des mots ; la rampe d'émergence est associée à des badges et du texte. Cet invariant doit survivre à la migration vers les icônes.</li>
+  <li><b><code>contentDescription</code> sur chaque contrôle emoji</b>, avec la note explicite que « sous TalkBack, "⏪" n'est pas un mot ». Les emojis doivent partir ; les libellés doivent rester.</li>
+  <li><b>Le <code>SplashScreen</code> de la plateforme</b> remplaçant un splash Compose à <code>delay(2000)</code>, et <code>windowBackground</code> sur <code>nvh_background</code> pour tuer le flash de lancement.</li>
+  <li><b>Le motif « deux panneaux déclarés une fois »</b> — les panneaux comme closures <code>@Composable (Modifier) -&gt; Unit</code>. Le point de rupture est faux (UX-M9) mais la structure est juste, et elle rend la correction peu coûteuse.</li>
+  <li><b><code>FilterChip</code> pour le sélecteur de métrique.</b> Le bon widget, bien employé. C'est le modèle pour UX-M6.</li>
+  <li><b><code>String.format(Locale.ROOT, …)</code></b> pour chaque affichage numérique, pour qu'une mesure ne change jamais avec la locale.</li>
+</ol>
+
+<h2 id="route">Feuille de route</h2>
+<p>La numérotation est un ordre de dépendance réel, pas une décoration. <b>La phase 0 n'est pas optionnelle</b> — toutes les phases suivantes sont invérifiables sans elle, et chaque phase est livrable et relisable indépendamment.</p>
+
+<div class="phase"><div class="phase-n">0</div><div class="phase-b">
+<h3>Boucle de retour</h3><div class="ids">clôt UX-B3</div>
+<p>Ajouter <code>@Preview</code> pour les deux panneaux et les neuf dialogues, avec <code>@PreviewFontScale</code> et <code>@PreviewScreenSizes</code>. Câbler <code>app/src/androidTest</code> — les dépendances sont déjà déclarées et ne sourcent rien. Ajouter des tests de capture JVM (Roborazzi/Paparazzi) pour que les régressions de mise en page échouent en CI.</p>
+<div class="gate"><b>Gate</b> Chaque dialogue et chaque panneau se rend dans l'IDE aux échelles 1,0 et 2,0, dans les deux orientations, sans appareil.</div>
+</div></div>
+
+<div class="phase"><div class="phase-n">1</div><div class="phase-b">
+<h3>Compléter le système de design</h3><div class="ids">clôt UX-B2, UX-M1, UX-M3, UX-M4</div>
+<p>Écrire les quinze rôles typographiques plus un rôle <code>readout</code> à chiffres tabulaires. Ajouter <code>Shapes()</code>. Ajouter <code>NvhSpacing</code>. Étendre <code>ci/checks.sh</code> avec les gates qui marchent déjà pour la couleur : pas de <code>fontSize =</code> brut, pas de <code>RoundedCornerShape(</code> brut, pas de <code>dp</code> brut hors du paquet <code>theme</code>. Puis remplacer mécaniquement les 159 littéraux de police et les 275 littéraux dp, en remontant chaque site sous 11.sp au nouveau plancher.</p>
+<div class="gate"><b>Gate</b> <code>ci/checks.sh</code> passe avec les trois nouveaux gates armés ; diffs de capture relus.</div>
+</div></div>
+
+<div class="phase"><div class="phase-n">2</div><div class="phase-b">
+<h3>Iconographie</h3><div class="ids">clôt UX-M2, UX-D10, UX-D11 · et le raster du logo</div>
+<p>Ajouter la dépendance d'icônes ou dessiner ~20 vecteurs. Retirer chaque emoji de <code>strings.xml</code>. Convertir les glyphes d'état en formes vectorielles, en préservant l'invariant « la forme comme second canal ». Vectoriser le logo. Conserver chaque <code>contentDescription</code>.</p>
+<div class="gate"><b>Gate</b> Zéro emoji dans <code>res/</code> ; zéro <code>Text("&lt;glyphe&gt;")</code> employé comme icône ; passe TalkBack inchangée.</div>
+</div></div>
+
+<div class="phase"><div class="phase-n">3</div><div class="phase-b">
+<h3>Couche de composants</h3><div class="ids">clôt UX-D1, D3, D4, D5, D12, D13</div>
+<p>Extraire <code>NvhButton</code> (avec une vraie hiérarchie primaire/secondaire/tertiaire), <code>NvhCard</code>, <code>NvhSection</code>, <code>NvhReadout</code>, <code>NvhStatusChip</code>, <code>NvhEmptyState</code>. Définir l'échelle d'élévation tonale. Sortir les deux panneaux et le chrome de <code>MainScreen.kt</code>.</p>
+<div class="gate"><b>Gate</b> <code>AppScreen</code> sous ~300 lignes ; aucun littéral de couleur, taille ou espacement sur un site d'appel.</div>
+</div></div>
+
+<div class="phase"><div class="phase-n">4</div><div class="phase-b">
+<h3>Mise en page &amp; occupation de l'écran</h3><div class="ids">clôt UX-B1, M5, M9, M10, M11, D2, D6, D7, D8</div>
+<p>Remplacer les deux <code>Popup</code> par <code>DropdownMenu</code>/<code>ModalBottomSheet</code>, ce qui corrige le bug de densité. Reconstruire la barre inférieure en <code>NavigationBar</code> + FAB. Ajouter <code>material3-window-size-class</code> et brancher sur <code>WindowWidthSizeClass</code>. Supprimer les poids imbriqués morts et les entrées mortes de <code>themes.xml</code> ; gérer les insets explicitement. Ajouter le mode immersif du canvas et un séparateur de panneaux déplaçable.</p>
+<div class="gate"><b>Gate</b> Mise en page correcte sur les classes de largeur compact/medium/expanded aux échelles 1,0 et 2,0 ; menus ancrés correctement en densité 1×, 2× et 3×.</div>
+</div></div>
+
+<div class="phase"><div class="phase-n">5</div><div class="phase-b">
+<h3>Contrôles &amp; mouvement</h3><div class="ids">clôt UX-M6, M7, M8 · et l'haptique</div>
+<p>Convertir les bascules de mode en <code>SegmentedButton</code>/<code>FilterChip</code>/<code>IconToggleButton</code>. Unifier les dialogues sur un <code>NvhDialog</code> et déplacer les trois gros vers <code>ModalBottomSheet</code>. Ajouter <code>AnimatedContent</code> sur le mode rapport, <code>AnimatedVisibility</code> sur le lecteur et le bouton Exporter, <code>animateColorAsState</code> sur chaque couleur dépendant du mode. Ajouter l'haptique sur figer, enregistrer et changement de mode.</p>
+<div class="gate"><b>Gate</b> Aucun changement d'état ne se produit sans transition ; les tests de capture couvrent les deux extrémités de chacune.</div>
+</div></div>
+
+<div class="phase"><div class="phase-n">6</div><div class="phase-b">
+<h3>Finition</h3><div class="ids">constats mineurs restants · UX-D9 si l'i18n est dans le périmètre</div>
+<p>Espacements sous-pixel, filets, troncature de nom de fichier par mise en page, jeu d'alpha défini, écarts constants entre frères. Puis un défaut anglais avec surcharge <code>values-fr/</code> si l'internationalisation est dans le périmètre — en notant que c'est ce qui éprouvera enfin la barre inférieure.</p>
+<div class="gate"><b>Gate</b> Suite de captures verte aux échelles 1,0 / 1,3 / 2,0 sur les trois classes de largeur.</div>
+</div></div>
+
+<h2 id="methode">Méthode &amp; limites</h2>
+<p>Chaque affirmation quantitative de cette page est reproductible depuis la racine du dépôt. Quelques-unes des plus structurantes :</p>
+<div class="codebox"><pre><span class="cm"># 159 littéraux de taille de police ; 23 sous 11.sp</span>
+grep -rn "fontSize = [0-9.]*\.sp" app/src/main/java | wc -l
+grep -rn "fontSize = \(9\|9\.5\|10\|10\.5\)\.sp" app/src/main/java
+
+<span class="cm"># Zéro icône, aucune dépendance d'icônes</span>
+grep -rn "Icon(\|Icons\." app/src/main/java | wc -l
+grep -rn "icons" app/build.gradle.kts gradle/libs.versions.toml
+
+<span class="cm"># 275 littéraux dp ; 8 rayons ; aucun Shapes()</span>
+grep -rho "[0-9.]\+\.dp" app/src/main/java | wc -l
+grep -rho "RoundedCornerShape([0-9]*\.dp)" app/src/main/java | sort | uniq -c
+grep -rn "shapes =" app/src/main/java
+
+<span class="cm"># 6 appels d'animation ; décalages de popup en pixels</span>
+grep -rho "animate[A-Za-z]*\|AnimatedVisibility\|Crossfade" app/src/main/java | sort | uniq -c
+grep -rn "IntOffset" app/src/main/java/com/example/nvhspectro/MainScreen.kt
+
+<span class="cm"># Zéro preview, zéro test instrumenté</span>
+grep -rn "@Preview" app/src/main/java | wc -l
+ls app/src/androidTest</pre></div>
+
+<div class="callout warn"><b>Ce que cet audit ne couvre pas.</b> Le <b>rendu à l'exécution n'a pas été observé</b> sur un appareil physique ni un émulateur — les constats viennent de l'analyse du source. La règle du projet s'applique avec toute sa force à chaque correction proposée ici : <i>des tests unitaires verts ont laissé passer un crash et deux bugs de mise en page ; lancer l'application avant de déclarer une correction faite</i>. Par ailleurs, la <b>qualité du dessin interne du canvas est délibérément exclue</b> : <code>SpectrogramColormap.kt</code> représente 1&nbsp;206 lignes de rendu d'axes, de dégradés de colormap et de lisibilité des surimpressions sur la surface de mesure elle-même. C'est de la présentation de mesure plutôt que du chrome applicatif, et en juger correctement demande de regarder de vrais spectrogrammes. Cela mérite une passe dédiée.</div>
+
+<nav class="pager"><a href="quality.html">← Qualité &amp; CI</a><a href="reference.html" class="pager-next">Référence API →</a></nav>
+</article></div></main>
+<script src="../assets/site.js"></script>
+</body>
+</html>
