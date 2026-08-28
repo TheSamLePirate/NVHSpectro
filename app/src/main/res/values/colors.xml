@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Window-level colours only. Every in-app colour lives in theme/Color.kt as a Compose token
+  [plan 4.3]; these exist so the launch window matches the app instead of flashing white.
+  Keep nvh_background identical to NvhBackground in theme/Color.kt.
+-->
+<resources>
+    <color name="nvh_background">#FF0A0E13</color>
+    <color name="nvh_primary_container">#FF13324A</color>
+</resources>

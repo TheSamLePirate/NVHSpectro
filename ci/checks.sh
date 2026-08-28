@@ -34,15 +34,79 @@ if ! grep -q 'BuildConfig.VERSION_NAME' app/src/main/java/com/example/nvhspectro
   violation "InfoDialog no longer reads BuildConfig.VERSION_NAME [audit B1]"
 fi
 
-# --- [DISARMED until Phase 1] no literal 44100 outside AudioConfig --------
-SR_COUNT=$(grep -RIn '44100' app/src/main --include='*.kt' | grep -v 'AudioConfig.kt' | wc -l | tr -d ' ')
+# --- [ARMED in Phase 1] no literal 44100 outside AudioConfig --------------
+SR_COUNT=$(grep -RIn '44100' app/src/main core/src/main --include='*.kt' | grep -v 'AudioConfig.kt' | wc -l | tr -d ' ')
 if [ "${ARM_SAMPLE_RATE_GATE:-0}" = "1" ]; then
   if [ "$SR_COUNT" -gt 0 ]; then
     violation "literal 44100 outside AudioConfig.kt ($SR_COUNT occurrences) [audit C1]:"
-    grep -RIn '44100' app/src/main --include='*.kt' | grep -v 'AudioConfig.kt' | head -20
+    grep -RIn '44100' app/src/main core/src/main --include='*.kt' | grep -v 'AudioConfig.kt' | head -20
   fi
 else
   say "INFO: sample-rate gate disarmed (Phase 1 arms it). Current literal-44100 count: $SR_COUNT [audit C1]"
+fi
+
+# --- [ARMED] :core stays pure Kotlin — zero Android imports [plan 3.1] ----
+if grep -RIn --include='*.kt' -E '^import (android\.|androidx\.|com\.google\.android\.)' core/src >/dev/null 2>&1; then
+  violation ":core imports Android classes (must stay pure JVM) [plan 3.1]:"
+  grep -RIn --include='*.kt' -E '^import (android\.|androidx\.|com\.google\.android\.)' core/src | head -10
+fi
+
+# --- [ARMED] colours come from the theme, not from literals [U5, plan 4.3]
+# The fixed dark instrument palette only stays coherent (and contrast-checked)
+# if no screen re-introduces its own hex. theme/Color.kt is the one exception.
+COLOR_HITS=$(grep -RIn --include='*.kt' -E 'Color\(0x' app/src/main core/src/main \
+  | grep -v 'theme/Color.kt' | wc -l | tr -d ' ')
+if [ "$COLOR_HITS" -gt 0 ]; then
+  violation "raw colour literals outside theme/Color.kt ($COLOR_HITS) [audit U5, plan 4.3]:"
+  grep -RIn --include='*.kt' -E 'Color\(0x' app/src/main core/src/main | grep -v 'theme/Color.kt' | head -20
+fi
+
+# --- [ARMED] user-facing text lives in strings.xml [§12, plan 4.4] --------
+# Android lint's HardcodedText only inspects XML layouts, so in a Compose-only app
+# it proves nothing. This is the equivalent gate: a Kotlin string literal that
+# contains a run of letters AND lands in a `text = ` / `Text("…")` / label position
+# inside a @Composable file is user-facing text and belongs in strings.xml.
+COMPOSE_FILES=$(grep -rl '@Composable' app/src/main --include='*.kt' 2>/dev/null || true)
+TEXT_HITS=0
+if [ -n "$COMPOSE_FILES" ]; then
+  # shellcheck disable=SC2086
+  TEXT_HITS=$(grep -nE '(text = |Text\(|label = \{ Text\()"[^"]*[A-Za-zÀ-ÿ]{3,}' $COMPOSE_FILES \
+    | grep -v 'stringResource' | grep -v 'getString' | wc -l | tr -d ' ')
+  if [ "$TEXT_HITS" -gt 0 ]; then
+    violation "hard-coded user-facing text in Compose ($TEXT_HITS) — use stringResource [§12, plan 4.4]:"
+    # shellcheck disable=SC2086
+    grep -nE '(text = |Text\(|label = \{ Text\()"[^"]*[A-Za-zÀ-ÿ]{3,}' $COMPOSE_FILES \
+      | grep -v 'stringResource' | grep -v 'getString' | head -20
+  fi
+fi
+
+# --- [ARMED] purged dead code must not return [A3/A4/D5, plan 3.8] --------
+# The regex-patch era resurrected deleted code more than once. These symbols
+# and files were deliberately removed; any reappearance fails the build.
+DEAD_SYMBOLS='CandidateHarmonicTracker|isFrequencyAllowed|toggleDrawingMode|parseYouTubeEmbedUrl|loadVideoFromYouTube|VideoSelectionDialog'
+if grep -RIn --include='*.kt' -E "$DEAD_SYMBOLS" app/src/main core/src/main >/dev/null 2>&1; then
+  violation "purged dead code has returned [plan 3.8]:"
+  grep -RIn --include='*.kt' -E "$DEAD_SYMBOLS" app/src/main core/src/main | head -10
+fi
+if git ls-files | grep -qE '(report_mode_screen_copy\.kt|ui/main/|vibratec_logo\.png)'; then
+  violation "deleted dead files are tracked again [plan 3.8]:"
+  git ls-files | grep -E '(report_mode_screen_copy\.kt|ui/main/|vibratec_logo\.png)'
+fi
+
+# --- [ARMED] no WebView / JS surface [V2, U6, plan 4.8, decision D7] ------
+# The YouTube mode loaded user-supplied URLs into a JavaScript-enabled WebView and
+# analysed nothing at all. Deleting it removed the app's only script-execution
+# surface; §1's security gate says it must stay removed.
+# Matches real code (import/instantiation/setting), not prose about the removal.
+WEBVIEW_RE='^import android\.webkit|WebView\(|javaScriptEnabled'
+if grep -RIn --include='*.kt' -E "$WEBVIEW_RE" app/src/main core/src/main >/dev/null 2>&1; then
+  violation "a WebView/JS surface has returned [audit V2, plan 4.8]:"
+  grep -RIn --include='*.kt' -E "$WEBVIEW_RE" app/src/main core/src/main | head -10
+fi
+
+# --- [ARMED] no INTERNET permission [§9 privacy posture] ------------------
+if grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml; then
+  violation "INTERNET permission added — measurement data must not be able to leave the device"
 fi
 
 if [ "$fail" -ne 0 ]; then

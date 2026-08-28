@@ -1,13 +1,8 @@
 package com.example.nvhspectro.ui
 
-import android.content.Context
 import android.net.Uri
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.MediaController
 import android.widget.VideoView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -15,209 +10,260 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.nvhspectro.R
+import com.example.nvhspectro.theme.NvhCanvas
+import com.example.nvhspectro.theme.NvhModeVideo
+import com.example.nvhspectro.theme.NvhModeVideoAccent
+import com.example.nvhspectro.theme.NvhOnSurface
+import com.example.nvhspectro.theme.NvhOnSurfaceVariant
+import com.example.nvhspectro.theme.NvhOutline
+import com.example.nvhspectro.theme.NvhSectionContainer
+import java.util.Locale
+import kotlin.math.abs
 
+/**
+ * Beyond this, the (muted) picture is re-seeked to the audio clock [U6, plan 4.8].
+ * One analysis frame at 43 fps is ~23 ms; a quarter second is imperceptible drift but well
+ * above the jitter of `VideoView.currentPosition`, so it does not thrash the decoder.
+ */
+private const val MAX_VIDEO_DRIFT_MS = 250L
+
+private const val SECONDS_PER_MINUTE = 60
+private const val MILLIS_PER_SECOND = 1000
+
+/**
+ * Video mode's picture and transport [U6, plan 4.8].
+ *
+ * The picture is always muted: the audio the analyst hears is the *analysed* PCM, played by
+ * `PlaybackController`, which is the single owner of the analysis clock. The video only ever
+ * follows it. The YouTube source was deleted with decision D7 — it loaded user-supplied URLs
+ * into a JavaScript-enabled WebView and analysed nothing at all [V2].
+ */
 @Composable
 fun VideoPlayerView(
     videoUri: Uri?,
-    youtubeUrl: String?,
     videoTitle: String,
-    isPlaying: Boolean,
-    positionMs: Long,
-    durationMs: Long,
+    state: VideoPlaybackState,
     onSeekTo: (Long) -> Unit,
     onTogglePlayPause: () -> Unit,
     onOpenVideoSelection: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    val hasVideo = (videoUri != null || !youtubeUrl.isNullOrBlank())
-
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(6.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF101827)
-        ),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(6.dp),
+        colors = CardDefaults.cardColors(containerColor = NvhSectionContainer),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
-        if (!hasVideo) {
-            // Écran initial : Aucune donnée vidéo
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "🎬 Mode Analyse Vidéo Synchronisé",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-
-                    Text(
-                        text = "Pas de données vidéo. Cliquez sur [Charger Vidéo] à côté de TTNR pour ouvrir un fichier local ou un lien YouTube (limité à 5 min max).",
-                        fontSize = 13.sp,
-                        color = Color(0xFFB0BEC5),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-
-                    Button(
-                        onClick = onOpenVideoSelection,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF1E88E5),
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Text(
-                            text = "📂 Charger Vidéo (Local / YouTube)",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
+        if (videoUri == null) {
+            NoVideoLoaded(onOpenVideoSelection)
         } else {
-            // Vidéo chargée : affichage de la vidéo + contrôleur
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+            LoadedVideo(
+                videoUri = videoUri,
+                videoTitle = videoTitle,
+                state = state,
+                onSeekTo = onSeekTo,
+                onTogglePlayPause = onTogglePlayPause,
+            )
+        }
+    }
+}
+
+@Composable
+private fun NoVideoLoaded(onOpenVideoSelection: () -> Unit) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.video_mode_title),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = NvhOnSurface,
+            )
+            Text(
+                text = stringResource(R.string.video_none_loaded),
+                fontSize = 13.sp,
+                color = NvhOnSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Button(
+                onClick = onOpenVideoSelection,
+                shape = RoundedCornerShape(8.dp),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = NvhModeVideo,
+                        contentColor = NvhOnSurface,
+                    ),
             ) {
-                // Titre de la vidéo
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "📹 $videoTitle",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = Color.White,
-                        maxLines = 1
-                    )
-
-                    Text(
-                        text = formatTime(positionMs) + " / " + formatTime(durationMs),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF00E676)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Zone Vidéo Android (VideoView pour fichier local / WebView pour YouTube)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.Black),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (videoUri != null) {
-                        key(videoUri) {
-                            AndroidView(
-                            factory = { context ->
-                                VideoView(context).apply {
-                                    setVideoURI(videoUri)
-                                    setOnPreparedListener { mp ->
-                                        mp.isLooping = false
-                                        mp.setVolume(0f, 0f) // Mute the video to let MediaPlayer handle audio in sync with FFT
-                                    }
-                                }
-                            },
-                            update = { videoView ->
-                                if (isPlaying && !videoView.isPlaying) {
-                                    videoView.seekTo(positionMs.toInt())
-                                    videoView.start()
-                                } else if (!isPlaying && videoView.isPlaying) {
-                                    videoView.pause()
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        }
-                    } else if (!youtubeUrl.isNullOrBlank()) {
-                        key(youtubeUrl) {
-                            AndroidView(
-                            factory = { context ->
-                                WebView(context).apply {
-                                    settings.javaScriptEnabled = true
-                                    webViewClient = WebViewClient()
-                                    val embedUrl = parseYouTubeEmbedUrl(youtubeUrl ?: "")
-                                    loadUrl(embedUrl)
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Barre de lecture & Slider de positionnement
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    IconButton(
-                        onClick = onTogglePlayPause,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Text(
-                            text = if (isPlaying) "⏸" else "▶",
-                            fontSize = 18.sp,
-                            color = Color.White
-                        )
-                    }
-
-                    Slider(
-                        value = positionMs.toFloat(),
-                        onValueChange = { onSeekTo(it.toLong()) },
-                        valueRange = 0f..durationMs.toFloat().coerceAtLeast(1f),
-                        modifier = Modifier.weight(1f),
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFF00E676),
-                            activeTrackColor = Color(0xFF00E676),
-                            inactiveTrackColor = Color.DarkGray
-                        )
-                    )
-                }
+                Text(text = stringResource(R.string.video_load), fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
-private fun formatTime(ms: Long): String {
-    val totalSec = (ms / 1000).coerceAtLeast(0)
-    val min = totalSec / 60
-    val sec = totalSec % 60
-    return String.format("%02d:%02d", min, sec)
+/** Everything the transport row and the picture need, in one value. */
+data class VideoPlaybackState(
+    val isPlaying: Boolean,
+    val positionMs: Long,
+    val durationMs: Long,
+)
+
+@Composable
+private fun LoadedVideo(
+    videoUri: Uri,
+    videoTitle: String,
+    state: VideoPlaybackState,
+    onSeekTo: (Long) -> Unit,
+    onTogglePlayPause: () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.video_title, videoTitle),
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = NvhOnSurface,
+                maxLines = 1,
+            )
+            Text(
+                text = formatTime(state.positionMs) + " / " + formatTime(state.durationMs),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = NvhModeVideoAccent,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Box(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(NvhCanvas),
+            contentAlignment = Alignment.Center,
+        ) {
+            MutedVideoSurface(videoUri = videoUri, isPlaying = state.isPlaying, positionMs = state.positionMs)
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        VideoTransportRow(state = state, onSeekTo = onSeekTo, onTogglePlayPause = onTogglePlayPause)
+    }
 }
 
-private fun parseYouTubeEmbedUrl(url: String): String {
-    val videoId = when {
-        url.contains("v=") -> url.substringAfter("v=").substringBefore("&")
-        url.contains("youtu.be/") -> url.substringAfter("youtu.be/").substringBefore("?")
-        else -> url
+@Composable
+private fun VideoTransportRow(
+    state: VideoPlaybackState,
+    onSeekTo: (Long) -> Unit,
+    onTogglePlayPause: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        val playPauseLabel = stringResource(if (state.isPlaying) R.string.cd_pause else R.string.cd_play)
+        val positionLabel = stringResource(R.string.cd_playback_position)
+        IconButton(
+            onClick = onTogglePlayPause,
+            modifier = Modifier.size(VIDEO_TOUCH_TARGET).semantics { contentDescription = playPauseLabel },
+        ) {
+            Text(
+                text = if (state.isPlaying) "⏸" else "▶",
+                fontSize = 18.sp,
+                color = NvhOnSurface,
+            )
+        }
+        Slider(
+            value = state.positionMs.toFloat(),
+            onValueChange = { onSeekTo(it.toLong()) },
+            valueRange = 0f..state.durationMs.toFloat().coerceAtLeast(1f),
+            modifier = Modifier.weight(1f).semantics { contentDescription = positionLabel },
+            colors =
+                SliderDefaults.colors(
+                    thumbColor = NvhModeVideoAccent,
+                    activeTrackColor = NvhModeVideoAccent,
+                    inactiveTrackColor = NvhOutline,
+                ),
+        )
     }
-    return "https://www.youtube.com/embed/$videoId?autoplay=1"
 }
+
+@Composable
+private fun MutedVideoSurface(
+    videoUri: Uri,
+    isPlaying: Boolean,
+    positionMs: Long,
+) {
+    key(videoUri) {
+        AndroidView(
+            factory = { context ->
+                VideoView(context).apply {
+                    setVideoURI(videoUri)
+                    setOnPreparedListener { mp ->
+                        mp.isLooping = false
+                        // Muted: the audio the analyst hears is the analysed PCM, so picture
+                        // and spectrum can never disagree about what is being measured.
+                        mp.setVolume(0f, 0f)
+                    }
+                }
+            },
+            update = { videoView ->
+                // [U6, plan 4.8] Re-seek whenever the picture drifts from the audio clock,
+                // not only on play/pause transitions: the old code seeked ONLY when starting
+                // playback, so scrubbing while playing left the image permanently out of sync
+                // with the spectrum being analysed.
+                if (abs(videoView.currentPosition - positionMs) > MAX_VIDEO_DRIFT_MS) {
+                    videoView.seekTo(positionMs.toInt())
+                }
+                if (isPlaying && !videoView.isPlaying) {
+                    videoView.start()
+                } else if (!isPlaying && videoView.isPlaying) {
+                    videoView.pause()
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+private fun formatTime(ms: Long): String {
+    val totalSec = (ms / MILLIS_PER_SECOND).coerceAtLeast(0)
+    // Locale.ROOT: a technical timecode must read the same on every device [C11 class].
+    return String.format(Locale.ROOT, "%02d:%02d", totalSec / SECONDS_PER_MINUTE, totalSec % SECONDS_PER_MINUTE)
+}
+
+/** 48 dp minimum interactive size [§12, plan 4.4]. */
+private val VIDEO_TOUCH_TARGET = 48.dp

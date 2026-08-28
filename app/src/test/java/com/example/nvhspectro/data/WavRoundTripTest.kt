@@ -127,17 +127,22 @@ class WavRoundTripTest {
         f.writeBytes(buildWav(44100, channels = 1, bits = 24, pcmBytes = ByteArray(300)))
         val result = WavDataReader.readWavFile(f, null)
         assertTrue("expected Unsupported, got $result", result is WavReadResult.Unsupported)
-        assertTrue((result as WavReadResult.Unsupported).message.contains("24"))
+        // [§12, plan 4.4] The reason is typed, and the offending value travels with it —
+        // asserting on a French sentence would break the moment the app is localised.
+        val unsupported = result as WavReadResult.Unsupported
+        assertEquals(WavReadError.BITS_UNSUPPORTED, unsupported.reason)
+        assertEquals("24", unsupported.detail)
     }
 
     @Test
     fun c2_floatFormat_rejectedAsUnsupported() {
         val f = tmp.newFile("float.wav")
         f.writeBytes(
-            buildWav(44100, channels = 1, bits = 32, pcmBytes = ByteArray(400), audioFormat = 3)
+            buildWav(44100, channels = 1, bits = 32, pcmBytes = ByteArray(400), audioFormat = 3),
         )
         val result = WavDataReader.readWavFile(f, null)
         assertTrue("expected Unsupported, got $result", result is WavReadResult.Unsupported)
+        assertEquals(WavReadError.FORMAT_UNSUPPORTED, (result as WavReadResult.Unsupported).reason)
     }
 
     @Test
@@ -160,14 +165,16 @@ class WavRoundTripTest {
     fun c2_garbageFile_returnsError() {
         val f = tmp.newFile("not_a_wav.wav")
         f.writeBytes(ByteArray(100) { 0x41 })
-        assertTrue(WavDataReader.readWavFile(f, null) is WavReadResult.Error)
+        val result = WavDataReader.readWavFile(f, null)
+        assertTrue(result is WavReadResult.Error)
+        assertEquals(WavReadError.NOT_RIFF, (result as WavReadResult.Error).reason)
     }
 
     @Test
     fun c2_missingFile_returnsError() {
-        assertTrue(
-            WavDataReader.readWavFile(File(tmp.root, "absent.wav"), null) is WavReadResult.Error
-        )
+        val result = WavDataReader.readWavFile(File(tmp.root, "absent.wav"), null)
+        assertTrue(result is WavReadResult.Error)
+        assertEquals(WavReadError.FILE_NOT_FOUND, (result as WavReadResult.Error).reason)
     }
 
     // ------------------------------------------------------------------
@@ -185,7 +192,7 @@ class WavRoundTripTest {
         bits: Int,
         pcmBytes: ByteArray,
         extraChunkBeforeData: Boolean = false,
-        audioFormat: Int = 1
+        audioFormat: Int = 1,
     ): ByteArray {
         val fmt = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)
         fmt.putShort(audioFormat.toShort())
@@ -210,7 +217,11 @@ class WavRoundTripTest {
         return riff.toByteArray()
     }
 
-    private fun writeChunk(out: ByteArrayOutputStream, id: String, payload: ByteArray) {
+    private fun writeChunk(
+        out: ByteArrayOutputStream,
+        id: String,
+        payload: ByteArray,
+    ) {
         out.write(id.toByteArray(Charsets.US_ASCII))
         out.write(le32(payload.size))
         out.write(payload)
@@ -218,5 +229,9 @@ class WavRoundTripTest {
     }
 
     private fun le32(v: Int): ByteArray =
-        ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(v).array()
+        ByteBuffer
+            .allocate(4)
+            .order(ByteOrder.LITTLE_ENDIAN)
+            .putInt(v)
+            .array()
 }

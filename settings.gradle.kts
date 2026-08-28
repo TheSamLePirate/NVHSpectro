@@ -31,3 +31,4 @@ plugins {
 
 rootProject.name = "NVHSpectro"
 include(":app")
+include(":core")

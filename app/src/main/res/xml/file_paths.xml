@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The ONLY path the app shares through its FileProvider: the local diagnostic log
+  [V3, plan 4.7]. Nothing else is exposed — recordings go to MediaStore, and no
+  measurement data is reachable through this provider.
+-->
+<paths>
+    <files-path name="diagnostics" path="diagnostics/" />
+</paths>

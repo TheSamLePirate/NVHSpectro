@@ -2,33 +2,10 @@ package com.example.nvhspectro.data
 
 import android.content.Context
 import android.net.Uri
-import com.example.nvhspectro.GpsStatus
-import com.example.nvhspectro.TelemetryData
 import java.io.File
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import org.json.JSONObject
-
-data class LoadedWavData(
-    val pcmSamples: ShortArray,
-    val sampleRate: Int,
-    val durationMs: Long,
-    val telemetryList: List<TelemetryData> = emptyList()
-)
-
-/** Typed outcome of a WAV import [audit C2, plan 1.2] — failures carry a user-visible message. */
-sealed class WavReadResult {
-    data class Success(
-        val data: LoadedWavData,
-        /** True when the file is longer than the analysis cap and was cut at [WavDataReader.MAX_DURATION_SEC]. */
-        val truncatedToCap: Boolean
-    ) : WavReadResult()
-
-    data class Unsupported(val message: String) : WavReadResult()
-
-    data class Error(val message: String) : WavReadResult()
-}
 
 /**
  * Real RIFF parser [audit C2]: walks chunks (tolerates LIST/fact/bext/JUNK…),
@@ -38,36 +15,46 @@ sealed class WavReadResult {
  * Buffers are sized from the actual data chunk — no blind max-size allocation.
  */
 object WavDataReader {
-
     const val MAX_DURATION_SEC = 5 * 60
 
-    fun readWavFile(file: File, jsonFile: File? = null): WavReadResult {
-        if (!file.exists()) return WavReadResult.Error("Fichier introuvable : ${file.name}")
+    fun readWavFile(
+        file: File,
+        jsonFile: File? = null,
+    ): WavReadResult {
+        if (!file.exists()) return WavReadResult.Error(WavReadError.FILE_NOT_FOUND, file.name)
         return try {
             file.inputStream().buffered().use { stream ->
                 parseWavStream(stream, jsonFile?.readText())
             }
         } catch (e: Exception) {
-            WavReadResult.Error("Lecture WAV impossible : ${e.message ?: e.javaClass.simpleName}")
+            WavReadResult.Error(WavReadError.UNREADABLE, e.message ?: e.javaClass.simpleName)
         }
     }
 
-    fun readWavFromUri(context: Context, uri: Uri, jsonText: String? = null): WavReadResult {
+    fun readWavFromUri(
+        context: Context,
+        uri: Uri,
+        jsonText: String? = null,
+    ): WavReadResult {
         return try {
-            val stream = context.contentResolver.openInputStream(uri)
-                ?: return WavReadResult.Error("Fichier inaccessible")
+            val stream =
+                context.contentResolver.openInputStream(uri)
+                    ?: return WavReadResult.Error(WavReadError.INACCESSIBLE)
             stream.buffered().use { parseWavStream(it, jsonText) }
         } catch (e: Exception) {
-            WavReadResult.Error("Lecture WAV impossible : ${e.message ?: e.javaClass.simpleName}")
+            WavReadResult.Error(WavReadError.UNREADABLE, e.message ?: e.javaClass.simpleName)
         }
     }
 
-    private fun parseWavStream(stream: InputStream, jsonText: String?): WavReadResult {
+    private fun parseWavStream(
+        stream: InputStream,
+        jsonText: String?,
+    ): WavReadResult {
         // --- RIFF header ---
         val riff = ByteArray(12)
-        if (!readFully(stream, riff, 12)) return WavReadResult.Error("Fichier trop court pour être un WAV")
+        if (!readFully(stream, riff, 12)) return WavReadResult.Error(WavReadError.TOO_SHORT)
         if (!riff.startsWith("RIFF") || String(riff, 8, 4, Charsets.US_ASCII) != "WAVE") {
-            return WavReadResult.Error("Format non reconnu (en-tête RIFF/WAVE absent)")
+            return WavReadResult.Error(WavReadError.NOT_RIFF)
         }
 
         // --- Chunk walk: find fmt, then data ---
@@ -75,18 +62,23 @@ object WavDataReader {
         val chunkHeader = ByteArray(8)
         while (readFully(stream, chunkHeader, 8)) {
             val id = String(chunkHeader, 0, 4, Charsets.US_ASCII)
-            val size = ByteBuffer.wrap(chunkHeader, 4, 4).order(ByteOrder.LITTLE_ENDIAN).int.toLong() and 0xFFFFFFFFL
+            val size =
+                ByteBuffer
+                    .wrap(chunkHeader, 4, 4)
+                    .order(ByteOrder.LITTLE_ENDIAN)
+                    .int
+                    .toLong() and 0xFFFFFFFFL
 
             when (id) {
                 "fmt " -> {
                     val toRead = size.coerceAtMost(64L).toInt()
                     val buf = ByteArray(toRead)
-                    if (!readFully(stream, buf, toRead)) return WavReadResult.Error("Chunk fmt tronqué")
+                    if (!readFully(stream, buf, toRead)) return WavReadResult.Error(WavReadError.FMT_TRUNCATED)
                     skipFully(stream, size - toRead + (size and 1L))
-                    fmt = parseFmt(buf) ?: return WavReadResult.Error("Chunk fmt illisible")
+                    fmt = parseFmt(buf) ?: return WavReadResult.Error(WavReadError.FMT_UNREADABLE)
                 }
                 "data" -> {
-                    val f = fmt ?: return WavReadResult.Error("Chunk fmt absent avant les données audio")
+                    val f = fmt ?: return WavReadResult.Error(WavReadError.FMT_MISSING)
                     val unsupported = validateFormat(f)
                     if (unsupported != null) return unsupported
                     return readData(stream, f, size, jsonText)
@@ -97,14 +89,14 @@ object WavDataReader {
                 }
             }
         }
-        return WavReadResult.Error("Chunk de données audio introuvable")
+        return WavReadResult.Error(WavReadError.DATA_MISSING)
     }
 
     private data class FmtChunk(
         val audioFormat: Int,
         val channels: Int,
         val sampleRate: Int,
-        val bitsPerSample: Int
+        val bitsPerSample: Int,
     )
 
     private fun parseFmt(buf: ByteArray): FmtChunk? {
@@ -121,19 +113,25 @@ object WavDataReader {
         return FmtChunk(audioFormat, channels, sampleRate, bitsPerSample)
     }
 
-    private fun validateFormat(f: FmtChunk): WavReadResult.Unsupported? = when {
-        f.audioFormat != 1 ->
-            WavReadResult.Unsupported("Format audio non supporté (code ${f.audioFormat}) — PCM 16-bit requis")
-        f.bitsPerSample != 16 ->
-            WavReadResult.Unsupported("${f.bitsPerSample}-bit non supporté — PCM 16-bit requis")
-        f.channels !in 1..2 ->
-            WavReadResult.Unsupported("${f.channels} canaux non supportés — mono ou stéréo requis")
-        f.sampleRate !in 8000..192000 ->
-            WavReadResult.Unsupported("Sample rate invalide : ${f.sampleRate} Hz")
-        else -> null
-    }
+    private fun validateFormat(f: FmtChunk): WavReadResult.Unsupported? =
+        when {
+            f.audioFormat != 1 ->
+                WavReadResult.Unsupported(WavReadError.FORMAT_UNSUPPORTED, f.audioFormat.toString())
+            f.bitsPerSample != 16 ->
+                WavReadResult.Unsupported(WavReadError.BITS_UNSUPPORTED, f.bitsPerSample.toString())
+            f.channels !in 1..2 ->
+                WavReadResult.Unsupported(WavReadError.CHANNELS_UNSUPPORTED, f.channels.toString())
+            f.sampleRate !in 8000..192000 ->
+                WavReadResult.Unsupported(WavReadError.SAMPLE_RATE_INVALID, f.sampleRate.toString())
+            else -> null
+        }
 
-    private fun readData(stream: InputStream, f: FmtChunk, dataSize: Long, jsonText: String?): WavReadResult {
+    private fun readData(
+        stream: InputStream,
+        f: FmtChunk,
+        dataSize: Long,
+        jsonText: String?,
+    ): WavReadResult {
         val bytesPerFrame = 2 * f.channels
         val capBytes = MAX_DURATION_SEC.toLong() * f.sampleRate * bytesPerFrame
         val bytesToRead = dataSize.coerceAtMost(capBytes)
@@ -174,52 +172,29 @@ object WavDataReader {
             }
         }
 
-        if (frames == 0) return WavReadResult.Error("Aucune donnée audio décodable")
+        if (frames == 0) return WavReadResult.Error(WavReadError.NO_DECODABLE_DATA)
         val pcm = if (frames == mono.size) mono else mono.copyOf(frames)
         val durationMs = frames.toLong() * 1000L / f.sampleRate
 
+        // [S2, GPS-4.3] Schema-aware decode (v3 + legacy v2/v1 sidecars).
+        val decoded = TelemetryCodec.decodeDocument(jsonText)
         return WavReadResult.Success(
             LoadedWavData(
                 pcmSamples = pcm,
                 sampleRate = f.sampleRate,
                 durationMs = durationMs,
-                telemetryList = parseTelemetry(jsonText)
+                telemetryList = decoded.samples,
+                telemetryAudioTimesNanos = decoded.audioTimesNanos,
             ),
-            truncatedToCap = truncated
+            truncatedToCap = truncated,
         )
     }
 
-    private fun parseTelemetry(jsonText: String?): List<TelemetryData> {
-        if (jsonText.isNullOrBlank()) return emptyList()
-        val telemetryList = mutableListOf<TelemetryData>()
-        try {
-            val json = JSONObject(jsonText)
-            if (json.has("telemetryData")) {
-                val arr = json.getJSONArray("telemetryData")
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    telemetryList.add(
-                        TelemetryData(
-                            speedKmh = obj.optDouble("speedKmh", 0.0).toFloat(),
-                            accelerationG = obj.optDouble("accelerationG", 0.0).toFloat(),
-                            latitude = obj.optDouble("lat", 0.0),
-                            longitude = obj.optDouble("lng", 0.0),
-                            gpsStatus = when (obj.optString("gpsStatus", "GOOD")) {
-                                "POOR" -> GpsStatus.POOR
-                                "NONE" -> GpsStatus.NONE
-                                else -> GpsStatus.GOOD
-                            }
-                        )
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            // Telemetry is optional; a bad JSON must not block the audio import.
-        }
-        return telemetryList
-    }
-
-    private fun readFully(stream: InputStream, buf: ByteArray, len: Int): Boolean {
+    private fun readFully(
+        stream: InputStream,
+        buf: ByteArray,
+        len: Int,
+    ): Boolean {
         var off = 0
         while (off < len) {
             val r = stream.read(buf, off, len - off)
@@ -229,7 +204,10 @@ object WavDataReader {
         return true
     }
 
-    private fun skipFully(stream: InputStream, n: Long): Boolean {
+    private fun skipFully(
+        stream: InputStream,
+        n: Long,
+    ): Boolean {
         var remaining = n
         while (remaining > 0) {
             val skipped = stream.skip(remaining)
