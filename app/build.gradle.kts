@@ -4,8 +4,13 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
 }
 
+// Single source of truth for the app version [audit B1].
+// The About dialog reads BuildConfig.VERSION_NAME; the APK name derives from it.
+val appVersionName = "13.2.0"
+val appVersionCode = 13
+
 base {
-    archivesName.set("APP_NVH_Spectro_v12")
+    archivesName.set("APP_NVH_Spectro_v$appVersionName")
 }
 
 android {
@@ -15,8 +20,8 @@ android {
         applicationId = "com.example.nvhspectro"
         minSdk = 24
         targetSdk = 36
-        versionCode = 12
-        versionName = "12.1.4"
+        versionCode = appVersionCode
+        versionName = appVersionName
     }
 
     buildTypes {
@@ -37,7 +42,7 @@ android {
     buildFeatures {
       compose = true
       aidl = false
-      buildConfig = false
+      buildConfig = true
       shaders = false
     }
 
@@ -46,6 +51,17 @@ android {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
       }
     }
+
+    lint {
+      // [§12, plan 4.4] Localisation and accessibility are build failures, not warnings.
+      // HardcodedText only inspects XML layouts, so in this Compose-only app the equivalent
+      // check for Kotlin literals lives in ci/checks.sh; this arms the XML side and the
+      // checks that DO cover Compose.
+      error += listOf("HardcodedText", "ContentDescription", "SetTextI18n", "StringFormatMatches")
+      // The project has run with zero lint errors and NO baseline since Phase 0 [DEV-6].
+      abortOnError = true
+      warningsAsErrors = false
+    }
 }
 
 kotlin {
@@ -53,12 +69,21 @@ kotlin {
 }
 
 dependencies {
+  // Measurement engine (pure Kotlin, JVM-tested) [plan 3.1]
+  implementation(project(":core"))
+  testImplementation(testFixtures(project(":core")))
+
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
   androidTestImplementation(composeBom)
 
+  // Settings/kinematics persistence [S1, plan 3.6]
+  implementation(libs.androidx.datastore.preferences)
+
   // Core Android dependencies
   implementation(libs.androidx.core.ktx)
+  // [U8, plan 4.9] Platform splash screen, backported below API 31.
+  implementation(libs.androidx.core.splashscreen)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.activity.compose)
 
@@ -86,14 +111,4 @@ dependencies {
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.espresso.core)
 
-  // Navigation
-  implementation(libs.androidx.navigation3.ui)
-  implementation(libs.androidx.navigation3.runtime)
-  implementation(libs.androidx.lifecycle.viewmodel.navigation3)
-
-  // Location Services
-  implementation("com.google.android.gms:play-services-location:21.0.1")
-
-  // Math (FFT) - JTransforms
-  implementation("com.github.wendykierp:JTransforms:3.1")
 }

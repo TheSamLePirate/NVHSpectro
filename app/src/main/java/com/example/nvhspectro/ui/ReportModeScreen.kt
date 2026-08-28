@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -29,144 +30,166 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.nvhspectro.AudioConfig
 import com.example.nvhspectro.DisplayMode
-import com.example.nvhspectro.MainViewModel
+import com.example.nvhspectro.ReportViewModel
 import com.example.nvhspectro.R
 import com.example.nvhspectro.SpectrogramCanvas
+import com.example.nvhspectro.theme.NvhActiveContainer
+import com.example.nvhspectro.theme.NvhCanvas
+import com.example.nvhspectro.theme.NvhCanvasChipBorder
+import com.example.nvhspectro.theme.NvhEmergenceMarginal
+import com.example.nvhspectro.theme.NvhExport
+import com.example.nvhspectro.theme.NvhModeLive
+import com.example.nvhspectro.theme.NvhOnSurface
+import com.example.nvhspectro.theme.NvhOutline
+import com.example.nvhspectro.theme.NvhPrimary
+import com.example.nvhspectro.theme.NvhStatusBad
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportModeScreen(
-    viewModel: MainViewModel,
-    onBack: () -> Unit
+    viewModel: ReportViewModel,
+    onBack: () -> Unit,
 ) {
-    val reportFftHistory by viewModel.reportFftHistory.collectAsState()
-    val reportAbsHistory by viewModel.reportFftHistoryAbsolute.collectAsState()
-    val reportTtnrHistory by viewModel.reportFftHistoryTTNR.collectAsState()
+    val reportFftHistory by viewModel.reportFftHistory.collectAsStateWithLifecycle()
+    val reportAbsHistory by viewModel.reportFftHistoryAbsolute.collectAsStateWithLifecycle()
+    val reportTtnrHistory by viewModel.reportFftHistoryTTNR.collectAsStateWithLifecycle()
 
-    val displayMode by viewModel.displayMode.collectAsState()
-    val minFreq by viewModel.minFreq.collectAsState()
-    val maxFreq by viewModel.maxFreq.collectAsState()
-    val minDb by viewModel.minDb.collectAsState()
-    val maxDb by viewModel.maxDb.collectAsState()
-    
-    val manualTrackedOrders by viewModel.manualTrackedOrders.collectAsState()
-    val selectedValidatedOrder by viewModel.selectedValidatedOrder.collectAsState()
-    val isBrillanceModeEnabled by viewModel.isBrillanceModeEnabled.collectAsState()
-    val kinematicsConfig by viewModel.kinematicsConfig.collectAsState()
-    val currentUserPoints by viewModel.currentUserPoints.collectAsState()
-    val currentSmartPath by viewModel.currentSmartPath.collectAsState()
-    
-    val sampleRate = 44100
+    val displayMode by viewModel.session.displayMode.collectAsStateWithLifecycle()
+    val minFreq by viewModel.session.minFreq.collectAsStateWithLifecycle()
+    val maxFreq by viewModel.session.maxFreq.collectAsStateWithLifecycle()
+    val minDb by viewModel.session.minDb.collectAsStateWithLifecycle()
+    val maxDb by viewModel.session.maxDb.collectAsStateWithLifecycle()
+
+    val manualTrackedOrders by viewModel.manualTrackedOrders.collectAsStateWithLifecycle()
+    val selectedValidatedOrder by viewModel.selectedValidatedOrder.collectAsStateWithLifecycle()
+    val isBrillanceModeEnabled by viewModel.isBrillanceModeEnabled.collectAsStateWithLifecycle()
+    val kinematicsConfig by viewModel.session.kinematicsConfig.collectAsStateWithLifecycle()
+    val currentUserPoints by viewModel.currentUserPoints.collectAsStateWithLifecycle()
+    val currentSmartPath by viewModel.currentSmartPath.collectAsStateWithLifecycle()
+
+    // [C1] Report mode can hold a snapshot from live capture or from a loaded file.
+    val loadedWavData by viewModel.session.loadedWavData.collectAsStateWithLifecycle()
+    val sampleRate = loadedWavData?.sampleRate ?: AudioConfig.LIVE_SAMPLE_RATE_HZ
     val context = LocalContext.current
 
     var isDrawingMode by remember { mutableStateOf(false) }
     var showNameDialog by remember { mutableStateOf(false) }
     var orderNameInput by remember { mutableStateOf("") }
+    val pdfFileName = stringResource(R.string.report_pdf_filename)
+    val orderNamePrefix = stringResource(R.string.report_order_name_prefix, "%s")
 
-    val pdfExportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/pdf"),
-        onResult = { uri ->
-            uri?.let { viewModel.savePdfToUri(context, it) }
-        }
-    )
+    val pdfExportLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("application/pdf"),
+            onResult = { uri ->
+                uri?.let { viewModel.savePdfToUri(context, it) }
+            },
+        )
 
     // Dialog pour nommer l'ordre
     if (showNameDialog) {
         AlertDialog(
             onDismissRequest = { showNameDialog = false },
-            title = { Text("Nom de l'ordre", color = MaterialTheme.colorScheme.onSurface) },
+            title = { Text(stringResource(R.string.report_order_name_title), color = MaterialTheme.colorScheme.onSurface) },
             text = {
                 Column {
-                    Text("Saisissez la valeur de l'ordre (ex: 29 pour H29) :", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.report_order_name_help), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = orderNameInput,
                         onValueChange = { orderNameInput = it },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Color.Gray,
-                            cursorColor = MaterialTheme.colorScheme.primary
-                        )
+                        colors =
+                            OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = NvhOutline,
+                                cursorColor = MaterialTheme.colorScheme.primary,
+                            ),
                     )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        val finalName = if (orderNameInput.isNotBlank()) "Ordre ${orderNameInput.trim()}" else null
+                        val finalName = if (orderNameInput.isNotBlank()) orderNamePrefix.format(orderNameInput.trim()) else null
                         viewModel.validateCurrentOrder(finalName)
                         showNameDialog = false
                         orderNameInput = ""
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 ) {
-                    Text("Valider", color = Color.White)
+                    Text(stringResource(R.string.action_validate), color = MaterialTheme.colorScheme.onPrimary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showNameDialog = false }) {
-                    Text("Annuler", color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.action_cancel), color = MaterialTheme.colorScheme.primary)
                 }
             },
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface,
         )
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("NVH Spectro - Rapport Manuel", fontSize = 16.sp, fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.report_title), fontSize = 16.sp, fontWeight = FontWeight.Bold) },
                 actions = {
                     Image(
                         painter = painterResource(id = R.drawable.logo_vibratec),
-                        contentDescription = "Logo",
+                        contentDescription = stringResource(R.string.cd_logo_vibratec),
                         modifier = Modifier.height(28.dp).padding(end = 6.dp),
-                        contentScale = ContentScale.Fit
+                        contentScale = ContentScale.Fit,
                     )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    ),
             )
-        }
+        },
     ) { paddingValues ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(paddingValues)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(paddingValues),
         ) {
             // --- 1. TOGGLES AND INFO ---
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 // Toggles
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     SegmentedToggleButton(
-                        options = listOf("Absolue", "TTNR"),
+                        options = listOf(stringResource(R.string.report_mode_absolute), stringResource(R.string.report_mode_emergence)),
                         selectedIndex = if (displayMode == DisplayMode.TTNR) 1 else 0,
-                        onOptionSelected = { index -> 
-                            viewModel.setDisplayMode(if (index == 1) DisplayMode.TTNR else DisplayMode.ABSOLUTE)
+                        onOptionSelected = { index ->
+                            viewModel.session.setDisplayMode(if (index == 1) DisplayMode.TTNR else DisplayMode.ABSOLUTE)
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
                     )
                     SegmentedToggleButton(
                         options = listOf("Navigation", "Dessin"),
                         selectedIndex = if (isDrawingMode) 1 else 0,
-                        onOptionSelected = { index -> 
+                        onOptionSelected = { index ->
                             isDrawingMode = (index == 1)
                         },
                         modifier = Modifier.weight(1f),
-                        activeColor = MaterialTheme.colorScheme.secondary
+                        activeColor = MaterialTheme.colorScheme.secondary,
                     )
                 }
 
@@ -174,77 +197,126 @@ fun ReportModeScreen(
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp).fillMaxWidth()
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp).fillMaxWidth(),
                     ) {
-                                                // Toujours afficher "Info GMPe" à gauche, fixe, en italique
+                        // Toujours afficher stringResource(R.string.report_gmpe_info) à gauche, fixe, en italique
                         Text(
-                            text = "Info GMPe",
+                            text = stringResource(R.string.report_gmpe_info),
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                             fontSize = 11.sp,
-                            maxLines = 1
+                            maxLines = 1,
                         )
-                        
+
                         Spacer(modifier = Modifier.width(16.dp))
-                        
+
                         // Les infos dynamiques à droite
                         Row(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f).padding(end = 4.dp) // marge à droite
+                            modifier = Modifier.weight(1f).padding(end = 4.dp), // marge à droite
                         ) {
                             val primaryColor = MaterialTheme.colorScheme.primary
                             val onSurfaceColor = MaterialTheme.colorScheme.onSurface
                             val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            
+
                             if (kinematicsConfig.isEnabled) {
                                 val vhName = kinematicsConfig.vehicleName.ifEmpty { "--" }
                                 val motorName = kinematicsConfig.motorName.ifEmpty { "--" }
-                                val v1000 = String.format("%.1f", kinematicsConfig.v1000Kmh)
-                                
-                                val vhText = buildAnnotatedString {
-                                    withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) { append("Vh: ") }
-                                    withStyle(style = SpanStyle(color = onSurfaceColor, fontWeight = FontWeight.Medium)) { append(vhName) }
-                                }
-                                val gmpeText = buildAnnotatedString {
-                                    withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) { append("GMPe: ") }
-                                    withStyle(style = SpanStyle(color = onSurfaceColor, fontWeight = FontWeight.Medium)) { append(motorName) }
-                                }
-                                val v1000Text = buildAnnotatedString {
-                                    withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) { append("V1000: ") }
-                                    withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) { append("$v1000 km/h") }
-                                }
-                                
+                                // [U7, plan 4.5] The EFFECTIVE V1000 — the value the RPM and
+                                // order maths actually use. The report header showed the raw
+                                // `v1000Kmh` field, which the calculation ignores entirely in
+                                // GEAR_RATIO / DETAILED_CHAIN mode: the operator read one
+                                // number while the instrument used another.
+                                val v1000 = String.format(Locale.FRANCE, "%.1f", kinematicsConfig.getEffectiveV1000())
+
+                                val vhText =
+                                    buildAnnotatedString {
+                                        withStyle(
+                                            style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
+                                        ) { append(stringResource(R.string.report_vehicle_prefix)) }
+                                        withStyle(
+                                            style = SpanStyle(color = onSurfaceColor, fontWeight = FontWeight.Medium),
+                                        ) { append(vhName) }
+                                    }
+                                val gmpeText =
+                                    buildAnnotatedString {
+                                        withStyle(
+                                            style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
+                                        ) { append(stringResource(R.string.report_motor_prefix)) }
+                                        withStyle(
+                                            style = SpanStyle(color = onSurfaceColor, fontWeight = FontWeight.Medium),
+                                        ) { append(motorName) }
+                                    }
+                                val v1000Text =
+                                    buildAnnotatedString {
+                                        withStyle(
+                                            style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
+                                        ) { append(stringResource(R.string.report_v1000_prefix)) }
+                                        withStyle(
+                                            style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
+                                        ) { append(stringResource(R.string.report_v1000_value, v1000)) }
+                                    }
+
                                 AutoResizedText(text = vhText, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                AutoResizedText(text = gmpeText, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))
+                                AutoResizedText(
+                                    text = gmpeText,
+                                    initialFontSize = 10.sp,
+                                    minFontSize = 7.sp,
+                                    modifier = Modifier.weight(1f),
+                                )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                AutoResizedText(text = v1000Text, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))
+                                AutoResizedText(
+                                    text = v1000Text,
+                                    initialFontSize = 10.sp,
+                                    minFontSize = 7.sp,
+                                    modifier = Modifier.weight(1f),
+                                )
                             } else {
-                                val vhText = buildAnnotatedString {
-                                    withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) { append("Vh: ") }
-                                    withStyle(style = SpanStyle(color = onSurfaceVariantColor)) { append("--") }
-                                }
-                                val gmpeText = buildAnnotatedString {
-                                    withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) { append("GMPe: ") }
-                                    withStyle(style = SpanStyle(color = onSurfaceVariantColor)) { append("--") }
-                                }
-                                val v1000Text = buildAnnotatedString {
-                                    withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) { append("V1000: ") }
-                                    withStyle(style = SpanStyle(color = onSurfaceVariantColor)) { append("--") }
-                                }
-                                
+                                val vhText =
+                                    buildAnnotatedString {
+                                        withStyle(
+                                            style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
+                                        ) { append(stringResource(R.string.report_vehicle_prefix)) }
+                                        withStyle(style = SpanStyle(color = onSurfaceVariantColor)) { append("--") }
+                                    }
+                                val gmpeText =
+                                    buildAnnotatedString {
+                                        withStyle(
+                                            style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
+                                        ) { append(stringResource(R.string.report_motor_prefix)) }
+                                        withStyle(style = SpanStyle(color = onSurfaceVariantColor)) { append("--") }
+                                    }
+                                val v1000Text =
+                                    buildAnnotatedString {
+                                        withStyle(
+                                            style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold),
+                                        ) { append(stringResource(R.string.report_v1000_prefix)) }
+                                        withStyle(style = SpanStyle(color = onSurfaceVariantColor)) { append("--") }
+                                    }
+
                                 AutoResizedText(text = vhText, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                AutoResizedText(text = gmpeText, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))
+                                AutoResizedText(
+                                    text = gmpeText,
+                                    initialFontSize = 10.sp,
+                                    minFontSize = 7.sp,
+                                    modifier = Modifier.weight(1f),
+                                )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                AutoResizedText(text = v1000Text, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))
+                                AutoResizedText(
+                                    text = v1000Text,
+                                    initialFontSize = 10.sp,
+                                    minFontSize = 7.sp,
+                                    modifier = Modifier.weight(1f),
+                                )
                             }
                         }
                     }
@@ -253,11 +325,12 @@ fun ReportModeScreen(
 
             // --- 2. SPECTROGRAM (same size as direct mode) ---
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.50f)
-                    .background(Color.Black),
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(0.50f)
+                        .background(NvhCanvas),
+                contentAlignment = Alignment.Center,
             ) {
                 SpectrogramCanvas(
                     history = if (displayMode == DisplayMode.TTNR) reportTtnrHistory else reportFftHistory,
@@ -281,68 +354,98 @@ fun ReportModeScreen(
                     isBrillanceModeEnabled = isBrillanceModeEnabled,
                     onAddManualPoint = { frameIdx: Int, binIdx: Int ->
                         viewModel.addManualTrackPoint(frameIdx, binIdx)
-                    }
+                    },
                 )
             }
 
             // --- 3. LIST OF ORDERS ---
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.20f)
-                    .padding(8.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(0.20f)
+                        .padding(8.dp),
                 shape = RoundedCornerShape(6.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)),
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Table Header
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
+                        shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp),
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("Ordre", modifier = Modifier.weight(1.2f), fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
-                            Text("Vitesse", modifier = Modifier.weight(1.2f), fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                            Text("Régime", modifier = Modifier.weight(1.3f), fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                            Text("Fréq", modifier = Modifier.weight(1.2f), fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                            Text(
+                                "Ordre",
+                                modifier = Modifier.weight(1.2f),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                "Vitesse",
+                                modifier = Modifier.weight(1.2f),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            )
+                            Text(
+                                stringResource(R.string.report_col_rpm),
+                                modifier = Modifier.weight(1.3f),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            )
+                            Text(
+                                stringResource(R.string.report_col_freq),
+                                modifier = Modifier.weight(1.2f),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                            )
                         }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f), thickness = 1.dp)
-                    
+
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 130.dp)) {
                         itemsIndexed(manualTrackedOrders) { index, order ->
                             val isSelected = selectedValidatedOrder == order
-                            val rowColor = if (isSelected) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else if (index % 2 == 0) {
-                                Color.Transparent
-                            } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.03f)
-                            }
-                            
+                            val rowColor =
+                                if (isSelected) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else if (index % 2 == 0) {
+                                    Color.Transparent
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.03f)
+                                }
+
                             Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { 
-                                        if (isSelected) {
-                                            viewModel.selectValidatedOrder(null)
-                                        } else {
-                                            viewModel.selectValidatedOrder(order)
-                                        }
-                                    },
-                                color = rowColor
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            if (isSelected) {
+                                                viewModel.selectValidatedOrder(null)
+                                            } else {
+                                                viewModel.selectValidatedOrder(order)
+                                            }
+                                        },
+                                color = rowColor,
                             ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                                     val fontW = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    
+
                                     Text(
                                         text = order.name,
                                         color = textColor,
@@ -350,9 +453,20 @@ fun ReportModeScreen(
                                         fontSize = 11.sp,
                                         modifier = Modifier.weight(1.2f),
                                         maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                     )
-                                    val speedText = if (order.minSpeedKmh != null && order.maxSpeedKmh != null) "${order.minSpeedKmh.toInt()}-${order.maxSpeedKmh.toInt()} km/h" else "-"
+                                    val speedText =
+                                        if (order.minSpeedKmh != null &&
+                                            order.maxSpeedKmh != null
+                                        ) {
+                                            stringResource(
+                                                R.string.report_speed_range,
+                                                order.minSpeedKmh.toInt(),
+                                                order.maxSpeedKmh.toInt(),
+                                            )
+                                        } else {
+                                            "-"
+                                        }
                                     Text(
                                         text = speedText,
                                         color = textColor,
@@ -361,9 +475,16 @@ fun ReportModeScreen(
                                         modifier = Modifier.weight(1.2f),
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                         maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                     )
-                                    val rpmText = if (order.minRpm != null && order.maxRpm != null) "${order.minRpm}-${order.maxRpm} RpM" else "-"
+                                    val rpmText =
+                                        if (order.minRpm != null &&
+                                            order.maxRpm != null
+                                        ) {
+                                            stringResource(R.string.report_rpm_range, order.minRpm ?: 0, order.maxRpm ?: 0)
+                                        } else {
+                                            "-"
+                                        }
                                     Text(
                                         text = rpmText,
                                         color = textColor,
@@ -372,34 +493,34 @@ fun ReportModeScreen(
                                         modifier = Modifier.weight(1.3f),
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                         maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                     )
                                     Text(
-                                        text = "${order.minFreqHz}-${order.maxFreqHz} Hz",
+                                        text = stringResource(R.string.report_freq_range, order.minFreqHz, order.maxFreqHz),
                                         color = textColor,
                                         fontWeight = fontW,
                                         fontSize = 11.sp,
                                         modifier = Modifier.weight(1.2f),
                                         textAlign = androidx.compose.ui.text.style.TextAlign.End,
                                         maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                     )
                                 }
                             }
                         }
-                        
+
                         if (currentUserPoints.isNotEmpty()) {
                             item {
                                 Surface(
                                     modifier = Modifier.fillMaxWidth(),
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
                                 ) {
                                     Text(
-                                        text = "Brouillon en cours (${currentUserPoints.size} pts)",
+                                        text = stringResource(R.string.report_draft, currentUserPoints.size),
                                         color = MaterialTheme.colorScheme.primary,
                                         fontSize = 11.sp,
                                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                                     )
                                 }
                             }
@@ -410,94 +531,116 @@ fun ReportModeScreen(
 
             // --- 4. ACTION BUTTONS ---
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Button(
                         onClick = { showNameDialog = true },
-                        modifier = Modifier.weight(1f).height(36.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF689F38)),
+                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
+                        colors = ButtonDefaults.buttonColors(containerColor = NvhActiveContainer),
                         shape = RoundedCornerShape(50),
-                        contentPadding = PaddingValues(2.dp)
+                        contentPadding = PaddingValues(2.dp),
                     ) {
-                        Text("Valider ordre", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text(
+                            stringResource(R.string.report_validate_order),
+                            color = NvhOnSurface,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                        )
                     }
 
-                    val brillanceBg = if (isBrillanceModeEnabled) Color(0xFFFDD835) else Color.Transparent
-                    val brillanceText = if (isBrillanceModeEnabled) Color.Black else Color.White
-                    val brillanceBorder = if (isBrillanceModeEnabled) Color(0xFFFDD835) else Color(0x66FFFFFF)
+                    val brillanceBg = if (isBrillanceModeEnabled) NvhEmergenceMarginal else Color.Transparent
+                    val brillanceText = if (isBrillanceModeEnabled) NvhCanvas else NvhOnSurface
+                    val brillanceBorder = if (isBrillanceModeEnabled) NvhEmergenceMarginal else NvhCanvasChipBorder
 
                     Button(
                         onClick = { viewModel.toggleBrillanceMode() },
-                        modifier = Modifier.weight(1f).height(36.dp),
+                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
                         colors = ButtonDefaults.buttonColors(containerColor = brillanceBg),
                         shape = RoundedCornerShape(50),
                         border = BorderStroke(1.dp, brillanceBorder),
-                        contentPadding = PaddingValues(2.dp)
+                        contentPadding = PaddingValues(2.dp),
                     ) {
-                        Text("Brillance ordre", color = brillanceText, fontSize = 11.sp, fontWeight = if (isBrillanceModeEnabled) FontWeight.Bold else FontWeight.Normal)
+                        Text(
+                            stringResource(R.string.report_brightness),
+                            color = brillanceText,
+                            fontSize = 11.sp,
+                            fontWeight = if (isBrillanceModeEnabled) FontWeight.Bold else FontWeight.Normal,
+                        )
                     }
                 }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Button(
                         onClick = { viewModel.clearCurrentPoints() },
-                        modifier = Modifier.weight(1f).height(36.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0288D1)),
+                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
+                        colors = ButtonDefaults.buttonColors(containerColor = NvhExport),
                         shape = RoundedCornerShape(50),
-                        contentPadding = PaddingValues(2.dp)
+                        contentPadding = PaddingValues(2.dp),
                     ) {
-                        Text("Supprime points", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text(
+                            stringResource(R.string.report_clear_points),
+                            color = NvhOnSurface,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                        )
                     }
 
                     Button(
                         onClick = { selectedValidatedOrder?.let { viewModel.removeValidatedOrder(it) } },
-                        modifier = Modifier.weight(1f).height(36.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2)),
+                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
+                        colors = ButtonDefaults.buttonColors(containerColor = NvhModeLive),
                         shape = RoundedCornerShape(50),
-                        contentPadding = PaddingValues(2.dp)
+                        contentPadding = PaddingValues(2.dp),
                     ) {
-                        Text("Supprime ordre", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text(
+                            stringResource(R.string.report_remove_order),
+                            color = NvhOnSurface,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                        )
                     }
                 }
             }
 
             // --- 5. EXPORT & QUIT ---
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedButton(
-                    onClick = { pdfExportLauncher.launch("Rapport_Emergences_NVHSpectro.pdf") },
-                    modifier = Modifier.weight(1f).height(36.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF1976D2)),
-                    border = BorderStroke(1.dp, Color(0xFF1976D2)),
+                    onClick = { pdfExportLauncher.launch(pdfFileName) },
+                    modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NvhPrimary),
+                    border = BorderStroke(1.dp, NvhPrimary),
                     shape = RoundedCornerShape(50),
-                    contentPadding = PaddingValues(2.dp)
+                    contentPadding = PaddingValues(2.dp),
                 ) {
-                    Text("Export PDF", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(stringResource(R.string.report_export_pdf), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
-                
+
                 OutlinedButton(
                     onClick = { onBack() },
-                    modifier = Modifier.weight(1f).height(36.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD32F2F)),
-                    border = BorderStroke(1.dp, Color(0xFFD32F2F)),
+                    modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NvhStatusBad),
+                    border = BorderStroke(1.dp, NvhStatusBad),
                     shape = RoundedCornerShape(50),
-                    contentPadding = PaddingValues(2.dp)
+                    contentPadding = PaddingValues(2.dp),
                 ) {
-                    Text("Quitte rapport", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(stringResource(R.string.report_quit), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
         }
@@ -510,50 +653,55 @@ fun SegmentedToggleButton(
     selectedIndex: Int,
     onOptionSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    activeColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary
+    activeColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
 ) {
     val cornerRadius = 50.dp
     Surface(
-        modifier = modifier.height(36.dp),
+        modifier = modifier.height(REPORT_TOUCH_TARGET),
         shape = RoundedCornerShape(cornerRadius),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(2.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             options.forEachIndexed { index, text ->
                 val isSelected = index == selectedIndex
                 val backgroundColor by animateColorAsState(
                     targetValue = if (isSelected) activeColor else androidx.compose.ui.graphics.Color.Transparent,
                     animationSpec = tween(300),
-                    label = "SegmentedBgColor"
+                    label = "SegmentedBgColor",
                 )
                 val textColor by animateColorAsState(
-                    targetValue = if (isSelected) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                    targetValue = if (isSelected) NvhOnSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                     animationSpec = tween(300),
-                    label = "SegmentedTextColor"
+                    label = "SegmentedTextColor",
                 )
 
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .background(backgroundColor, RoundedCornerShape(cornerRadius))
-                        .clickable(
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                            indication = null
-                        ) {
-                            onOptionSelected(index)
-                        },
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(backgroundColor, RoundedCornerShape(cornerRadius))
+                            .clickable(
+                                interactionSource =
+                                    remember {
+                                        androidx.compose.foundation.interaction
+                                            .MutableInteractionSource()
+                                    },
+                                indication = null,
+                            ) {
+                                onOptionSelected(index)
+                            },
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = text,
                         color = textColor,
                         fontSize = 11.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                     )
                 }
             }
@@ -566,7 +714,7 @@ fun AutoResizedText(
     text: androidx.compose.ui.text.AnnotatedString,
     modifier: Modifier = Modifier,
     initialFontSize: androidx.compose.ui.unit.TextUnit = 11.sp,
-    minFontSize: androidx.compose.ui.unit.TextUnit = 8.sp
+    minFontSize: androidx.compose.ui.unit.TextUnit = 8.sp,
 ) {
     var fontSize by remember(text) { mutableStateOf(initialFontSize) }
     var readyToDraw by remember(text) { mutableStateOf(false) }
@@ -589,43 +737,9 @@ fun AutoResizedText(
             } else {
                 readyToDraw = true
             }
-        }
+        },
     )
 }
 
-@Composable
-fun AutoResizedText(
-    text: String,
-
-    color: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier,
-    fontWeight: androidx.compose.ui.text.font.FontWeight? = null,
-    initialFontSize: androidx.compose.ui.unit.TextUnit = 11.sp,
-    minFontSize: androidx.compose.ui.unit.TextUnit = 8.sp
-) {
-    var fontSize by remember(text) { mutableStateOf(initialFontSize) }
-    var readyToDraw by remember(text) { mutableStateOf(false) }
-
-    Text(
-        text = text,
-        color = color,
-        fontWeight = fontWeight,
-        fontSize = fontSize,
-        maxLines = 1,
-        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-        softWrap = false,
-        modifier = modifier.alpha(if (readyToDraw) 1f else 0f),
-        onTextLayout = { textLayoutResult ->
-            if (textLayoutResult.didOverflowWidth && fontSize.value > minFontSize.value) {
-                val nextSize = fontSize.value * 0.9f
-                if (nextSize < minFontSize.value) {
-                    fontSize = minFontSize
-                } else {
-                    fontSize = nextSize.sp
-                }
-            } else {
-                readyToDraw = true
-            }
-        }
-    )
-}
+/** Minimum interactive size for the report-mode controls [§12, plan 4.4]. */
+private val REPORT_TOUCH_TARGET = 48.dp
