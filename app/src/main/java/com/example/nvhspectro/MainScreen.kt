@@ -13,6 +13,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -323,18 +324,36 @@ fun AppScreen(
                             modifier =
                                 Modifier
                                     .align(Alignment.TopStart)
-                                    .padding(start = NvhSpacing.sm, top = NvhSpacing.xs),
+                                    // End inset: the fullscreen toggle owns the top-right
+                                    // corner; the chip row must not slide under it.
+                                    .padding(
+                                        start = NvhSpacing.sm,
+                                        top = NvhSpacing.xs,
+                                        end = NvhMinTouchTarget + NvhSpacing.sm,
+                                    ),
                             verticalArrangement = Arrangement.spacedBy(NvhSpacing.xxs),
                         ) {
-                            // Sélecteur de Mode (Absolue vs TTNR) + action contextuelle
+                            // Sélecteur de Mode (Absolue vs TTNR) + action contextuelle.
+                            // Scrollable: à petite largeur ou grande échelle de police les
+                            // chips défilent au lieu de se tronquer ou de se replier.
                             Row(
+                                modifier =
+                                    Modifier.horizontalScroll(
+                                        androidx.compose.foundation.rememberScrollState(),
+                                    ),
                                 horizontalArrangement = Arrangement.spacedBy(NvhSpacing.xs),
                             ) {
                                 DisplayMode.values().forEach { mode ->
                                     FilterChip(
                                         selected = (displayMode == mode),
                                         onClick = { session.setDisplayMode(mode) },
-                                        label = { Text(mode.label, style = MaterialTheme.typography.labelMedium) },
+                                        label = {
+                                            Text(
+                                                mode.label,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                maxLines = 1,
+                                            )
+                                        },
                                         colors =
                                             FilterChipDefaults.filterChipColors(
                                                 selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -458,11 +477,13 @@ fun AppScreen(
                                                         formatMinSec(LiveViewModel.MAX_RECORDING_SEC),
                                                     ),
                                                     style = NvhReadoutSmall,
+                                                    maxLines = 1,
                                                 )
                                             } else {
                                                 Text(
                                                     stringResource(R.string.recording_start),
                                                     style = MaterialTheme.typography.labelMedium,
+                                                    maxLines = 1,
                                                 )
                                             }
                                         },
