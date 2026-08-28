@@ -6,8 +6,8 @@ plugins {
 
 // Single source of truth for the app version [audit B1].
 // The About dialog reads BuildConfig.VERSION_NAME; the APK name derives from it.
-val appVersionName = "13.2.0"
-val appVersionCode = 13
+val appVersionName = "14.0.0"
+val appVersionCode = 14
 
 base {
     archivesName.set("APP_NVH_Spectro_v$appVersionName")

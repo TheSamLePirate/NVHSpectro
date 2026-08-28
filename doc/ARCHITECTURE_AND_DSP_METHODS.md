@@ -1,6 +1,6 @@
 # NVH Spectro — Architecture, méthodes DSP et budget d'erreur
 
-**Application :** NVH Spectro · **Version :** 13.2.0 (`versionCode` 13)
+**Application :** NVH Spectro · **Version :** 14.0.0 (`versionCode` 14)
 **Auteur :** Louis BARTHELEMY — VIBRATEAM [Vibratec (Everenn Group)]
 **Contact :** louis.barthelemy@vibrateam.fr
 **Dernière révision :** 2026-08-27 — réécrit d'après le code réel (phases AAA 0→4, GPS-0→GPS-4)

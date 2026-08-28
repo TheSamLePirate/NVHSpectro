@@ -468,3 +468,35 @@ truth, biais/MAE/RMSE/P95 + lag by correlation, σ-coverage check,
 full-tracking A/B decision, PARAMETER FREEZE (every `Config` constant is
 provisional), `doc/VALIDATION.md`. Optional GPS-6 (raw pseudorange-rate R&D)
 only after GPS-5 shows remaining need.
+
+---
+
+## Release v14.0.0 and the V13.2 audit (2026-08-28)
+
+`V13.2-audit.md` (dated 2026-08-27, written against commit `157cd3d`) audits
+the delivered state against the AAA bar rather than against V13.1. Its verdict
+— **B− software engineering, C instrument-readiness**, 31 open findings
+(1 Critical, 5 High, 14 Medium, 11 Low) — is now **surfaced in `README.md`**
+rather than living only in a repo file: the scorecard, the four gaps that
+matter, and the limits of use are on the front page where an operator or a
+customer will see them before they trust a number.
+
+| Change | Detail |
+|---|---|
+| Version | `appVersionName` 13.2.0 → **14.0.0**, `appVersionCode` 13 → **14** in `app/build.gradle.kts` — still the only source [B1]; README badge, APK-name example and `doc/ARCHITECTURE_AND_DSP_METHODS.md` header follow it |
+| README | New `## 🔍 Audit V13.2` section (scorecard, C-1 regression, missing field validation, V1000 uncertainty, limits of use); `V13.2-audit.md` added to the governing-document table |
+| README fix | Platform badge said **Android 8.0+** while `minSdk = 24` → corrected to **7.0+** — audit finding **R-d**, closed |
+| Upstream | PR #2 merged to `Luigi-BARTH:master` at `0fbb441` (36 commits, CI green: 8m40s + 10m42s), closing audit R-a's "the master branch does not contain the work" |
+
+**Deliberately not changed:** the `13.2.0` strings in `ReportStampTest`,
+`TelemetryCodecTest` (fixture payloads, not the app version) and in
+`AAA-TRACKING.md`'s Gate 0/1/3 entries, `audit-gps.md`, `V13.1-audit.md`
+(frozen historical records of what was true when they were written).
+
+| ID | Deviation | Rationale |
+|---|---|---|
+| DEV-53 | Version jumped 13.2.0 → 14.0.0 (major) without a CHANGELOG | The bump marks the AAA campaign landing on master, not a semver-computed API delta; changelog + tags remain part of audit **R-a**, open for phase 5.5 |
+
+**Unchanged by this commit:** every finding in `V13.2-audit.md` is still open,
+C-1 (WAV order sweep on the main thread) included. Publishing an audit is not
+acting on it — the remediation table is phase-5 work.
