@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NVH Spectro — Analyse acoustique & suivi d'ordres sur Android</title>
+<meta name="description" content="NVH Spectro transforme un téléphone Android en instrument NVH de terrain : spectrogramme temps réel, suivi d'ordres moteur, vitesse GNSS par filtre de Kalman, rapports PDF traçables. Sans aucun accès réseau.">
+<meta property="og:title" content="NVH Spectro — l'instrument NVH dans votre poche">
+<meta property="og:description" content="Spectrogramme temps réel, suivi d'ordres, GNSS Kalman, rapports traçables. Un instrument NVH Android, 100 % hors ligne.">
+<meta property="og:image" content="assets/capture-ecran-telephone.png">
+<link rel="icon" type="image/webp" href="assets/icon.webp">
+<style>
+:root{
+  --bg:#0A0E13; --surface:#141A22; --surface2:#1C2430; --high:#232D3B;
+  --text:#E6EDF3; --muted:#A9B6C4; --outline:#3B4756;
+  --primary:#4FC3F7; --on-primary:#00293D;
+  --good:#00E676; --warn:#FFB300; --bad:#FF5252; --accent:#FF9100;
+  --radius:14px; --maxw:1120px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.6;overflow-x:hidden}
+a{color:var(--primary);text-decoration:none}
+a:hover{text-decoration:underline}
+img{max-width:100%}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+section{padding:88px 0}
+.kicker{display:inline-block;font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--primary);margin-bottom:14px}
+h2{font-size:clamp(26px,4vw,38px);font-weight:800;letter-spacing:-.02em;margin-bottom:16px}
+.lead{color:var(--muted);font-size:18px;max-width:720px;margin-bottom:40px}
+.badge{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--outline);border-radius:999px;padding:5px 14px;font-size:13px;font-weight:600;color:var(--muted)}
+.badge b{color:var(--text)}
+.btn{display:inline-flex;align-items:center;gap:10px;border-radius:12px;padding:14px 26px;font-weight:700;font-size:16px;transition:transform .15s,box-shadow .15s}
+.btn:hover{text-decoration:none;transform:translateY(-2px)}
+.btn-primary{background:var(--primary);color:var(--on-primary);box-shadow:0 8px 24px rgba(79,195,247,.25)}
+.btn-ghost{border:1px solid var(--outline);color:var(--text)}
+.btn-ghost:hover{border-color:var(--primary)}
+code,pre{font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace}
+</style>
+</head>
+<body>
+<!-- ======================= NAV ======================= -->
+<nav style="position:sticky;top:0;z-index:50;background:rgba(10,14,19,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--outline)">
+  <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;height:64px">
+    <a href="#" style="display:flex;align-items:center;gap:12px;color:var(--text);font-weight:800;font-size:18px">
+      <img src="assets/icon.webp" alt="" width="32" height="32" style="border-radius:8px">
+      NVH&nbsp;Spectro
+    </a>
+    <div style="display:flex;gap:26px;font-size:15px;font-weight:600" class="navlinks">
+      <a href="#features" style="color:var(--muted)">Fonctionnalités</a>
+      <a href="#how" style="color:var(--muted)">Comment ça marche</a>
+      <a href="#honest" style="color:var(--muted)">Précision</a>
+      <a href="#docs" style="color:var(--muted)">Documentation</a>
+      <a href="https://github.com/TheSamLePirate/NVHSpectro" style="color:var(--text)">GitHub&nbsp;↗</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ======================= HERO ======================= -->
+<header style="padding:80px 0 60px;position:relative;overflow:hidden">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 70% 20%,rgba(79,195,247,.10),transparent 65%),radial-gradient(ellipse 40% 40% at 20% 80%,rgba(0,230,118,.05),transparent 60%);pointer-events:none"></div>
+  <div class="wrap hero-grid" style="display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:center;position:relative">
+    <div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px">
+        <span class="badge"><b>v14.0.0</b></span>
+        <span class="badge">Android 7.0+</span>
+        <span class="badge">Kotlin · Compose</span>
+        <span class="badge" style="border-color:rgba(0,230,118,.4);color:var(--good)">🔒 Zéro accès réseau</span>
+      </div>
+      <h1 style="font-size:clamp(34px,5.4vw,56px);font-weight:800;letter-spacing:-.03em;line-height:1.08;margin-bottom:20px">
+        L'instrument NVH<br>dans votre <span style="color:var(--primary)">poche</span>.
+      </h1>
+      <p style="font-size:19px;color:var(--muted);max-width:520px;margin-bottom:32px">
+        NVH Spectro transforme un téléphone Android en chaîne de mesure acoustique :
+        <b style="color:var(--text)">spectrogramme temps réel</b>, <b style="color:var(--text)">suivi d'ordres moteur</b>
+        projeté depuis la <b style="color:var(--text)">vitesse GNSS</b> (filtre de Kalman),
+        et rapports PDF traçables — pour les essais véhicule thermiques, hybrides et électriques.
+      </p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <a class="btn btn-primary" href="https://github.com/TheSamLePirate/NVHSpectro">★ Voir sur GitHub</a>
+        <a class="btn btn-ghost" href="#how">Comment ça marche →</a>
+      </div>
+      <p style="margin-top:26px;font-size:13.5px;color:var(--muted)">
+        Gratuit · open source · aucune donnée ne quitte l'appareil (pas de permission INTERNET, vérifié par la CI).
+      </p>
+    </div>
+    <div style="display:flex;justify-content:center">
+      <div style="width:300px;border-radius:36px;border:3px solid var(--outline);background:#000;padding:10px;box-shadow:0 30px 80px rgba(79,195,247,.15),0 4px 20px rgba(0,0,0,.6);transform:rotate(2deg)">
+        <img src="assets/capture-ecran-telephone.png" alt="Capture d'écran de NVH Spectro : spectrogramme, lecture WAV, données GPS et suivi d'ordre H18" style="border-radius:26px;display:block">
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ======================= FEATURES ======================= -->
+<section id="features" style="background:var(--surface);border-top:1px solid var(--outline);border-bottom:1px solid var(--outline)">
+  <div class="wrap">
+    <span class="kicker">Fonctionnalités</span>
+    <h2>Une chaîne de mesure complète</h2>
+    <p class="lead">Du microphone du téléphone au rapport client signé, chaque étape est outillée — et chaque nombre sait d'où il vient.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px" class="cards3">
+      <div style="background:var(--surface2);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <div style="font-size:28px;margin-bottom:10px">🌈</div>
+        <h3 style="font-size:18px;margin-bottom:8px">Spectrogramme temps réel</h3>
+        <p style="color:var(--muted);font-size:14.5px">FFT 512→4096, calibration Hann exacte (0 dBFS lu 0 dBFS), deux vues : niveau absolu et <b style="color:var(--text)">indice d'émergence NVH</b>. Fenêtre, plage dB et plage fréquence réglables en direct.</p>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <div style="font-size:28px;margin-bottom:10px">⚙️</div>
+        <h3 style="font-size:18px;margin-bottom:8px">Suivi d'ordres GMPe</h3>
+        <p style="color:var(--muted);font-size:14.5px">Cinématique V1000, rapport global ou chaîne détaillée (réducteur × pont × pneu). Projection H1/Hn sur le spectre, étiquetage des harmoniques émergentes, rapport d'émergence accumulé.</p>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <div style="font-size:28px;margin-bottom:10px">🛰️</div>
+        <h3 style="font-size:18px;margin-bottom:8px">Vitesse GNSS par Kalman</h3>
+        <p style="color:var(--muted);font-size:14.5px">Vitesse Doppler du GPS interne, filtre Kalman [vitesse, accélération] avec covariance, rejet des fixes aberrants. Chaque estimation porte son âge, son σ et sa validité.</p>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <div style="font-size:28px;margin-bottom:10px">📂</div>
+        <h3 style="font-size:18px;margin-bottom:8px">Analyse WAV & vidéo</h3>
+        <p style="color:var(--muted);font-size:14.5px">Import WAV (16 bits mono/stéréo, parser RIFF complet) et extraction audio des vidéos locales, analysés <b style="color:var(--text)">à leur propre fréquence d'échantillonnage</b>. Télémétrie rejouée par lissage RTS.</p>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <div style="font-size:28px;margin-bottom:10px">📄</div>
+        <h3 style="font-size:18px;margin-bottom:8px">Rapports traçables</h3>
+        <p style="color:var(--muted);font-size:14.5px">Enregistrement 30 s audio + télémétrie, mode rapport manuel avec tracé assisté des ordres, export PNG et PDF avec cartouche : date, build, source, route micro, paramètres et statut de vitesse.</p>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <div style="font-size:28px;margin-bottom:10px">♿</div>
+        <h3 style="font-size:18px;margin-bottom:8px">Conçu pour le terrain</h3>
+        <p style="color:var(--muted);font-size:14.5px">Thème sombre calibré habitacle, contrastes WCAG testés par la CI, TalkBack, cibles 48 dp, dégradation par permission (sans micro : analyse de fichiers ; sans GPS précis : c'est écrit là où la vitesse s'affichait).</p>
+      </div>
+    </div>
+
+    <figure style="margin:56px 0 0">
+      <img src="assets/capture-spectrogramme.png" alt="Spectrogramme complet d'un fichier de 5 minutes en mode émergence NVH, curseur fréquence et balises d'ordres" style="border-radius:var(--radius);border:1px solid var(--outline);box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <figcaption style="color:var(--muted);font-size:13.5px;margin-top:12px;text-align:center">
+        Vue émergence NVH d'un fichier de 5 minutes — curseur fréquence, balises d'harmoniques et axe temporel complet. Les sous-30 Hz sont masqués à l'affichage, les données restent vraies.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================= HOW IT WORKS ======================= -->
+<section id="how">
+  <div class="wrap">
+    <span class="kicker">Comment ça marche</span>
+    <h2>Deux capteurs, une projection</h2>
+    <p class="lead">Le téléphone capte deux signaux : le <b style="color:var(--text)">son habitacle</b> (microphone non traité) et la <b style="color:var(--text)">vitesse</b> (Doppler GNSS). La physique du véhicule relie les deux.</p>
+
+    <div style="background:var(--surface);border:1px solid var(--outline);border-radius:var(--radius);padding:34px;overflow-x:auto">
+      <svg viewBox="0 0 960 300" width="100%" style="min-width:760px" role="img" aria-label="Chaîne de mesure : micro vers FFT vers spectrogramme ; GNSS vers Kalman vers cinématique vers projection d'ordres">
+        <defs>
+          <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#4FC3F7"/></marker>
+          <marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#00E676"/></marker>
+        </defs>
+        <!-- audio chain -->
+        <g font-family="Inter,sans-serif">
+          <rect x="20" y="40" width="150" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="95" y="67" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">🎙️ Micro</text>
+          <text x="95" y="87" fill="#A9B6C4" font-size="11" text-anchor="middle">UNPROCESSED</text>
+          <line x1="170" y1="72" x2="230" y2="72" stroke="#4FC3F7" stroke-width="2" marker-end="url(#ar)"/>
+          <rect x="235" y="40" width="170" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="320" y="67" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">FFT + Hann</text>
+          <text x="320" y="87" fill="#A9B6C4" font-size="11" text-anchor="middle">calibration 0 dBFS</text>
+          <line x1="405" y1="72" x2="465" y2="72" stroke="#4FC3F7" stroke-width="2" marker-end="url(#ar)"/>
+          <rect x="470" y="40" width="190" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="565" y="67" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">Spectrogramme</text>
+          <text x="565" y="87" fill="#A9B6C4" font-size="11" text-anchor="middle">50 % overlap, temps réel</text>
+          <line x1="660" y1="72" x2="720" y2="72" stroke="#4FC3F7" stroke-width="2" marker-end="url(#ar)"/>
+          <rect x="725" y="40" width="215" height="64" rx="10" fill="#0F2A3D" stroke="#4FC3F7"/>
+          <text x="832" y="67" fill="#4FC3F7" font-size="14" font-weight="700" text-anchor="middle">Spectrogramme + ordres</text>
+          <text x="832" y="87" fill="#A9B6C4" font-size="11" text-anchor="middle">étiquettes Hk, émergence</text>
+          <!-- gnss chain -->
+          <rect x="20" y="190" width="150" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="95" y="217" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">🛰️ GNSS</text>
+          <text x="95" y="237" fill="#A9B6C4" font-size="11" text-anchor="middle">Doppler + σv</text>
+          <line x1="170" y1="222" x2="230" y2="222" stroke="#00E676" stroke-width="2" marker-end="url(#ar2)"/>
+          <rect x="235" y="190" width="170" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="320" y="217" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">Kalman [v, a]</text>
+          <text x="320" y="237" fill="#A9B6C4" font-size="11" text-anchor="middle">covariance + rejet NIS</text>
+          <line x1="405" y1="222" x2="465" y2="222" stroke="#00E676" stroke-width="2" marker-end="url(#ar2)"/>
+          <rect x="470" y="190" width="190" height="64" rx="10" fill="#1C2430" stroke="#3B4756"/>
+          <text x="565" y="217" fill="#E6EDF3" font-size="14" font-weight="700" text-anchor="middle">Cinématique</text>
+          <text x="565" y="237" fill="#A9B6C4" font-size="11" text-anchor="middle">V1000 → RPM → H1</text>
+          <line x1="660" y1="222" x2="720" y2="222" stroke="#00E676" stroke-width="2" marker-end="url(#ar2)"/>
+          <rect x="725" y="190" width="215" height="64" rx="10" fill="#0D2B1E" stroke="#00E676"/>
+          <text x="832" y="217" fill="#00E676" font-size="14" font-weight="700" text-anchor="middle">f(Hₖ) = k · RPM / 60</text>
+          <text x="832" y="237" fill="#A9B6C4" font-size="11" text-anchor="middle">fenêtre k·σf bornée</text>
+          <!-- link -->
+          <path d="M 832 104 L 832 190" stroke="#FFB300" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ar2)"/>
+          <text x="845" y="152" fill="#FFB300" font-size="11" font-weight="600">projection</text>
+        </g>
+      </svg>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px" class="cards2">
+      <div style="background:var(--surface);border:1px solid var(--outline);border-radius:var(--radius);padding:28px">
+        <h3 style="font-size:17px;margin-bottom:10px;color:var(--primary)">Le budget d'erreur, pas un simple curseur</h3>
+        <p style="color:var(--muted);font-size:14.5px">L'incertitude de vitesse σv se propage en RPM puis en fréquence : σf(Hₙ) = n · σv · 1000 / (60 · V1000). La fenêtre de recherche du pic vaut k·σf + Δf — assez large pour contenir la vraie raie, <b style="color:var(--text)">bornée à mi-distance de l'ordre voisin</b> : au-delà, le suivi s'affiche « non identifiable » plutôt que d'inventer une valeur.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--outline);border-radius:var(--radius);padding:28px">
+        <h3 style="font-size:17px;margin-bottom:10px;color:var(--good)">Le temps, pris au sérieux</h3>
+        <p style="color:var(--muted);font-size:14.5px">La vitesse est évaluée <b style="color:var(--text)">à l'instant de capture du buffer audio</b> (horloge BOOTTIME matérielle d'AudioRecord), pas à l'instant du calcul. Un fix périmé au-delà de 2 s rend la vitesse indisponible : l'écran affiche <b style="color:var(--text)">"--"</b> plutôt qu'un dernier chiffre figé.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= HONESTY / METROLOGY ======================= -->
+<section id="honest" style="background:var(--surface);border-top:1px solid var(--outline);border-bottom:1px solid var(--outline)">
+  <div class="wrap">
+    <span class="kicker" style="color:var(--warn)">Une mesure qui connaît ses limites</span>
+    <h2>La confiance se construit en disant non</h2>
+    <p class="lead">Un instrument crédible refuse de répondre quand il ne peut pas répondre. NVH Spectro applique cette règle partout.</p>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px" class="cards2">
+      <div style="background:var(--bg);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <h3 style="font-size:16.5px;margin-bottom:8px">🔒 Zéro réseau, par construction</h3>
+        <p style="color:var(--muted);font-size:14.5px">La permission INTERNET n'est pas déclarée — et la CI <b style="color:var(--text)">échoue la build</b> si elle réapparaît, comme toute surface WebView/JS. Enregistrements, télémétrie et journaux ne quittent l'appareil que par un export explicite.</p>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <h3 style="font-size:16.5px;margin-bottom:8px">📉 "--" plutôt qu'un chiffre mensonger</h3>
+        <p style="color:var(--muted);font-size:14.5px">Vitesse périmée, GNSS désactivé, fix simulé : la vitesse devient indisponible au lieu d'être figée. Un 0,0 km/h réel est affiché tel quel — l'absence de mesure et l'arrêt du véhicule sont deux informations différentes.</p>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <h3 style="font-size:16.5px;margin-bottom:8px">🏷️ Des métriques nommées honnêtement</h3>
+        <p style="color:var(--muted);font-size:14.5px">L'« indice d'émergence NVH » est un indicateur maison, pas un TTNR ECMA-74 : le rapport PDF le dit en toutes lettres en bas de page. Aucun libellé normatif ne couvre un calcul non conforme.</p>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <h3 style="font-size:16.5px;margin-bottom:8px">🧾 Chaque rapport dit comment il a été fait</h3>
+        <p style="color:var(--muted);font-size:14.5px">Cartouche de traçabilité : date, version, source (fichier ou direct), route micro réellement obtenue (UNPROCESSED / VOICE_RECOGNITION), estimateur de vitesse et ses paramètres, statut « causale » ou « lissée (RTS) », niveau de confiance k.</p>
+      </div>
+    </div>
+    <p style="margin-top:28px;color:var(--muted);font-size:14px;border-left:3px solid var(--warn);padding-left:16px">
+      <b style="color:var(--text)">Transparence totale :</b> le projet porte ses propres audits — un audit d'origine à 74 constats, un audit GNSS dédié, et un audit courant à 31 constats, tous publics dans le dépôt, constats cités en <code style="font-size:12.5px">fichier:ligne</code>.
+    </p>
+  </div>
+</section>
+
+<!-- ======================= ARCHITECTURE / QUALITY ======================= -->
+<section id="arch">
+  <div class="wrap">
+    <span class="kicker">Sous le capot</span>
+    <h2>Deux modules, une séparation vérifiée</h2>
+    <p class="lead">Le moteur de mesure est du Kotlin pur, testé sur JVM à chaque push. La couche Android ne fait que l'interface et les capteurs.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="cards2">
+      <div style="background:var(--surface);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <h3 style="font-size:17px;margin-bottom:12px;color:var(--primary)">:core — Kotlin pur, zéro import Android</h3>
+        <p style="color:var(--muted);font-size:14px;line-height:2">
+          <code>FFTProcessor</code> · <code>OrderTrackingEngine</code> · <code>OrderSearchPolicy</code><br>
+          <code>KalmanSpeedEstimator</code> · <code>GnssSpeedSession</code><br>
+          <code>MeasurementSession</code> · <code>WavAnalysis</code> · <code>TelemetryCodec</code>
+        </p>
+        <p style="color:var(--good);font-size:14px;margin-top:10px"><b>≥ 90 % de couverture de ligne, imposée par la CI.</b> La réapparition d'un import Android échoue la build.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+        <h3 style="font-size:17px;margin-bottom:12px">:app — Android & Compose</h3>
+        <p style="color:var(--muted);font-size:14px;line-height:2">
+          <code>CaptureEngine</code> (un seul propriétaire du micro) · <code>SpeedProvider</code><br>
+          <code>LiveViewModel</code> · <code>AnalyzerViewModel</code> · <code>ReportViewModel</code><br>
+          <code>RecordingStore</code> (MediaStore) · <code>SettingsStore</code> (DataStore) · <code>export/</code> (PNG, PDF)
+        </p>
+        <p style="color:var(--muted);font-size:14px;margin-top:10px">202 tests JVM, snapshot doré DSP (tolérance 1e-9), zéro erreur lint sans baseline.</p>
+      </div>
+    </div>
+    <div style="margin-top:24px;background:var(--surface);border:1px solid var(--outline);border-radius:var(--radius);padding:26px">
+      <h3 style="font-size:17px;margin-bottom:14px">Ce que la CI fait échouer avant vous</h3>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:13.5px;color:var(--muted)" class="gates">
+        <div>✅ Fréquence d'échantillonnage littérale hors <code>AudioConfig</code></div>
+        <div>✅ Import Android dans <code>:core</code></div>
+        <div>✅ Couleur littérale hors du thème</div>
+        <div>✅ Texte utilisateur en dur dans Compose</div>
+        <div>✅ Permission INTERNET ou WebView/JS</div>
+        <div>✅ Code mort supprimé qui revient</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= DOCS ======================= -->
+<section id="docs" style="background:var(--surface);border-top:1px solid var(--outline)">
+  <div class="wrap">
+    <span class="kicker">Documentation</span>
+    <h2>Tout est écrit, tout est public</h2>
+    <p class="lead">Le projet est piloté par des documents versionnés : audit → plan → journal d'exécution avec preuves. Rien n'est déclaré fait sans preuve d'appareil.</p>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px" class="cards2">
+      <a href="https://github.com/TheSamLePirate/NVHSpectro/blob/HEAD/README.md" style="background:var(--bg);border:1px solid var(--outline);border-radius:var(--radius);padding:26px;color:var(--text)" class="doccard">
+        <h3 style="font-size:16.5px;margin-bottom:8px">📖 README — démarrage & fonctionnalités</h3>
+        <p style="color:var(--muted);font-size:14px">Compilation, commandes, description complète des fonctionnalités et de l'architecture.</p>
+      </a>
+      <a href="https://github.com/TheSamLePirate/NVHSpectro/blob/HEAD/doc/ARCHITECTURE_AND_DSP_METHODS.md" style="background:var(--bg);border:1px solid var(--outline);border-radius:var(--radius);padding:26px;color:var(--text)" class="doccard">
+        <h3 style="font-size:16.5px;margin-bottom:8px">🔬 Méthodes DSP & budget d'erreur</h3>
+        <p style="color:var(--muted);font-size:14px">Le document de référence : calibration FFT, modèle d'émergence, chaîne Kalman, limites d'emploi. Réécrit depuis le code réel, avec clause de falsifiabilité.</p>
+      </a>
+      <a href="https://github.com/TheSamLePirate/NVHSpectro/blob/HEAD/V13.2-audit.md" style="background:var(--bg);border:1px solid var(--outline);border-radius:var(--radius);padding:26px;color:var(--text)" class="doccard">
+        <h3 style="font-size:16.5px;margin-bottom:8px">📋 Audit V13.2 — l'état réel du projet</h3>
+        <p style="color:var(--muted);font-size:14px">Audit sans complaisance de la version courante : 31 constats en <code>fichier:ligne</code>, notes par domaine, feuille de route. Le projet affiche ses notes, y compris le D.</p>
+      </a>
+      <a href="https://github.com/TheSamLePirate/NVHSpectro/blob/HEAD/AAA-TRACKING.md" style="background:var(--bg);border:1px solid var(--outline);border-radius:var(--radius);padding:26px;color:var(--text)" class="doccard">
+        <h3 style="font-size:16.5px;margin-bottom:8px">🗂️ Journal d'exécution AAA + GPS</h3>
+        <p style="color:var(--muted);font-size:14px">Chaque phase, chaque commit, chaque déviation et chaque preuve de vérification sur appareil. 52 déviations documentées, zéro décision invisible.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= GET STARTED ======================= -->
+<section id="start">
+  <div class="wrap">
+    <span class="kicker">Démarrer</span>
+    <h2>Compiler en 3 commandes</h2>
+    <p class="lead">Prérequis : JDK 17 et le SDK Android (compileSdk 36, minSdk 24).</p>
+    <div style="background:#0D1420;border:1px solid var(--outline);border-radius:var(--radius);padding:28px;overflow-x:auto">
+<pre style="color:#C9D6E3;font-size:14px;line-height:2"><span style="color:#5A6B7E"># cloner</span>
+git clone https://github.com/TheSamLePirate/NVHSpectro.git <span style="color:#5A6B7E">&amp;&amp;</span> cd NVHSpectro
+
+<span style="color:#5A6B7E"># vérifier (tests, couverture ≥ 90 % :core, lint, gates d'hygiène)</span>
+./gradlew :core:test :app:testDebugUnitTest :core:koverVerify :app:lintDebug
+
+<span style="color:#5A6B7E"># installer sur l'appareil connecté</span>
+./gradlew :app:installDebug</pre>
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:28px">
+      <a class="btn btn-primary" href="https://github.com/TheSamLePirate/NVHSpectro">Ouvrir le dépôt GitHub ↗</a>
+    </div>
+    <p style="margin-top:18px;color:var(--muted);font-size:13.5px">Au premier lancement, accordez micro et localisation précise : le micro devient la source de mesure, le GPS alimente la projection d'ordres. Sans eux, l'app reste utilisable en analyse de fichiers — et elle l'explique à l'écran.</p>
+  </div>
+</section>
+
+<!-- ======================= FOOTER ======================= -->
+<footer style="background:var(--surface);border-top:1px solid var(--outline);padding:44px 0">
+  <div class="wrap" style="display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:14px">
+      <img src="assets/icon.webp" alt="" width="28" height="28" style="border-radius:6px">
+      <div>
+        <div style="font-weight:700">NVH Spectro v14.0.0</div>
+        <div style="font-size:13px;color:var(--muted)">Analyse NVH véhicule sur Android — open source</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+      <img src="assets/logo-vibratec.png" alt="Vibratec — Everenn Group" height="30">
+      <a href="https://github.com/TheSamLePirate/NVHSpectro" style="font-weight:600">GitHub ↗</a>
+    </div>
+  </div>
+  <div class="wrap" style="margin-top:24px;font-size:12.5px;color:var(--muted)">
+    NVH Spectro est un instrument d'aide à l'essai : l'indice d'émergence affiché n'est pas un TTNR ECMA-74 et les constantes de la chaîne GNSS sont en cours de validation terrain (voir l'audit V13.2).
+  </div>
+</footer>
+
+<style>
+@media (max-width: 900px){
+  .hero-grid{grid-template-columns:1fr !important;gap:36px}
+  .cards3{grid-template-columns:1fr !important}
+  .cards2{grid-template-columns:1fr !important}
+  .gates{grid-template-columns:1fr 1fr !important}
+  .navlinks a:not(:last-child){display:none}
+}
+@media (max-width: 520px){
+  .gates{grid-template-columns:1fr !important}
+  section{padding:64px 0}
+}
+.doccard{transition:border-color .15s,transform .15s}
+.doccard:hover{border-color:var(--primary);text-decoration:none;transform:translateY(-2px)}
+</style>
+</body>
+</html>

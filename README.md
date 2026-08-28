@@ -224,6 +224,14 @@ et endurance, préparation de release.
 
 ---
 
+## 🌐 Site web
+
+Présentation, documentation et explication de la chaîne de mesure :
+**<https://thesamlepirate.github.io/NVHSpectro/>** (déployé depuis `site/` par
+`.github/workflows/pages.yml`).
+
+---
+
 ## 📄 Licence & contact
 
 Développé pour l'analyse NVH automobile chez VIBRATEAM [Vibratec (Everenn Group)].
