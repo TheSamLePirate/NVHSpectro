@@ -7,7 +7,11 @@
 <meta name="description" content="NVH Spectro transforme un téléphone Android en chaîne de mesure NVH : spectrogramme temps réel, suivi d'ordres moteur, vitesse GNSS par Kalman, rapports PDF traçables. 100 % hors ligne.">
 <meta property="og:title" content="NVH Spectro — l'instrument NVH dans votre poche">
 <meta property="og:description" content="Spectrogramme temps réel, suivi d'ordres, GNSS Kalman, rapports traçables. Un instrument NVH Android, 100 % hors ligne.">
-<meta property="og:image" content="assets/capture-ecran-telephone.png">
+<meta property="og:image" content="https://luigi-barth.github.io/NVHSpectro/assets/capture-ecran-telephone.png">
+<meta property="og:url" content="https://luigi-barth.github.io/NVHSpectro/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NVH Spectro">
+<link rel="canonical" href="https://luigi-barth.github.io/NVHSpectro/">
 <link rel="icon" type="image/webp" href="assets/icon.webp">
 <link rel="stylesheet" href="assets/site.css">
 </head>
@@ -31,7 +35,7 @@
         <b>vitesse GNSS</b> (filtre de Kalman), et rapports PDF traçables — pour les essais
         véhicule thermiques, hybrides et électriques.</p>
       <div style="display:flex;gap:14px;flex-wrap:wrap">
-        <a class="btn btn-primary" href="https://github.com/TheSamLePirate/NVHSpectro">★ Voir sur GitHub</a>
+        <a class="btn btn-primary" data-repo-link href="https://github.com/Luigi-BARTH/NVHSpectro">★ Voir sur GitHub</a>
         <a class="btn btn-ghost" href="docs/index.html">Explorer la documentation →</a>
       </div>
       <p style="margin-top:26px;font-size:13.5px;color:var(--muted)">
@@ -197,7 +201,7 @@
     <h2 class="reveal">Compiler en 3 commandes</h2>
     <p class="lead reveal">Prérequis : JDK 17 et le SDK Android (compileSdk 36, minSdk 24).</p>
     <div class="codebox reveal"><pre><span class="cm"># cloner</span>
-git clone https://github.com/TheSamLePirate/NVHSpectro.git <span class="cm">&amp;&amp;</span> cd NVHSpectro
+git clone <span data-repo-clone>https://github.com/Luigi-BARTH/NVHSpectro.git</span> <span class="cm">&amp;&amp;</span> cd NVHSpectro
 
 <span class="cm"># vérifier (tests, couverture ≥ 90 % :core, lint, gates d'hygiène)</span>
 ./gradlew :core:test :app:testDebugUnitTest :core:koverVerify :app:lintDebug
@@ -205,7 +209,7 @@ git clone https://github.com/TheSamLePirate/NVHSpectro.git <span class="cm">&amp
 <span class="cm"># installer sur l'appareil connecté</span>
 ./gradlew :app:installDebug</pre></div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:28px">
-      <a class="btn btn-primary" href="https://github.com/TheSamLePirate/NVHSpectro">Ouvrir le dépôt GitHub ↗</a>
+      <a class="btn btn-primary" data-repo-link href="https://github.com/Luigi-BARTH/NVHSpectro">Ouvrir le dépôt GitHub ↗</a>
       <a class="btn btn-ghost" href="docs/index.html">Premiers pas dans l'app →</a>
     </div>
     <p style="margin-top:18px;color:var(--muted);font-size:13.5px">Au premier lancement, accordez micro et localisation précise : le micro devient la source de mesure, le GPS alimente la projection d'ordres. Sans eux, l'app reste utilisable en analyse de fichiers — et elle l'explique à l'écran.</p>
