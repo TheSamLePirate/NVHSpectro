@@ -2,6 +2,16 @@ name: Deploy site to GitHub Pages
 
 # The project website (site/ → marketing + documentation).
 # Deploys on every push to master that touches the site or this workflow.
+#
+# Runs on every fork/mirror of the repo; the site itself derives its GitHub links
+# from the host it is served from, so no per-account edit is needed.
+#
+# Prerequisites on a repo where this has never run (the step below can only
+# auto-enable Pages when they are met):
+#   * Settings → Pages → Source = "GitHub Actions"
+#   * Settings → Actions → General → Workflow permissions = "Read and write"
+#   * a private repo additionally needs a GitHub Pro/Team plan — otherwise
+#     "Create Pages site failed: Resource not accessible by integration".
 
 on:
   push:

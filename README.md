@@ -226,9 +226,20 @@ et endurance, préparation de release.
 
 ## 🌐 Site web
 
-Présentation, documentation et explication de la chaîne de mesure :
-**<https://thesamlepirate.github.io/NVHSpectro/>** (déployé depuis `site/` par
-`.github/workflows/pages.yml`).
+Présentation, documentation et explication de la chaîne de mesure — déployés depuis `site/`
+par `.github/workflows/pages.yml`, sur chaque dépôt qui héberge le projet :
+
+| Dépôt | Site |
+| --- | --- |
+| `Luigi-BARTH/NVHSpectro` (référence) | **<https://luigi-barth.github.io/NVHSpectro/>** |
+| `TheSamLePirate/NVHSpectro` (miroir) | <https://thesamlepirate.github.io/NVHSpectro/> |
+
+Le site est indépendant du compte : les liens « GitHub ↗ » et la commande `git clone` sont
+déduits de l'hôte qui sert la page. La balise `canonical` pointe vers le dépôt de référence.
+
+> Pour activer Pages sur un dépôt : *Settings → Pages → Source = **GitHub Actions***, et
+> *Settings → Actions → General → Workflow permissions = **Read and write***. Sur un dépôt
+> **privé**, Pages exige un plan GitHub Pro/Team ; sinon, passer le dépôt en public.
 
 ---
 
