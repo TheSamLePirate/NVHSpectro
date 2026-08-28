@@ -47,5 +47,10 @@ private val NvhDarkColorScheme =
 
 @Composable
 fun NVHSpectroTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = NvhDarkColorScheme, typography = Typography, content = content)
+    MaterialTheme(
+        colorScheme = NvhDarkColorScheme,
+        typography = Typography,
+        shapes = NvhShapes,
+        content = content,
+    )
 }

@@ -9,6 +9,10 @@
   a language now means adding a values-xx/ file and nothing else.
 
   `ci/checks.sh` fails the build if user-facing text reappears as a literal in a Compose file.
+
+  [V14 UX-M2] These strings carry NO emoji: icons are not language. Every glyph that used to
+  live here is now a themable vector `Icon()` beside the label, and `ci/checks.sh` fails the
+  build if an emoji reappears in this file.
 -->
 <resources>
     <string name="app_name">NVHSpectro</string>
@@ -25,44 +29,45 @@
     <string name="action_validate">Valider</string>
     <string name="action_back">Retour</string>
 
-    <!-- ============================ Bottom bar ============================ -->
-    <string name="gmpe_button">⚙️ GMPe</string>
-    <string name="gmpe_button_active">⚙️ GMPe (Actif)</string>
-    <string name="report_mode_enter">Rapport Manuel</string>
-    <string name="report_mode_exit">Quitter Rapport</string>
-    <string name="freeze">⏸ Figer</string>
-    <string name="unfreeze">▶ Dégeler</string>
-    <string name="export_frozen">📸 Exporter</string>
+    <!-- ============================ Bottom navigation bar ============================ -->
+    <string name="bar_gmpe">GMPe</string>
+    <string name="cd_gmpe_active">Cinématique GMPe active</string>
+    <string name="bar_report">Rapport</string>
+    <string name="bar_freeze">Figer</string>
+    <string name="bar_unfreeze">Dégeler</string>
+    <string name="export_frozen">Exporter</string>
+    <string name="cd_source_menu">Choisir la source audio</string>
 
     <!-- ============================ Source modes ============================ -->
-    <string name="source_live">🔴 En direct</string>
-    <string name="source_live_denied">🚫 En direct</string>
-    <string name="source_wav">📁 Analyseur WAV</string>
-    <string name="source_video">🎬 Vidéo</string>
-    <string name="source_button_live">🎙️ En direct</string>
-    <string name="source_button_wav">📁 Audio (WAV)</string>
-    <string name="source_button_video">🎬 Audio (Vidéo)</string>
-    <string name="live_unavailable_no_mic">🎙️ Mesure en direct indisponible : autorisation micro refusée. Activez « Micro » dans les réglages Android.</string>
+    <string name="source_live">En direct</string>
+    <string name="source_live_denied">En direct (micro refusé)</string>
+    <string name="source_wav">Analyseur WAV</string>
+    <string name="source_video">Vidéo</string>
+    <string name="bar_source_live">Direct</string>
+    <string name="bar_source_wav">WAV</string>
+    <string name="bar_source_video">Vidéo</string>
+    <string name="live_unavailable_no_mic">Mesure en direct indisponible : autorisation micro refusée. Activez « Micro » dans les réglages Android.</string>
 
     <!-- ============================ Canvas overlays ============================ -->
-    <string name="load_video">🎬 Charger Vidéo</string>
-    <string name="load_wav">📂 Charger WAV</string>
-    <string name="loaded_file">📂 %1$s</string>
-    <string name="recording_start">🎙️ Enregistrement</string>
-    <string name="recording_stop">🔴 STOP (%1$s / %2$s)</string>
+    <string name="load_video">Charger Vidéo</string>
+    <string name="load_wav">Charger WAV</string>
+    <string name="recording_start">Enregistrer</string>
+    <string name="recording_stop">STOP (%1$s / %2$s)</string>
     <string name="range_emergence">Dynamique : Min 0 | Max +20 dB (émergence NVH)</string>
     <string name="range_absolute">Dynamique : Min %1$d | Max %2$d dBFS</string>
     <string name="gmpe_default_name">GMPe</string>
-    <string name="gmpe_banner_active">🚘 %1$s | V1000: %2$.1f km/h | H1: %3$.1fHz (%4$d RPM)</string>
-    <string name="gmpe_banner_idle">🚘 %1$s | Inactif (&lt; 1 km/h) | V1000: %2$.1f km/h</string>
-    <string name="target_orders_banner">🎯 FILTRE CIBLES : %1$s</string>
+    <string name="gmpe_banner_active">%1$s | V1000: %2$.1f km/h | H1: %3$.1fHz (%4$d RPM)</string>
+    <string name="gmpe_banner_idle">%1$s | Inactif (&lt; 1 km/h) | V1000: %2$.1f km/h</string>
+    <string name="target_orders_banner">FILTRE CIBLES : %1$s</string>
     <string name="notice_dismiss">Fermer le message</string>
-    <string name="notice_with_close">%1$s   ✕</string>
-    <string name="no_wav_loaded">Pas de données WAV chargées\nTouchez « 📂 Charger WAV » pour ouvrir un fichier (limité à 5 min).</string>
+    <string name="no_wav_loaded">Pas de données WAV chargées\nTouchez « Charger WAV » pour ouvrir un fichier (limité à 5 min).</string>
     <string name="analysis_in_progress">Analyse audio &amp; sonogramme en cours…</string>
     <string name="default_wav_name">fichier.wav</string>
-    <string name="emergence_report_button">📋 Rapport</string>
-    <string name="emergence_report_button_count">📋 Rapport (%1$d)</string>
+    <string name="emergence_report_button">Rapport</string>
+    <string name="emergence_report_button_count">Rapport (%1$d)</string>
+    <string name="cd_enter_fullscreen">Afficher le spectrogramme en plein écran</string>
+    <string name="cd_exit_fullscreen">Quitter le plein écran</string>
+    <string name="cd_pane_splitter">Ajuster la répartition des panneaux</string>
 
     <!-- ============================ Vehicle data card ============================ -->
     <string name="gps_data_title">DONNÉES GPS</string>
@@ -73,8 +78,8 @@
     <string name="cd_gps_signal">Signal GPS : %1$s</string>
     <string name="gps_permission_denied">Non autorisé</string>
     <string name="gps_permission_coarse">Précision refusée</string>
-    <string name="location_denied_banner">📍 Localisation non autorisée — vitesse GNSS, RPM et suivi d\'ordre indisponibles. Toucher pour ouvrir les réglages.</string>
-    <string name="location_coarse_banner">📍 Localisation approximative seulement — vitesse GNSS, RPM et suivi d\'ordre indisponibles. Toucher pour ouvrir les réglages.</string>
+    <string name="location_denied_banner">Localisation non autorisée — vitesse GNSS, RPM et suivi d\'ordre indisponibles. Toucher pour ouvrir les réglages.</string>
+    <string name="location_coarse_banner">Localisation approximative seulement — vitesse GNSS, RPM et suivi d\'ordre indisponibles. Toucher pour ouvrir les réglages.</string>
     <string name="kpi_speed">Vitesse</string>
     <string name="kpi_speed_gps">GPS: %1$s</string>
     <string name="kpi_speed_theoretical">Théo: %1$s</string>
@@ -87,15 +92,14 @@
     <string name="kpi_order_unidentifiable">Non identifiable</string>
     <string name="kpi_order_value">%1$.1f dBFS</string>
     <string name="value_unavailable">--</string>
-    <string name="metric_order_with_settings">Ordre (%1$s) ⚙️</string>
-    <string name="h1_overlay_chip">👁️ %1$s</string>
+    <string name="metric_order_with_settings">Ordre (%1$s)</string>
     <string name="cd_h1_overlay">Afficher le calque de l\'ordre %1$s</string>
     <string name="cd_choose_projected_order">Choisir l\'ordre projeté</string>
 
     <!-- ============================ Permissions ============================ -->
     <string name="perm_mic_title">Accès au microphone</string>
     <string name="perm_mic_rationale">NVH Spectro mesure le bruit capté par le microphone : sans cette autorisation, l\'analyse en direct est impossible. Aucun son ne quitte l\'appareil — l\'application n\'a pas d\'accès réseau.</string>
-    <string name="perm_mic_permanently_denied">⚠️ L\'autorisation a été refusée définitivement. Elle ne peut plus être demandée depuis l\'application : activez « Micro » dans les réglages Android.</string>
+    <string name="perm_mic_permanently_denied">L\'autorisation a été refusée définitivement. Elle ne peut plus être demandée depuis l\'application : activez « Micro » dans les réglages Android.</string>
     <string name="perm_open_settings">Ouvrir les réglages</string>
     <string name="perm_allow">Autoriser</string>
     <string name="perm_continue_without_mic">Continuer sans micro (analyse de fichiers)</string>
@@ -107,21 +111,20 @@
     <string name="cd_play">Lecture</string>
     <string name="cd_pause">Pause</string>
     <string name="cd_playback_position">Position de lecture</string>
-    <string name="player_reading">📂 LECTURE : %1$s</string>
+    <string name="player_reading">Lecture : %1$s</string>
     <string name="player_position">%1$s / %2$s</string>
-    <string name="video_mode_title">🎬 Mode Analyse Vidéo Synchronisé</string>
+    <string name="video_mode_title">Mode Analyse Vidéo Synchronisé</string>
     <string name="video_none_loaded">Pas de données vidéo. Ouvrez un fichier vidéo local : sa piste audio est extraite puis analysée en synchronisation avec l\'image (limité à 5 min).</string>
-    <string name="video_load">📂 Charger une vidéo (MP4, MKV, AVI…)</string>
-    <string name="video_title">📹 %1$s</string>
+    <string name="video_load">Charger une vidéo (MP4, MKV, AVI…)</string>
     <string name="video_default_title">Vidéo locale</string>
 
     <!-- ============================ WAV picker ============================ -->
-    <string name="wav_picker_title">📂 Choisir un fichier WAV</string>
-    <string name="wav_picker_import">📥 Importer un fichier WAV extérieur…</string>
+    <string name="wav_picker_title">Choisir un fichier WAV</string>
+    <string name="wav_picker_import">Importer un fichier WAV extérieur…</string>
     <string name="wav_picker_empty">Aucun enregistrement trouvé dans %1$s</string>
     <string name="wav_picker_recent">Enregistrements récents (%1$d) :</string>
-    <string name="wav_entry_with_telemetry">🎵 Audio + 📊 Télémétrie GPS</string>
-    <string name="wav_entry_audio_only">🎵 Audio Seul</string>
+    <string name="wav_entry_with_telemetry">Audio + Télémétrie GPS</string>
+    <string name="wav_entry_audio_only">Audio seul</string>
 
     <!-- ============================ Save recording ============================ -->
     <string name="save_recording_title">Sauvegarder l\'Essai Audio &amp; GPS</string>
@@ -132,7 +135,7 @@
     <string name="save_recording_folder">Le dossier sera nommé : %1$s_[Date_Heure]</string>
 
     <!-- ============================ Order selection ============================ -->
-    <string name="order_dialog_title">⚙️ Sélection de l\'Ordre Traqué</string>
+    <string name="order_dialog_title">Sélection de l\'Ordre Traqué</string>
     <string name="order_dialog_help">Choisissez une harmonique standard ou saisissez une valeur personnalisée (ex: 22.5) :</string>
     <string name="order_dialog_custom_label">Ordre Personnalisé (ex: 22.5)</string>
     <string name="order_dialog_apply">Appliquer (H%1$.1f)</string>
@@ -146,7 +149,7 @@
     <string name="export_comments">Commentaires / Conditions</string>
 
     <!-- ============================ Diagnostics ============================ -->
-    <string name="diagnostics_title">🩺 Journal de diagnostic</string>
+    <string name="diagnostics_title">Journal de diagnostic</string>
     <string name="diagnostics_explanation">Les messages d\'erreur et d\'état de l\'application sont enregistrés localement (%1$s). Aucun envoi automatique : l\'application n\'a pas d\'accès réseau. Vous seul décidez de partager ce fichier.</string>
     <string name="diagnostics_share">Partager</string>
     <string name="diagnostics_clear">Effacer</string>
@@ -166,51 +169,51 @@
     <string name="cd_emergence">Émergence %1$.1f décibels</string>
 
     <!-- ============================ About ============================ -->
-    <string name="about_author_label">👤 Auteur</string>
+    <string name="about_author_label">Auteur</string>
     <string name="about_author">Louis BARTHELEMY</string>
-    <string name="about_company_label">🏢 Société</string>
+    <string name="about_company_label">Société</string>
     <string name="about_company">VIBRATEAM [Vibratec (Everenn Group)]</string>
-    <string name="about_app_label">📱 Application</string>
-    <string name="about_version_label">🏷️ Version</string>
+    <string name="about_app_label">Application</string>
+    <string name="about_version_label">Version</string>
     <string name="about_version">v%1$s</string>
-    <string name="about_contact_label">✉️ Contact</string>
+    <string name="about_contact_label">Contact</string>
     <string name="about_contact">louis.barthelemy@vibrateam.fr</string>
-    <string name="about_website_label">🌐 Site Web VIBRATEC</string>
+    <string name="about_website_label">Site Web VIBRATEC</string>
     <string name="about_website_url">https://vibratec.fr/</string>
-    <string name="about_description_label">📜 Description / Métier :</string>
+    <string name="about_description_label">Description / Métier :</string>
     <string name="about_description">Application d\'analyse acoustique temporelle, spectrogramme d\'émergence tonale et télémétrie GPS en temps réel. Construite pour l\'analyse NVH rapide lors d\'un roulage véhicule — domaine automobile.\n\nElle intègre également le post-traitement synchronisé de vidéos et de fichiers WAV, ainsi qu\'un outil de suivi d\'ordres dédié à l\'extraction des harmoniques pour les Groupes Moto-Propulseurs électriques (GMPe).\n\nL\'indice d\'émergence NVH est une méthode interne d\'émergence tonale : il n\'implémente pas la norme ECMA-74 / ISO 1996-2 et ne doit pas être présenté comme tel.</string>
 
     <!-- ============================ Emergence report ============================ -->
-    <string name="emergence_report_title">📊 Rapport d\'Émergence NVH</string>
-    <string name="emergence_vehicle_default">🚘 Véhicule &amp; GMPe</string>
-    <string name="emergence_vehicle">🚘 %1$s</string>
-    <string name="emergence_vehicle_with_motor">🚘 %1$s | ⚡ %2$s</string>
+    <string name="emergence_report_title">Rapport d\'Émergence NVH</string>
+    <string name="emergence_vehicle_default">Véhicule &amp; GMPe</string>
+    <string name="emergence_vehicle">%1$s</string>
+    <string name="emergence_vehicle_with_motor">%1$s | %2$s</string>
     <string name="emergence_vehicle_fallback">Véhicule</string>
     <string name="emergence_v1000_badge">V1000 : %1$.1f km/h</string>
-    <string name="emergence_comments_label">📝 Notes / Commentaires Utilisateur :</string>
-    <string name="emergence_needs_kinematics">⚠️ Activez la cinématique GMPe pour caractériser les rangs d\'harmoniques H_k.</string>
+    <string name="emergence_comments_label">Notes / Commentaires Utilisateur :</string>
+    <string name="emergence_needs_kinematics">Activez la cinématique GMPe pour caractériser les rangs d\'harmoniques H_k.</string>
     <string name="emergence_none_detected">Aucune émergence harmonique significative (&gt;= 0,4 s) détectée pour le moment.</string>
     <string name="emergence_col_speed">Vitesse (km/h)</string>
     <string name="emergence_col_rpm">Régime (RPM)</string>
     <string name="emergence_col_freq">Fréq. (Hz)</string>
     <string name="emergence_col_emergence">Émergence</string>
-    <string name="emergence_reset">🔄 Réinitialiser</string>
+    <string name="emergence_reset">Réinitialiser</string>
     <string name="emergence_range_float">%1$.0f - %2$.0f</string>
     <string name="emergence_range_int">%1$d - %2$d</string>
     <string name="emergence_badge">%1$s+%2$.1f dB</string>
 
     <!-- ============================ Settings ============================ -->
     <string name="settings_title">Paramètres NVH &amp; DSP</string>
-    <string name="settings_detector_title">⚡ DÉTECTEUR DE BALISES CLIGNOTANTES</string>
+    <string name="settings_detector_title">DÉTECTEUR DE BALISES CLIGNOTANTES</string>
     <string name="settings_emergence_threshold">Seuil d\'émergence NVH : %1$.1f dB</string>
     <string name="settings_magnitude_gate">Porte d\'Amplitude Absolue : %1$d dBFS</string>
     <string name="settings_time_window_wav">Temps d\'affichage (Auto WAV) : %1$.1f s</string>
-    <string name="settings_time_window_wav_help">💡 En mode Analyseur WAV, la durée d\'affichage est automatique et calée sur la durée réelle de l\'enregistrement audio (%1$.1f s).</string>
+    <string name="settings_time_window_wav_help">En mode Analyseur WAV, la durée d\'affichage est automatique et calée sur la durée réelle de l\'enregistrement audio (%1$.1f s).</string>
     <string name="settings_time_window_live">Temps d\'affichage (Direct) : %1$.1f s</string>
     <string name="settings_min_db">Min : %1$d dBFS</string>
     <string name="settings_max_db">Max : %1$d dBFS</string>
     <string name="settings_fft_auto">Résolution FFT (Auto Mode Vidéo/WAV) : %1$d pts</string>
-    <string name="settings_fft_auto_help">💡 En mode Vidéo/Analyseur, la taille FFT est automatiquement fixée à %1$d points pour offrir la meilleure précision acoustique NVH tout en garantissant une réactivité instantanée.</string>
+    <string name="settings_fft_auto_help">En mode Vidéo/Analyseur, la taille FFT est automatiquement fixée à %1$d points pour offrir la meilleure précision acoustique NVH tout en garantissant une réactivité instantanée.</string>
     <string name="settings_fft_title">Résolution FFT (Taille N)</string>
     <string name="settings_fft_points">%1$d pts</string>
     <string name="settings_dsp_title">INDICATEURS SIGNAL (N = %1$d)</string>
@@ -223,7 +226,7 @@
     <string name="settings_value_ms">%1$.1f ms</string>
     <string name="settings_value_fps">%1$.1f trames/s</string>
     <string name="settings_value_hz">%1$.1f Hz</string>
-    <string name="settings_filters_title">🎛️ FILTRES AUDIO DSP</string>
+    <string name="settings_filters_title">FILTRES AUDIO DSP</string>
     <string name="settings_filters_empty">Aucun filtre actif. Le signal brut est analysé.</string>
     <string name="filter_low_pass_desc">Coupe au-dessus de %1$d Hz</string>
     <string name="filter_high_pass_desc">Coupe en-dessous de %1$d Hz</string>
@@ -237,27 +240,27 @@
     <string name="filter_dialog_max">Fréquence Max (Hz)</string>
 
     <!-- ============================ Kinematics ============================ -->
-    <string name="kin_title">⚙️ Paramètres GMPe &amp; Cinématique</string>
-    <string name="kin_vehicle_section">🚘 Identification du Test Véhicule</string>
+    <string name="kin_title">Paramètres GMPe &amp; Cinématique</string>
+    <string name="kin_vehicle_section">Identification du Test Véhicule</string>
     <string name="kin_vehicle_name">Nom / Modèle Véhicule</string>
     <string name="kin_motor_name">Nom Moteur / GMPe</string>
-    <string name="kin_method_section">📐 Méthode de Calcul V1000 &amp; Cinématique</string>
+    <string name="kin_method_section">Méthode de Calcul V1000 &amp; Cinématique</string>
     <string name="kin_v1000_label">V1000 (km/h pour 1000 RPM)</string>
     <string name="kin_invalid_number">Nombre invalide (ex : 9.5 ou 9,5)</string>
     <string name="kin_gear_ratio_label">Rapport Global de Démultiplication Total</string>
-    <string name="kin_tyre_section">🛞 Dimension Pneu (Marquage Flanc)</string>
+    <string name="kin_tyre_section">Dimension Pneu (Marquage Flanc)</string>
     <string name="kin_tyre_ratio">Ratio %</string>
     <string name="kin_tyre_rim">Jante (\")</string>
-    <string name="kin_tyre_radius">📏 Rayon calculé : %1$.3f m (Circonférence = %2$.2f m)</string>
+    <string name="kin_tyre_radius">Rayon calculé : %1$.3f m (Circonférence = %2$.2f m)</string>
     <string name="kin_reducer">Réducteur / Descente</string>
     <string name="kin_final_drive">Rapport Pont</string>
-    <string name="kin_summary_section">📐 Synthèse V1000 &amp; Fondamental H1 :</string>
+    <string name="kin_summary_section">Synthèse V1000 &amp; Fondamental H1 :</string>
     <string name="kin_summary_v1000">• V1000 équivalente : %1$.2f km/h / 1000 RPM</string>
-    <string name="kin_summary_h1">• À 50 km/h : %1$d RPM ➔ H1 = %2$.2f Hz</string>
-    <string name="kin_targets_section">🎯 Harmoniques Attendues (Filtrage Rapport &amp; Spectro)</string>
+    <string name="kin_summary_h1">• À 50 km/h : %1$d RPM → H1 = %2$.2f Hz</string>
+    <string name="kin_targets_section">Harmoniques Attendues (Filtrage Rapport &amp; Spectro)</string>
     <string name="kin_targets_label">Harmoniques cibles (ex: 7.4, 18, 22.2, 36)</string>
     <string name="kin_targets_hint">Ex: 7.4, 18, 22.2, 36</string>
-    <string name="kin_targets_active">✓ Seules les harmoniques renseignées apparaîtront dans le rapport et sur le spectrogramme.</string>
+    <string name="kin_targets_active">Seules les harmoniques renseignées apparaîtront dans le rapport et sur le spectrogramme.</string>
     <string name="kin_targets_empty">Laisser vide pour tout détecter. Saisissez des ordres séparés par des virgules (ex: 7.4, 18, 22.2).</string>
     <string name="kin_hold_time">Rémanence Tags (sec)</string>
     <string name="kin_comments">Commentaires libres d\'essai</string>
@@ -269,11 +272,15 @@
     <string name="report_title">NVH Spectro - Rapport Manuel</string>
     <string name="report_mode_absolute">Absolue</string>
     <string name="report_mode_emergence">Émergence</string>
+    <string name="report_mode_navigation">Navigation</string>
+    <string name="report_mode_drawing">Dessin</string>
     <string name="report_gmpe_info">Info GMPe</string>
     <string name="report_vehicle_prefix">Vh: </string>
     <string name="report_motor_prefix">GMPe: </string>
     <string name="report_v1000_prefix">V1000: </string>
     <string name="report_v1000_value">%1$s km/h</string>
+    <string name="report_col_order">Ordre</string>
+    <string name="report_col_speed">Vitesse</string>
     <string name="report_col_rpm">Régime</string>
     <string name="report_col_freq">Fréq</string>
     <string name="report_speed_range">%1$d-%2$d km/h</string>
@@ -294,8 +301,8 @@
     <string name="axis_hz">%1$d Hz</string>
     <string name="tag_order_with_level">%1$s (+%2$.1fdB)</string>
     <string name="peak_badge">%1$d Hz | +%2$.1f dB</string>
-    <string name="graph_needs_gmpe">⚠️ Disponible uniquement en mode étude GMPe activé</string>
-    <string name="graph_order_idle">⚠️ Suivi d\'Ordre inactif (&lt; 1 km/h)</string>
+    <string name="graph_needs_gmpe">Disponible uniquement en mode étude GMPe activé</string>
+    <string name="graph_order_idle">Suivi d\'Ordre inactif (&lt; 1 km/h)</string>
     <string name="metric_speed">Vitesse</string>
     <string name="metric_acceleration">Accélération</string>
     <string name="metric_order">Ordre</string>
@@ -304,21 +311,21 @@
     <string name="action_add">Ajouter</string>
 
     <!-- ============================ Notices (banner) ============================ -->
-    <string name="notice_recording_saved">✅ Enregistrement sauvegardé : %1$s</string>
-    <string name="notice_save_failed">❌ Sauvegarde impossible : %1$s</string>
-    <string name="notice_loading_audio">⏳ Chargement du fichier audio…</string>
-    <string name="notice_truncated_wav">⏱️ Analyse limitée aux %1$d premières minutes du fichier</string>
-    <string name="notice_truncated_video">⏱️ Analyse limitée aux %1$d premières minutes de la vidéo</string>
-    <string name="notice_warning">⚠️ %1$s</string>
-    <string name="notice_error">❌ %1$s</string>
-    <string name="notice_extracting_video">⏳ Extraction de l\'audio de la vidéo…</string>
-    <string name="notice_extracting_video_progress">⏳ Extraction de l\'audio de la vidéo… %1$d %%</string>
-    <string name="notice_processing_spectrogram">⏳ Traitement du spectrogramme en cours…\nDurée %1$d m %2$d s | Temps estimé : %3$s s</string>
-    <string name="notice_recalculating_orders">⏳ Recalcul du suivi d\'ordres…</string>
-    <string name="notice_speed_source">🛰️ Vitesse GNSS : %1$s</string>
-    <string name="notice_gps_enabled">📡 GPS réactivé — acquisition en cours</string>
-    <string name="notice_gps_disabled">📡 GPS désactivé — vitesse GNSS indisponible</string>
-    <string name="notice_precise_location_required">⚠️ Localisation précise requise pour la vitesse GNSS</string>
+    <string name="notice_recording_saved">Enregistrement sauvegardé : %1$s</string>
+    <string name="notice_save_failed">Sauvegarde impossible : %1$s</string>
+    <string name="notice_loading_audio">Chargement du fichier audio…</string>
+    <string name="notice_truncated_wav">Analyse limitée aux %1$d premières minutes du fichier</string>
+    <string name="notice_truncated_video">Analyse limitée aux %1$d premières minutes de la vidéo</string>
+    <string name="notice_warning">Attention : %1$s</string>
+    <string name="notice_error">Erreur : %1$s</string>
+    <string name="notice_extracting_video">Extraction de l\'audio de la vidéo…</string>
+    <string name="notice_extracting_video_progress">Extraction de l\'audio de la vidéo… %1$d %%</string>
+    <string name="notice_processing_spectrogram">Traitement du spectrogramme en cours…\nDurée %1$d m %2$d s | Temps estimé : %3$s s</string>
+    <string name="notice_recalculating_orders">Recalcul du suivi d\'ordres…</string>
+    <string name="notice_speed_source">Vitesse GNSS : %1$s</string>
+    <string name="notice_gps_enabled">GPS réactivé — acquisition en cours</string>
+    <string name="notice_gps_disabled">GPS désactivé — vitesse GNSS indisponible</string>
+    <string name="notice_precise_location_required">Localisation précise requise pour la vitesse GNSS</string>
     <string name="notice_mic_read_errors">Erreurs de lecture micro répétées — capture arrêtée</string>
     <string name="notice_mic_init_failed">Micro indisponible (initialisation échouée)</string>
     <string name="notice_mic_busy">Micro occupé par une autre application</string>

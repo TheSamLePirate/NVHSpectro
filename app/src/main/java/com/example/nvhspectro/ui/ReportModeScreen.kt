@@ -10,7 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,14 +37,18 @@ import com.example.nvhspectro.ReportViewModel
 import com.example.nvhspectro.R
 import com.example.nvhspectro.SpectrogramCanvas
 import com.example.nvhspectro.theme.NvhActiveContainer
+import com.example.nvhspectro.theme.NvhAlpha
 import com.example.nvhspectro.theme.NvhCanvas
 import com.example.nvhspectro.theme.NvhCanvasChipBorder
 import com.example.nvhspectro.theme.NvhEmergenceMarginal
 import com.example.nvhspectro.theme.NvhExport
 import com.example.nvhspectro.theme.NvhModeLive
 import com.example.nvhspectro.theme.NvhOnSurface
+import com.example.nvhspectro.theme.NvhMinTouchTarget
 import com.example.nvhspectro.theme.NvhOutline
 import com.example.nvhspectro.theme.NvhPrimary
+import com.example.nvhspectro.theme.NvhReadoutSmall
+import com.example.nvhspectro.theme.NvhSpacing
 import com.example.nvhspectro.theme.NvhStatusBad
 import java.util.Locale
 
@@ -138,12 +142,19 @@ fun ReportModeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.report_title), fontSize = 16.sp, fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        stringResource(R.string.report_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                },
                 actions = {
                     Image(
                         painter = painterResource(id = R.drawable.logo_vibratec),
                         contentDescription = stringResource(R.string.cd_logo_vibratec),
-                        modifier = Modifier.height(28.dp).padding(end = 6.dp),
+                        modifier = Modifier.height(28.dp).padding(end = NvhSpacing.sm),
                         contentScale = ContentScale.Fit,
                     )
                 },
@@ -166,8 +177,8 @@ fun ReportModeScreen(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                        .padding(horizontal = NvhSpacing.sm, vertical = NvhSpacing.xs),
+                verticalArrangement = Arrangement.spacedBy(NvhSpacing.sm),
             ) {
                 // Toggles
                 Row(
@@ -183,7 +194,7 @@ fun ReportModeScreen(
                         modifier = Modifier.weight(1f),
                     )
                     SegmentedToggleButton(
-                        options = listOf("Navigation", "Dessin"),
+                        options = listOf(stringResource(R.string.report_mode_navigation), stringResource(R.string.report_mode_drawing)),
                         selectedIndex = if (isDrawingMode) 1 else 0,
                         onOptionSelected = { index ->
                             isDrawingMode = (index == 1)
@@ -195,7 +206,7 @@ fun ReportModeScreen(
 
                 // GMPe Info Box
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = MaterialTheme.shapes.small,
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -208,9 +219,7 @@ fun ReportModeScreen(
                         Text(
                             text = stringResource(R.string.report_gmpe_info),
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold,
-                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             maxLines = 1,
                         )
 
@@ -264,19 +273,15 @@ fun ReportModeScreen(
                                         ) { append(stringResource(R.string.report_v1000_value, v1000)) }
                                     }
 
-                                AutoResizedText(text = vhText, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))
+                                AutoResizedText(text = vhText, modifier = Modifier.weight(1f))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 AutoResizedText(
                                     text = gmpeText,
-                                    initialFontSize = 10.sp,
-                                    minFontSize = 7.sp,
                                     modifier = Modifier.weight(1f),
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 AutoResizedText(
                                     text = v1000Text,
-                                    initialFontSize = 10.sp,
-                                    minFontSize = 7.sp,
                                     modifier = Modifier.weight(1f),
                                 )
                             } else {
@@ -302,19 +307,15 @@ fun ReportModeScreen(
                                         withStyle(style = SpanStyle(color = onSurfaceVariantColor)) { append("--") }
                                     }
 
-                                AutoResizedText(text = vhText, initialFontSize = 10.sp, minFontSize = 7.sp, modifier = Modifier.weight(1f))
+                                AutoResizedText(text = vhText, modifier = Modifier.weight(1f))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 AutoResizedText(
                                     text = gmpeText,
-                                    initialFontSize = 10.sp,
-                                    minFontSize = 7.sp,
                                     modifier = Modifier.weight(1f),
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 AutoResizedText(
                                     text = v1000Text,
-                                    initialFontSize = 10.sp,
-                                    minFontSize = 7.sp,
                                     modifier = Modifier.weight(1f),
                                 )
                             }
@@ -365,54 +366,50 @@ fun ReportModeScreen(
                         .fillMaxWidth()
                         .weight(0.20f)
                         .padding(8.dp),
-                shape = RoundedCornerShape(6.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)),
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = NvhAlpha.OUTLINE),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = NvhAlpha.FAINT)),
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Table Header
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp),
+                        shape = MaterialTheme.shapes.small,
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                "Ordre",
+                                stringResource(R.string.report_col_order),
                                 modifier = Modifier.weight(1.2f),
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 11.sp,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                             )
                             Text(
-                                "Vitesse",
+                                stringResource(R.string.report_col_speed),
                                 modifier = Modifier.weight(1.2f),
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 11.sp,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             )
                             Text(
                                 stringResource(R.string.report_col_rpm),
                                 modifier = Modifier.weight(1.3f),
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 11.sp,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             )
                             Text(
                                 stringResource(R.string.report_col_freq),
                                 modifier = Modifier.weight(1.2f),
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 11.sp,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.End,
                             )
                         }
                     }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f), thickness = 1.dp)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = NvhAlpha.FAINT), thickness = 1.dp)
 
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 130.dp)) {
                         itemsIndexed(manualTrackedOrders) { index, order ->
@@ -450,7 +447,7 @@ fun ReportModeScreen(
                                         text = order.name,
                                         color = textColor,
                                         fontWeight = fontW,
-                                        fontSize = 11.sp,
+                                        style = NvhReadoutSmall,
                                         modifier = Modifier.weight(1.2f),
                                         maxLines = 1,
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -471,7 +468,7 @@ fun ReportModeScreen(
                                         text = speedText,
                                         color = textColor,
                                         fontWeight = fontW,
-                                        fontSize = 11.sp,
+                                        style = NvhReadoutSmall,
                                         modifier = Modifier.weight(1.2f),
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                         maxLines = 1,
@@ -489,7 +486,7 @@ fun ReportModeScreen(
                                         text = rpmText,
                                         color = textColor,
                                         fontWeight = fontW,
-                                        fontSize = 11.sp,
+                                        style = NvhReadoutSmall,
                                         modifier = Modifier.weight(1.3f),
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                         maxLines = 1,
@@ -499,7 +496,7 @@ fun ReportModeScreen(
                                         text = stringResource(R.string.report_freq_range, order.minFreqHz, order.maxFreqHz),
                                         color = textColor,
                                         fontWeight = fontW,
-                                        fontSize = 11.sp,
+                                        style = NvhReadoutSmall,
                                         modifier = Modifier.weight(1.2f),
                                         textAlign = androidx.compose.ui.text.style.TextAlign.End,
                                         maxLines = 1,
@@ -518,9 +515,9 @@ fun ReportModeScreen(
                                     Text(
                                         text = stringResource(R.string.report_draft, currentUserPoints.size),
                                         color = MaterialTheme.colorScheme.primary,
-                                        fontSize = 11.sp,
+                                        style = MaterialTheme.typography.labelMedium,
                                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        modifier = Modifier.padding(horizontal = NvhSpacing.sm, vertical = NvhSpacing.sm),
                                     )
                                 }
                             }
@@ -543,16 +540,16 @@ fun ReportModeScreen(
                 ) {
                     Button(
                         onClick = { showNameDialog = true },
-                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
+                        modifier = Modifier.weight(1f).height(NvhMinTouchTarget),
                         colors = ButtonDefaults.buttonColors(containerColor = NvhActiveContainer),
-                        shape = RoundedCornerShape(50),
-                        contentPadding = PaddingValues(2.dp),
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = NvhSpacing.sm, vertical = NvhSpacing.xxs),
                     ) {
                         Text(
                             stringResource(R.string.report_validate_order),
                             color = NvhOnSurface,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
                         )
                     }
 
@@ -562,17 +559,18 @@ fun ReportModeScreen(
 
                     Button(
                         onClick = { viewModel.toggleBrillanceMode() },
-                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
+                        modifier = Modifier.weight(1f).height(NvhMinTouchTarget),
                         colors = ButtonDefaults.buttonColors(containerColor = brillanceBg),
-                        shape = RoundedCornerShape(50),
+                        shape = CircleShape,
                         border = BorderStroke(1.dp, brillanceBorder),
-                        contentPadding = PaddingValues(2.dp),
+                        contentPadding = PaddingValues(horizontal = NvhSpacing.sm, vertical = NvhSpacing.xxs),
                     ) {
                         Text(
                             stringResource(R.string.report_brightness),
                             color = brillanceText,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (isBrillanceModeEnabled) FontWeight.Bold else FontWeight.Normal,
+                            maxLines = 1,
                         )
                     }
                 }
@@ -583,31 +581,31 @@ fun ReportModeScreen(
                 ) {
                     Button(
                         onClick = { viewModel.clearCurrentPoints() },
-                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
+                        modifier = Modifier.weight(1f).height(NvhMinTouchTarget),
                         colors = ButtonDefaults.buttonColors(containerColor = NvhExport),
-                        shape = RoundedCornerShape(50),
-                        contentPadding = PaddingValues(2.dp),
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = NvhSpacing.sm, vertical = NvhSpacing.xxs),
                     ) {
                         Text(
                             stringResource(R.string.report_clear_points),
                             color = NvhOnSurface,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
                         )
                     }
 
                     Button(
                         onClick = { selectedValidatedOrder?.let { viewModel.removeValidatedOrder(it) } },
-                        modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
+                        modifier = Modifier.weight(1f).height(NvhMinTouchTarget),
                         colors = ButtonDefaults.buttonColors(containerColor = NvhModeLive),
-                        shape = RoundedCornerShape(50),
-                        contentPadding = PaddingValues(2.dp),
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = NvhSpacing.sm, vertical = NvhSpacing.xxs),
                     ) {
                         Text(
                             stringResource(R.string.report_remove_order),
                             color = NvhOnSurface,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
                         )
                     }
                 }
@@ -623,24 +621,24 @@ fun ReportModeScreen(
             ) {
                 OutlinedButton(
                     onClick = { pdfExportLauncher.launch(pdfFileName) },
-                    modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
+                    modifier = Modifier.weight(1f).height(NvhMinTouchTarget),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = NvhPrimary),
                     border = BorderStroke(1.dp, NvhPrimary),
-                    shape = RoundedCornerShape(50),
-                    contentPadding = PaddingValues(2.dp),
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(horizontal = NvhSpacing.sm, vertical = NvhSpacing.xxs),
                 ) {
-                    Text(stringResource(R.string.report_export_pdf), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(stringResource(R.string.report_export_pdf), style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
 
                 OutlinedButton(
                     onClick = { onBack() },
-                    modifier = Modifier.weight(1f).height(REPORT_TOUCH_TARGET),
+                    modifier = Modifier.weight(1f).height(NvhMinTouchTarget),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = NvhStatusBad),
                     border = BorderStroke(1.dp, NvhStatusBad),
-                    shape = RoundedCornerShape(50),
-                    contentPadding = PaddingValues(2.dp),
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(horizontal = NvhSpacing.sm, vertical = NvhSpacing.xxs),
                 ) {
-                    Text(stringResource(R.string.report_quit), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(stringResource(R.string.report_quit), style = MaterialTheme.typography.labelLarge, maxLines = 1)
                 }
             }
         }
@@ -655,12 +653,11 @@ fun SegmentedToggleButton(
     modifier: Modifier = Modifier,
     activeColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
 ) {
-    val cornerRadius = 50.dp
     Surface(
-        modifier = modifier.height(REPORT_TOUCH_TARGET),
-        shape = RoundedCornerShape(cornerRadius),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)),
+        modifier = modifier.height(NvhMinTouchTarget),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = NvhAlpha.OUTLINE),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = NvhAlpha.FAINT)),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(2.dp),
@@ -684,7 +681,7 @@ fun SegmentedToggleButton(
                         Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .background(backgroundColor, RoundedCornerShape(cornerRadius))
+                            .background(backgroundColor, CircleShape)
                             .clickable(
                                 interactionSource =
                                     remember {
@@ -700,8 +697,9 @@ fun SegmentedToggleButton(
                     Text(
                         text = text,
                         color = textColor,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 1,
                     )
                 }
             }
@@ -713,8 +711,8 @@ fun SegmentedToggleButton(
 fun AutoResizedText(
     text: androidx.compose.ui.text.AnnotatedString,
     modifier: Modifier = Modifier,
-    initialFontSize: androidx.compose.ui.unit.TextUnit = 11.sp,
-    minFontSize: androidx.compose.ui.unit.TextUnit = 8.sp,
+    initialFontSize: androidx.compose.ui.unit.TextUnit = 12.sp,
+    minFontSize: androidx.compose.ui.unit.TextUnit = 9.sp,
 ) {
     var fontSize by remember(text) { mutableStateOf(initialFontSize) }
     var readyToDraw by remember(text) { mutableStateOf(false) }
@@ -741,5 +739,3 @@ fun AutoResizedText(
     )
 }
 
-/** Minimum interactive size for the report-mode controls [§12, plan 4.4]. */
-private val REPORT_TOUCH_TARGET = 48.dp

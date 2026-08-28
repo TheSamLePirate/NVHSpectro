@@ -2,15 +2,9 @@ package com.example.nvhspectro.ui
 
 import android.content.Context
 import android.content.Intent
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -24,14 +18,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.example.nvhspectro.R
 import com.example.nvhspectro.data.DiagnosticLog
 import com.example.nvhspectro.theme.NvhOnSurfaceVariant
-import com.example.nvhspectro.theme.NvhSectionContainer
+import com.example.nvhspectro.theme.NvhSpacing
 import com.example.nvhspectro.theme.NvhStatusWarn
 
 /**
@@ -48,46 +39,31 @@ fun DiagnosticsSection() {
     var sizeBytes by remember { mutableLongStateOf(DiagnosticLog.sizeBytes()) }
     val shareLabel = stringResource(R.string.cd_diagnostics_share)
 
-    Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .border(1.dp, NvhStatusWarn.copy(alpha = 0.4f), RoundedCornerShape(8.dp)),
-        colors = CardDefaults.cardColors(containerColor = NvhSectionContainer),
+    NvhSection(
+        title = stringResource(R.string.diagnostics_title),
+        accent = NvhStatusWarn,
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.diagnostics_title),
-                color = NvhStatusWarn,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-            )
-            Text(
-                text = stringResource(R.string.diagnostics_explanation, formatSize(sizeBytes)),
-                fontSize = 11.sp,
-                color = NvhOnSurfaceVariant,
-                lineHeight = 15.sp,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { context.shareDiagnosticLog() },
-                    enabled = sizeBytes > 0,
-                    modifier = Modifier.semantics { contentDescription = shareLabel },
-                ) {
-                    Text(stringResource(R.string.diagnostics_share), fontSize = 12.sp)
-                }
-                TextButton(
-                    onClick = {
-                        DiagnosticLog.clear()
-                        sizeBytes = 0
-                    },
-                    enabled = sizeBytes > 0,
-                ) {
-                    Text(stringResource(R.string.diagnostics_clear), fontSize = 12.sp)
-                }
+        Text(
+            text = stringResource(R.string.diagnostics_explanation, formatSize(sizeBytes)),
+            style = MaterialTheme.typography.bodySmall,
+            color = NvhOnSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(NvhSpacing.sm)) {
+            OutlinedButton(
+                onClick = { context.shareDiagnosticLog() },
+                enabled = sizeBytes > 0,
+                modifier = Modifier.semantics { contentDescription = shareLabel },
+            ) {
+                Text(stringResource(R.string.diagnostics_share))
+            }
+            TextButton(
+                onClick = {
+                    DiagnosticLog.clear()
+                    sizeBytes = 0
+                },
+                enabled = sizeBytes > 0,
+            ) {
+                Text(stringResource(R.string.diagnostics_clear))
             }
         }
     }

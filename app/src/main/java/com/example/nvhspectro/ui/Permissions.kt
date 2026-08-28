@@ -17,11 +17,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,16 +40,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.nvhspectro.R
 import com.example.nvhspectro.theme.NvhOnSurface
 import com.example.nvhspectro.theme.NvhOnSurfaceVariant
+import com.example.nvhspectro.theme.NvhPrimary
 import com.example.nvhspectro.theme.NvhSectionContainer
+import com.example.nvhspectro.theme.NvhSpacing
 import com.example.nvhspectro.theme.NvhStatusWarn
 
 /**
@@ -192,47 +196,50 @@ private fun MicrophoneRationaleScreen(
     onContinueWithoutMicrophone: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(NvhSpacing.xl),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Card(
-            modifier = Modifier.widthIn(max = 480.dp),
+            modifier = Modifier.widthIn(max = RATIONALE_MAX_WIDTH),
             colors = CardDefaults.cardColors(containerColor = NvhSectionContainer),
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.medium,
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(NvhSpacing.xl),
+                verticalArrangement = Arrangement.spacedBy(NvhSpacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("🎙️", fontSize = 40.sp)
+                // [V14 UX-M2] A themable vector, not an OEM-dependent emoji.
+                Icon(
+                    imageVector = Icons.Outlined.Mic,
+                    contentDescription = null,
+                    tint = NvhPrimary,
+                    modifier = Modifier.size(RATIONALE_ICON_SIZE),
+                )
                 Text(
                     text = stringResource(R.string.perm_mic_title),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     color = NvhOnSurface,
                 )
                 Text(
                     text = stringResource(R.string.perm_mic_rationale),
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = NvhOnSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    lineHeight = 18.sp,
                 )
                 if (permanentlyDenied) {
                     Text(
                         text = stringResource(R.string.perm_mic_permanently_denied),
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         color = NvhStatusWarn,
                         textAlign = TextAlign.Center,
-                        lineHeight = 16.sp,
                     )
                 }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(NvhSpacing.sm),
                 ) {
                     Button(
                         onClick = if (permanentlyDenied) onOpenSettings else onRequest,
@@ -244,7 +251,6 @@ private fun MicrophoneRationaleScreen(
                                 stringResource(
                                     if (permanentlyDenied) R.string.perm_open_settings else R.string.perm_allow,
                                 ),
-                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
@@ -257,15 +263,17 @@ private fun MicrophoneRationaleScreen(
                 }
                 Text(
                     text = stringResource(R.string.perm_analyzer_only_explanation),
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = NvhOnSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    lineHeight = 15.sp,
                 )
             }
         }
     }
 }
+
+private val RATIONALE_MAX_WIDTH = 480.dp
+private val RATIONALE_ICON_SIZE = 40.dp
 
 /** Deep-link to this app's system settings page — the only route out of a permanent denial. */
 fun Context.openAppSettings() {

@@ -14,10 +14,14 @@
         <item name="postSplashScreenTheme">@style/Theme.NVHSpectro.Main</item>
     </style>
 
+    <!--
+      [V14 UX-M11] No statusBarColor/navigationBarColor here: both attributes are deprecated
+      and IGNORED from API 35, and this app targets 36 with enableEdgeToEdge(). System-bar
+      icon appearance is set in MainActivity via SystemBarStyle.dark — the one API that still
+      has an effect.
+    -->
     <style name="Theme.NVHSpectro.Main" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/nvh_background</item>
         <item name="android:colorBackground">@color/nvh_background</item>
-        <item name="android:statusBarColor">@color/nvh_primary_container</item>
-        <item name="android:navigationBarColor">@color/nvh_background</item>
     </style>
 </resources>

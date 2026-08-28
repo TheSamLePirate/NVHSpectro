@@ -243,7 +243,7 @@ class ReportViewModel(
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    session.postNotice("❌ Export PDF impossible : ${e.message ?: e.javaClass.simpleName}")
+                    session.postNotice("Export PDF impossible : ${e.message ?: e.javaClass.simpleName}")
                 }
             }
         }

@@ -1,7 +1,9 @@
 package com.example.nvhspectro
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +22,14 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        enableEdgeToEdge()
+        // [V14 UX-M11] The app is fixed-dark (D4), so the system-bar icons must be light in
+        // every state — SystemBarStyle.dark states that intent explicitly instead of letting
+        // the platform guess from a theme that no longer configures the bars (the XML
+        // statusBarColor/navigationBarColor attributes are ignored from API 35).
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
         setContent {
             NVHSpectroTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { AppNavigation() } }
         }

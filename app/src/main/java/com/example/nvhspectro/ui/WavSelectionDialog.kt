@@ -5,20 +5,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.nvhspectro.R
 import com.example.nvhspectro.data.RecordingEntry
 import com.example.nvhspectro.data.RecordingStore
 import com.example.nvhspectro.theme.NvhOnSurfaceVariant
+import com.example.nvhspectro.theme.NvhSpacing
 import com.example.nvhspectro.theme.NvhStatusGood
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -43,22 +44,28 @@ fun WavSelectionDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(stringResource(R.string.wav_picker_title), fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.wav_picker_title))
         },
         text = {
             Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 400.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                        .heightIn(max = PICKER_MAX_HEIGHT),
+                verticalArrangement = Arrangement.spacedBy(NvhSpacing.sm),
             ) {
                 OutlinedButton(
                     onClick = onImportExternal,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                 ) {
-                    Text(stringResource(R.string.wav_picker_import), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Icon(
+                        Icons.Outlined.FileDownload,
+                        contentDescription = null,
+                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                    )
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text(stringResource(R.string.wav_picker_import))
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -69,10 +76,10 @@ fun WavSelectionDialog(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 20.dp),
+                                    .padding(vertical = NvhSpacing.xl),
                             contentAlignment = Alignment.Center,
                         ) {
-                            CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                            CircularProgressIndicator(modifier = Modifier.size(PROGRESS_SIZE))
                         }
                     }
                     entries!!.isEmpty() -> {
@@ -80,12 +87,12 @@ fun WavSelectionDialog(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 20.dp),
+                                    .padding(vertical = NvhSpacing.xl),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 stringResource(R.string.wav_picker_empty, RecordingStore.COLLECTION_DIR),
-                                fontSize = 12.sp,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = NvhOnSurfaceVariant,
                             )
                         }
@@ -93,18 +100,17 @@ fun WavSelectionDialog(
                     else -> {
                         Text(
                             stringResource(R.string.wav_picker_recent, entries!!.size),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
 
                         LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(NvhSpacing.sm),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             items(entries!!) { entry ->
                                 Surface(
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = MaterialTheme.shapes.small,
                                     color = MaterialTheme.colorScheme.surfaceVariant,
                                     modifier =
                                         Modifier
@@ -117,15 +123,14 @@ fun WavSelectionDialog(
                                         modifier =
                                             Modifier
                                                 .fillMaxWidth()
-                                                .padding(10.dp),
+                                                .padding(NvhSpacing.md),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = entry.displayName,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 12.sp,
+                                                style = MaterialTheme.typography.titleSmall,
                                                 maxLines = 1,
                                             )
                                             Text(
@@ -137,15 +142,14 @@ fun WavSelectionDialog(
                                                             R.string.wav_entry_audio_only
                                                         },
                                                     ),
-                                                fontSize = 11.sp,
+                                                style = MaterialTheme.typography.labelMedium,
                                                 color = if (entry.jsonUri != null) NvhStatusGood else NvhOnSurfaceVariant,
                                             )
                                         }
-                                        Text(
-                                            text = "▶",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 16.sp,
-                                            color = MaterialTheme.colorScheme.primary,
+                                        Icon(
+                                            Icons.Filled.PlayArrow,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
                                         )
                                     }
                                 }
@@ -162,3 +166,6 @@ fun WavSelectionDialog(
         },
     )
 }
+
+private val PICKER_MAX_HEIGHT = 400.dp
+private val PROGRESS_SIZE = 28.dp

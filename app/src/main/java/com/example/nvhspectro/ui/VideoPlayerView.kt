@@ -4,7 +4,10 @@ import android.net.Uri
 import android.widget.VideoView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,19 +16,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.nvhspectro.R
 import com.example.nvhspectro.theme.NvhCanvas
+import com.example.nvhspectro.theme.NvhMinTouchTarget
 import com.example.nvhspectro.theme.NvhModeVideo
 import com.example.nvhspectro.theme.NvhModeVideoAccent
 import com.example.nvhspectro.theme.NvhOnSurface
 import com.example.nvhspectro.theme.NvhOnSurfaceVariant
 import com.example.nvhspectro.theme.NvhOutline
+import com.example.nvhspectro.theme.NvhReadoutSmall
 import com.example.nvhspectro.theme.NvhSectionContainer
+import com.example.nvhspectro.theme.NvhSpacing
 import java.util.Locale
 import kotlin.math.abs
 
@@ -61,10 +65,10 @@ fun VideoPlayerView(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(6.dp),
+                .padding(NvhSpacing.sm),
         colors = CardDefaults.cardColors(containerColor = NvhSectionContainer),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         if (videoUri == null) {
             NoVideoLoaded(onOpenVideoSelection)
@@ -91,31 +95,35 @@ private fun NoVideoLoaded(onOpenVideoSelection: () -> Unit) {
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(NvhSpacing.md),
         ) {
+            Icon(
+                imageVector = Icons.Outlined.VideoLibrary,
+                contentDescription = null,
+                tint = NvhOnSurfaceVariant,
+                modifier = Modifier.padding(bottom = NvhSpacing.xs),
+            )
             Text(
                 text = stringResource(R.string.video_mode_title),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
                 color = NvhOnSurface,
             )
             Text(
                 text = stringResource(R.string.video_none_loaded),
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 color = NvhOnSurfaceVariant,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.padding(horizontal = NvhSpacing.lg),
             )
             Button(
                 onClick = onOpenVideoSelection,
-                shape = RoundedCornerShape(8.dp),
                 colors =
                     ButtonDefaults.buttonColors(
                         containerColor = NvhModeVideo,
                         contentColor = NvhOnSurface,
                     ),
             ) {
-                Text(text = stringResource(R.string.video_load), fontWeight = FontWeight.Bold)
+                Text(text = stringResource(R.string.video_load))
             }
         }
     }
@@ -140,7 +148,7 @@ private fun LoadedVideo(
         modifier =
             Modifier
                 .fillMaxSize()
-                .padding(8.dp),
+                .padding(NvhSpacing.sm),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(
@@ -149,35 +157,36 @@ private fun LoadedVideo(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(R.string.video_title, videoTitle),
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
+                text = videoTitle,
+                style = MaterialTheme.typography.titleSmall,
                 color = NvhOnSurface,
                 maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).padding(end = NvhSpacing.sm),
             )
+            // [V14 UX-M1] Tabular figures — a running timecode must not jitter.
             Text(
                 text = formatTime(state.positionMs) + " / " + formatTime(state.durationMs),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
+                style = NvhReadoutSmall,
                 color = NvhModeVideoAccent,
             )
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(NvhSpacing.xs))
 
         Box(
             modifier =
                 Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(MaterialTheme.shapes.small)
                     .background(NvhCanvas),
             contentAlignment = Alignment.Center,
         ) {
             MutedVideoSurface(videoUri = videoUri, isPlaying = state.isPlaying, positionMs = state.positionMs)
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(NvhSpacing.sm))
 
         VideoTransportRow(state = state, onSeekTo = onSeekTo, onTogglePlayPause = onTogglePlayPause)
     }
@@ -192,18 +201,18 @@ private fun VideoTransportRow(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(NvhSpacing.sm),
     ) {
         val playPauseLabel = stringResource(if (state.isPlaying) R.string.cd_pause else R.string.cd_play)
         val positionLabel = stringResource(R.string.cd_playback_position)
         IconButton(
             onClick = onTogglePlayPause,
-            modifier = Modifier.size(VIDEO_TOUCH_TARGET).semantics { contentDescription = playPauseLabel },
+            modifier = Modifier.size(NvhMinTouchTarget).semantics { contentDescription = playPauseLabel },
         ) {
-            Text(
-                text = if (state.isPlaying) "⏸" else "▶",
-                fontSize = 18.sp,
-                color = NvhOnSurface,
+            Icon(
+                imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = null,
+                tint = NvhOnSurface,
             )
         }
         Slider(
@@ -265,5 +274,3 @@ private fun formatTime(ms: Long): String {
     return String.format(Locale.ROOT, "%02d:%02d", totalSec / SECONDS_PER_MINUTE, totalSec % SECONDS_PER_MINUTE)
 }
 
-/** 48 dp minimum interactive size [§12, plan 4.4]. */
-private val VIDEO_TOUCH_TARGET = 48.dp

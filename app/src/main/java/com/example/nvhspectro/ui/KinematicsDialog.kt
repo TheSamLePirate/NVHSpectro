@@ -1,9 +1,7 @@
 package com.example.nvhspectro.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -11,18 +9,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.example.nvhspectro.R
 import com.example.nvhspectro.data.KinematicsConfig
 import com.example.nvhspectro.data.KinematicsInputMode
 import com.example.nvhspectro.data.toFlexibleDoubleOrNull
 import com.example.nvhspectro.theme.NvhAccent
+import com.example.nvhspectro.theme.NvhAlpha
 import com.example.nvhspectro.theme.NvhOnSurfaceVariant
+import com.example.nvhspectro.theme.NvhReadoutSmall
+import com.example.nvhspectro.theme.NvhSpacing
 
+/**
+ * GMPe / kinematics configuration [V14 UX-M7]: a `ModalBottomSheet` — this is the app's
+ * largest input surface (three input modes, tyre dimensions, target harmonics), which a
+ * fixed-height dialog served badly.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KinematicsDialog(
@@ -93,304 +95,278 @@ fun KinematicsDialog(
     val h1At50KmhHz = tempConfig.calculateH1FreqHz(50f)
     val rpmAt50Kmh = tempConfig.calculateRpm(50f).toInt()
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
+    NvhSheet(
+        title = stringResource(R.string.kin_title),
+        onDismiss = onDismiss,
+        titleTrailing = {
+            Switch(
+                checked = isEnabled,
+                onCheckedChange = { isEnabled = it },
+            )
+        },
+    ) {
+        Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
+                    .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(NvhSpacing.md),
         ) {
-            Column(
-                modifier =
-                    Modifier
-                        .padding(20.dp)
-                        .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+            // Section Identifiants Véhicule & Moteur
+            Text(stringResource(R.string.kin_vehicle_section), style = MaterialTheme.typography.titleSmall)
+            OutlinedTextField(
+                value = vehicleName,
+                onValueChange = { vehicleName = it },
+                label = { Text(stringResource(R.string.kin_vehicle_name)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = motorName,
+                onValueChange = { motorName = it },
+                label = { Text(stringResource(R.string.kin_motor_name)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = NvhAlpha.OUTLINE))
+
+            // Mode de Saisie Cinématique
+            Text(stringResource(R.string.kin_method_section), style = MaterialTheme.typography.titleSmall)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(NvhSpacing.xs),
             ) {
-                // Titre
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.kin_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp,
-                    )
-                    Switch(
-                        checked = isEnabled,
-                        onCheckedChange = { isEnabled = it },
-                    )
-                }
-
-                Divider()
-
-                // Section Identifiants Véhicule & Moteur
-                Text(stringResource(R.string.kin_vehicle_section), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                OutlinedTextField(
-                    value = vehicleName,
-                    onValueChange = { vehicleName = it },
-                    label = { Text(stringResource(R.string.kin_vehicle_name)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = motorName,
-                    onValueChange = { motorName = it },
-                    label = { Text(stringResource(R.string.kin_motor_name)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Divider()
-
-                // Mode de Saisie Cinématique
-                Text(stringResource(R.string.kin_method_section), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    KinematicsInputMode.values().forEach { mode ->
-                        FilterChip(
-                            selected = (selectedMode == mode),
-                            onClick = { selectedMode = mode },
-                            label = { Text(mode.label, fontSize = 10.5.sp) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-
-                // Champs de Saisie selon le Mode
-                when (selectedMode) {
-                    KinematicsInputMode.V1000 -> {
-                        OutlinedTextField(
-                            value = v1000Text,
-                            onValueChange = { v1000Text = it },
-                            label = { Text(stringResource(R.string.kin_v1000_label)) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            isError = v1000Text.toFlexibleDoubleOrNull() == null,
-                            supportingText = {
-                                if (v1000Text.toFlexibleDoubleOrNull() == null) {
-                                    Text(stringResource(R.string.kin_invalid_number))
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                    KinematicsInputMode.GEAR_RATIO -> {
-                        OutlinedTextField(
-                            value = globalRatioText,
-                            onValueChange = { globalRatioText = it },
-                            label = { Text(stringResource(R.string.kin_gear_ratio_label)) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            isError = globalRatioText.toFlexibleDoubleOrNull() == null,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-
-                        // Dimensions Pneu Vendeur (ex: 205 / 55 R 16)
-                        Text(stringResource(R.string.kin_tyre_section), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            OutlinedTextField(
-                                value = tireWidthText,
-                                onValueChange = { tireWidthText = it },
-                                label = { Text(stringResource(R.string.kin_tyre_width), fontSize = 9.sp) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true,
-                                modifier = Modifier.weight(1.1f),
+                KinematicsInputMode.values().forEach { mode ->
+                    FilterChip(
+                        selected = (selectedMode == mode),
+                        onClick = { selectedMode = mode },
+                        label = {
+                            Text(
+                                mode.label,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
                             )
-                            Text("/", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            OutlinedTextField(
-                                value = tireAspectRatioText,
-                                onValueChange = { tireAspectRatioText = it },
-                                label = { Text(stringResource(R.string.kin_tyre_ratio), fontSize = 9.sp) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Text("R", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            OutlinedTextField(
-                                value = rimDiameterText,
-                                onValueChange = { rimDiameterText = it },
-                                label = { Text(stringResource(R.string.kin_tyre_rim), fontSize = 9.sp) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        val computedR = tempConfig.calculateWheelRadiusMeters()
-                        Text(
-                            text = stringResource(R.string.kin_tyre_radius, computedR, 2.0 * Math.PI * computedR),
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                    KinematicsInputMode.DETAILED_CHAIN -> {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = reductionRatioText,
-                                onValueChange = { reductionRatioText = it },
-                                label = { Text(stringResource(R.string.kin_reducer)) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                isError = reductionRatioText.toFlexibleDoubleOrNull() == null,
-                                modifier = Modifier.weight(1f),
-                            )
-                            OutlinedTextField(
-                                value = axleRatioText,
-                                onValueChange = { axleRatioText = it },
-                                label = { Text(stringResource(R.string.kin_final_drive)) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                isError = axleRatioText.toFlexibleDoubleOrNull() == null,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-
-                        // Dimensions Pneu Vendeur (ex: 205 / 55 R 16)
-                        Text(stringResource(R.string.kin_tyre_section), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            OutlinedTextField(
-                                value = tireWidthText,
-                                onValueChange = { tireWidthText = it },
-                                label = { Text(stringResource(R.string.kin_tyre_width), fontSize = 9.sp) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true,
-                                modifier = Modifier.weight(1.1f),
-                            )
-                            Text("/", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            OutlinedTextField(
-                                value = tireAspectRatioText,
-                                onValueChange = { tireAspectRatioText = it },
-                                label = { Text(stringResource(R.string.kin_tyre_ratio), fontSize = 9.sp) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Text("R", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            OutlinedTextField(
-                                value = rimDiameterText,
-                                onValueChange = { rimDiameterText = it },
-                                label = { Text(stringResource(R.string.kin_tyre_rim), fontSize = 9.sp) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        val computedR = tempConfig.calculateWheelRadiusMeters()
-                        Text(
-                            text = stringResource(R.string.kin_tyre_radius, computedR, 2.0 * Math.PI * computedR),
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-
-                // Carte récapitulative des valeurs calculées
-                Card(
-                    colors =
-                        CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                        ),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = stringResource(R.string.kin_summary_section),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                        )
-                        Text(
-                            text = stringResource(R.string.kin_summary_v1000, effectiveV1000),
-                            fontSize = 12.sp,
-                        )
-                        Text(
-                            text = stringResource(R.string.kin_summary_h1, rpmAt50Kmh, h1At50KmhHz),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-
-                Divider()
-
-                // Harmoniques Attendues / Liste Blanche
-                Text(stringResource(R.string.kin_targets_section), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                OutlinedTextField(
-                    value = targetHarmonicsText,
-                    onValueChange = { targetHarmonicsText = it },
-                    label = { Text(stringResource(R.string.kin_targets_label)) },
-                    placeholder = { Text(stringResource(R.string.kin_targets_hint)) },
-                    supportingText = {
-                        Text(
-                            text =
-                                if (targetHarmonicsText.isNotBlank()) {
-                                    stringResource(R.string.kin_targets_active)
-                                } else {
-                                    stringResource(R.string.kin_targets_empty)
-                                },
-                            fontSize = 11.sp,
-                            color = if (targetHarmonicsText.isNotBlank()) NvhAccent else NvhOnSurfaceVariant,
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Divider()
-
-                // Rémanence visuelle & Commentaires
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = holdTimeText,
-                        onValueChange = { holdTimeText = it },
-                        label = { Text(stringResource(R.string.kin_hold_time)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        isError = holdTimeText.toFlexibleDoubleOrNull() == null,
+                        },
                         modifier = Modifier.weight(1f),
                     )
                 }
+            }
 
+            // Champs de Saisie selon le Mode
+            when (selectedMode) {
+                KinematicsInputMode.V1000 -> {
+                    OutlinedTextField(
+                        value = v1000Text,
+                        onValueChange = { v1000Text = it },
+                        label = { Text(stringResource(R.string.kin_v1000_label)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        isError = v1000Text.toFlexibleDoubleOrNull() == null,
+                        supportingText = {
+                            if (v1000Text.toFlexibleDoubleOrNull() == null) {
+                                Text(stringResource(R.string.kin_invalid_number))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                KinematicsInputMode.GEAR_RATIO -> {
+                    OutlinedTextField(
+                        value = globalRatioText,
+                        onValueChange = { globalRatioText = it },
+                        label = { Text(stringResource(R.string.kin_gear_ratio_label)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        isError = globalRatioText.toFlexibleDoubleOrNull() == null,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    TyreDimensionsFields(
+                        tireWidthText = tireWidthText,
+                        onTireWidthChange = { tireWidthText = it },
+                        tireAspectRatioText = tireAspectRatioText,
+                        onTireAspectRatioChange = { tireAspectRatioText = it },
+                        rimDiameterText = rimDiameterText,
+                        onRimDiameterChange = { rimDiameterText = it },
+                        computedRadiusMeters = tempConfig.calculateWheelRadiusMeters(),
+                    )
+                }
+                KinematicsInputMode.DETAILED_CHAIN -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(NvhSpacing.sm)) {
+                        OutlinedTextField(
+                            value = reductionRatioText,
+                            onValueChange = { reductionRatioText = it },
+                            label = { Text(stringResource(R.string.kin_reducer)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            isError = reductionRatioText.toFlexibleDoubleOrNull() == null,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedTextField(
+                            value = axleRatioText,
+                            onValueChange = { axleRatioText = it },
+                            label = { Text(stringResource(R.string.kin_final_drive)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            isError = axleRatioText.toFlexibleDoubleOrNull() == null,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+
+                    TyreDimensionsFields(
+                        tireWidthText = tireWidthText,
+                        onTireWidthChange = { tireWidthText = it },
+                        tireAspectRatioText = tireAspectRatioText,
+                        onTireAspectRatioChange = { tireAspectRatioText = it },
+                        rimDiameterText = rimDiameterText,
+                        onRimDiameterChange = { rimDiameterText = it },
+                        computedRadiusMeters = tempConfig.calculateWheelRadiusMeters(),
+                    )
+                }
+            }
+
+            // Carte récapitulative des valeurs calculées
+            Card(
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = NvhAlpha.OUTLINE),
+                    ),
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(NvhSpacing.md), verticalArrangement = Arrangement.spacedBy(NvhSpacing.xs)) {
+                    Text(
+                        text = stringResource(R.string.kin_summary_section),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        text = stringResource(R.string.kin_summary_v1000, effectiveV1000),
+                        style = NvhReadoutSmall,
+                    )
+                    Text(
+                        text = stringResource(R.string.kin_summary_h1, rpmAt50Kmh, h1At50KmhHz),
+                        style = NvhReadoutSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = NvhAlpha.OUTLINE))
+
+            // Harmoniques Attendues / Liste Blanche
+            Text(stringResource(R.string.kin_targets_section), style = MaterialTheme.typography.titleSmall)
+            OutlinedTextField(
+                value = targetHarmonicsText,
+                onValueChange = { targetHarmonicsText = it },
+                label = { Text(stringResource(R.string.kin_targets_label)) },
+                placeholder = { Text(stringResource(R.string.kin_targets_hint)) },
+                supportingText = {
+                    Text(
+                        text =
+                            if (targetHarmonicsText.isNotBlank()) {
+                                stringResource(R.string.kin_targets_active)
+                            } else {
+                                stringResource(R.string.kin_targets_empty)
+                            },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (targetHarmonicsText.isNotBlank()) NvhAccent else NvhOnSurfaceVariant,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = NvhAlpha.OUTLINE))
+
+            // Rémanence visuelle & Commentaires
+            Row(horizontalArrangement = Arrangement.spacedBy(NvhSpacing.sm), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
-                    value = comments,
-                    onValueChange = { comments = it },
-                    label = { Text(stringResource(R.string.kin_comments)) },
-                    maxLines = 3,
-                    modifier = Modifier.fillMaxWidth(),
+                    value = holdTimeText,
+                    onValueChange = { holdTimeText = it },
+                    label = { Text(stringResource(R.string.kin_hold_time)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    isError = holdTimeText.toFlexibleDoubleOrNull() == null,
+                    modifier = Modifier.weight(1f),
                 )
+            }
 
-                // Boutons d'action
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.action_cancel))
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { onSave(tempConfig) }) {
-                        Text(stringResource(R.string.action_save))
-                    }
+            OutlinedTextField(
+                value = comments,
+                onValueChange = { comments = it },
+                label = { Text(stringResource(R.string.kin_comments)) },
+                maxLines = 3,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            // Boutons d'action
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+                Spacer(modifier = Modifier.width(NvhSpacing.sm))
+                Button(onClick = { onSave(tempConfig) }) {
+                    Text(stringResource(R.string.action_save))
                 }
             }
         }
     }
+}
+
+/**
+ * The vendor tyre marking (ex: 205 / 55 R 16), shared by GEAR_RATIO and DETAILED_CHAIN —
+ * previously duplicated inline with 9 sp field labels [V14 UX-B2].
+ */
+@Composable
+private fun TyreDimensionsFields(
+    tireWidthText: String,
+    onTireWidthChange: (String) -> Unit,
+    tireAspectRatioText: String,
+    onTireAspectRatioChange: (String) -> Unit,
+    rimDiameterText: String,
+    onRimDiameterChange: (String) -> Unit,
+    computedRadiusMeters: Double,
+) {
+    Text(stringResource(R.string.kin_tyre_section), style = MaterialTheme.typography.titleSmall)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(NvhSpacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            value = tireWidthText,
+            onValueChange = onTireWidthChange,
+            label = { Text(stringResource(R.string.kin_tyre_width), style = MaterialTheme.typography.labelSmall) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            modifier = Modifier.weight(1.1f),
+        )
+        Text("/", style = MaterialTheme.typography.titleMedium)
+        OutlinedTextField(
+            value = tireAspectRatioText,
+            onValueChange = onTireAspectRatioChange,
+            label = { Text(stringResource(R.string.kin_tyre_ratio), style = MaterialTheme.typography.labelSmall) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        Text("R", style = MaterialTheme.typography.titleMedium)
+        OutlinedTextField(
+            value = rimDiameterText,
+            onValueChange = onRimDiameterChange,
+            label = { Text(stringResource(R.string.kin_tyre_rim), style = MaterialTheme.typography.labelSmall) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+    }
+    Text(
+        text = stringResource(R.string.kin_tyre_radius, computedRadiusMeters, 2.0 * Math.PI * computedRadiusMeters),
+        style = NvhReadoutSmall,
+        color = MaterialTheme.colorScheme.primary,
+    )
 }

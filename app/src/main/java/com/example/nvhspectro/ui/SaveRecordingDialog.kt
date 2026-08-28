@@ -5,10 +5,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.nvhspectro.R
+import com.example.nvhspectro.theme.NvhSpacing
 
 @Composable
 fun SaveRecordingDialog(
@@ -21,15 +19,15 @@ fun SaveRecordingDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(stringResource(R.string.save_recording_title), fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.save_recording_title))
         },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(NvhSpacing.md),
             ) {
                 Text(
                     text = stringResource(R.string.save_recording_done, durationSec),
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
 
@@ -64,8 +62,7 @@ fun SaveRecordingDialog(
                             R.string.save_recording_folder,
                             customName.ifBlank { DEFAULT_RECORDING_NAME },
                         ),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -74,7 +71,7 @@ fun SaveRecordingDialog(
             Button(
                 onClick = { onSave(customName) },
             ) {
-                Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.action_save))
             }
         },
         dismissButton = {

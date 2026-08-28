@@ -80,6 +80,37 @@ if [ -n "$COMPOSE_FILES" ]; then
   fi
 fi
 
+# --- [ARMED] type comes from the theme scale, not literals [V14 UX-B2/M1] -
+# 159 ad-hoc `fontSize` literals (23 below 11.sp) were the audit's Blocker 2. The full
+# Material scale plus the tabular-figure readout styles live in theme/Type.kt; a raw size
+# anywhere else re-opens the drift.
+FONT_HITS=$(grep -RIn --include='*.kt' 'fontSize = [0-9]' app/src/main/java \
+  | grep -v 'theme/Type.kt' | wc -l | tr -d ' ')
+if [ "$FONT_HITS" -gt 0 ]; then
+  violation "raw fontSize literals outside theme/Type.kt ($FONT_HITS) [V14 UX-B2]:"
+  grep -RIn --include='*.kt' 'fontSize = [0-9]' app/src/main/java | grep -v 'theme/Type.kt' | head -20
+fi
+
+# --- [ARMED] shapes come from the theme scale [V14 UX-M3] -----------------
+# Eight ad-hoc corner radii; MaterialTheme.shapes (theme/Shape.kt) is now the shape language.
+SHAPE_LIT_HITS=$(grep -RIn --include='*.kt' 'RoundedCornerShape([0-9]' app/src/main/java \
+  | grep -v '/theme/' | wc -l | tr -d ' ')
+if [ "$SHAPE_LIT_HITS" -gt 0 ]; then
+  violation "raw RoundedCornerShape literals outside theme/ ($SHAPE_LIT_HITS) [V14 UX-M3]:"
+  grep -RIn --include='*.kt' 'RoundedCornerShape([0-9]' app/src/main/java | grep -v '/theme/' | head -20
+fi
+
+# --- [ARMED] no emoji in string resources [V14 UX-M2] ---------------------
+# Icons are not language: emoji in strings.xml render in the OEM emoji font (untintable,
+# device-dependent) and leak into translations. Iconography is vector `Icon()` in code.
+EMOJI_HITS=$(perl -CSD -ne 'print "$ARGV:$.: $_" if /[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE0F}]/' \
+  app/src/main/res/values/*.xml | wc -l | tr -d ' ')
+if [ "$EMOJI_HITS" -gt 0 ]; then
+  violation "emoji in string resources ($EMOJI_HITS) [V14 UX-M2]:"
+  perl -CSD -ne 'print "$ARGV:$.: $_" if /[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE0F}]/' \
+    app/src/main/res/values/*.xml | head -20
+fi
+
 # --- [ARMED] purged dead code must not return [A3/A4/D5, plan 3.8] --------
 # The regex-patch era resurrected deleted code more than once. These symbols
 # and files were deliberately removed; any reappearance fails the build.

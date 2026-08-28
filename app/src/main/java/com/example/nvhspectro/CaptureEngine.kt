@@ -62,7 +62,7 @@ class CaptureEngine(
                         .onEach { framesProduced.incrementAndGet() }
                         .catch { e ->
                             // Inner-flow catch: the engine stays alive for a retry.
-                            onCaptureError("🎙️ ${e.message ?: "Capture micro impossible"}")
+                            onCaptureError("${e.message ?: "Capture micro impossible"}")
                         }
                 }
             }

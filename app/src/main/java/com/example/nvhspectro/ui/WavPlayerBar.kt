@@ -1,9 +1,12 @@
 package com.example.nvhspectro.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,14 +14,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.nvhspectro.R
+import com.example.nvhspectro.theme.NvhAlpha
+import com.example.nvhspectro.theme.NvhElevation
+import com.example.nvhspectro.theme.NvhMinTouchTarget
 import com.example.nvhspectro.theme.NvhModeWav
 import com.example.nvhspectro.theme.NvhModeWavAccent
 import com.example.nvhspectro.theme.NvhOnSurface
 import com.example.nvhspectro.theme.NvhOutline
+import com.example.nvhspectro.theme.NvhReadoutSmall
+import com.example.nvhspectro.theme.NvhSpacing
 import com.example.nvhspectro.theme.NvhSurfaceVariant
 
 @Composable
@@ -47,20 +54,20 @@ fun WavPlayerBar(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 6.dp, vertical = 2.dp)
-                .border(1.dp, NvhModeWavAccent.copy(alpha = 0.8f), RoundedCornerShape(8.dp)),
+                .padding(horizontal = NvhSpacing.sm, vertical = NvhSpacing.xs)
+                .border(1.dp, NvhModeWavAccent.copy(alpha = NvhAlpha.STRONG), MaterialTheme.shapes.medium),
         color = NvhSurfaceVariant,
-        shape = RoundedCornerShape(8.dp),
-        tonalElevation = 4.dp,
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = NvhElevation.raised,
     ) {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+                    .padding(horizontal = NvhSpacing.sm, vertical = NvhSpacing.xs),
+            verticalArrangement = Arrangement.spacedBy(NvhSpacing.xxs),
         ) {
-            // Titre du fichier WAV chargé
+            // Titre du fichier WAV chargé + timecode
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -68,54 +75,56 @@ fun WavPlayerBar(
             ) {
                 Text(
                     text = stringResource(R.string.player_reading, fileName),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium,
                     color = NvhModeWavAccent,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(end = NvhSpacing.sm),
                 )
+                // [V14 UX-M1] Tabular figures — a running timecode must not jitter.
                 Text(
                     text = stringResource(R.string.player_position, currentStr, totalStr),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = NvhReadoutSmall,
                     color = NvhOnSurface,
                 )
             }
 
-            // Ligne de contrôle : [-10s] [▶/⏸] [+10s] + [Slider Scrubber]
+            // Ligne de contrôle : [-10s] [lecture/pause] [+10s] + [Slider Scrubber]
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(NvhSpacing.xs),
             ) {
-                // [§12, plan 4.4] 48 dp targets, and every emoji-as-icon control carries a
-                // spoken label — through TalkBack "⏪" is not a word.
+                // [§12, plan 4.4] 48 dp targets; the icons are themable vectors with real
+                // metrics [V14 UX-M2] and each control keeps its spoken label — through
+                // TalkBack a glyph is not a word.
                 IconButton(
                     onClick = { onStepSeconds(-STEP_SECONDS) },
-                    modifier = Modifier.size(PLAYER_TOUCH_TARGET).semantics { contentDescription = backLabel },
+                    modifier = Modifier.size(NvhMinTouchTarget).semantics { contentDescription = backLabel },
                 ) {
-                    Text("⏪", fontSize = 14.sp)
+                    Icon(Icons.Filled.Replay10, contentDescription = null)
                 }
 
-                // Bouton Play / Pause
                 FilledIconButton(
                     onClick = onPlayToggle,
                     modifier =
-                        Modifier.size(PLAYER_TOUCH_TARGET).semantics {
+                        Modifier.size(NvhMinTouchTarget).semantics {
                             contentDescription = if (isPlaying) pauseLabel else playLabel
                         },
                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = NvhModeWav),
                 ) {
-                    Text(if (isPlaying) "⏸" else "▶", fontSize = 16.sp, color = NvhOnSurface)
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        tint = NvhOnSurface,
+                    )
                 }
 
-                // Bouton +10s
                 IconButton(
                     onClick = { onStepSeconds(STEP_SECONDS) },
-                    modifier = Modifier.size(PLAYER_TOUCH_TARGET).semantics { contentDescription = forwardLabel },
+                    modifier = Modifier.size(NvhMinTouchTarget).semantics { contentDescription = forwardLabel },
                 ) {
-                    Text("⏩", fontSize = 14.sp)
+                    Icon(Icons.Filled.Forward10, contentDescription = null)
                 }
 
                 // Slider / Scrubber de position
@@ -135,9 +144,6 @@ fun WavPlayerBar(
         }
     }
 }
-
-/** 48 dp minimum interactive size [§12, plan 4.4]. */
-private val PLAYER_TOUCH_TARGET = 48.dp
 
 private const val STEP_SECONDS = 10
 

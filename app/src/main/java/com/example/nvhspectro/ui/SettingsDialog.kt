@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,29 +15,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.nvhspectro.AudioConfig
 import com.example.nvhspectro.R
 import com.example.nvhspectro.data.AudioFilter
 import com.example.nvhspectro.data.FilterType
 import com.example.nvhspectro.theme.NvhAccent
+import com.example.nvhspectro.theme.NvhAlpha
 import com.example.nvhspectro.theme.NvhDetectorAccent
-import com.example.nvhspectro.theme.NvhDisabledContainer
 import com.example.nvhspectro.theme.NvhFilter
 import com.example.nvhspectro.theme.NvhFilterAccent
+import com.example.nvhspectro.theme.NvhMinTouchTarget
 import com.example.nvhspectro.theme.NvhModeWavAccent
 import com.example.nvhspectro.theme.NvhOnSurface
 import com.example.nvhspectro.theme.NvhOnSurfaceVariant
 import com.example.nvhspectro.theme.NvhOrderTrace
-import com.example.nvhspectro.theme.NvhSectionContainer
+import com.example.nvhspectro.theme.NvhReadoutSmall
+import com.example.nvhspectro.theme.NvhSpacing
 import com.example.nvhspectro.theme.NvhSurfaceVariant
 import com.example.nvhspectro.theme.NvhTheoretical
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.material3.OutlinedTextField
 
+/**
+ * Settings surface [V14 UX-M7]: a `ModalBottomSheet`, not a scrolling `AlertDialog` — the
+ * previous construction capped a 571-line settings UI at ~60% screen height with its own
+ * scrollbar inside a dialog inside a scrim. Sliders apply live; dismissing keeps them.
+ */
 @Composable
 fun SettingsDialog(
     onDismiss: () -> Unit,
@@ -71,369 +77,308 @@ fun SettingsDialog(
     val fps = sampleRate / stepSize
     val dfHz = sampleRate / fftSize
 
-    val scrollState = rememberScrollState()
     var showFilterDialog by remember { mutableStateOf(false) }
     val addFilterLabel = stringResource(R.string.cd_add_filter)
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_title), fontWeight = FontWeight.Bold) },
-        text = {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+    NvhSheet(
+        title = stringResource(R.string.settings_title),
+        onDismiss = onDismiss,
+        titleTrailing = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_validate))
+            }
+        },
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(NvhSpacing.md),
+        ) {
+            // SECTION 1: DÉTECTEUR DE BALISES CLIGNOTANTES
+            NvhSection(
+                title = stringResource(R.string.settings_detector_title),
+                accent = NvhDetectorAccent,
+                trailing = {
+                    Switch(
+                        checked = isDetectorEnabled,
+                        onCheckedChange = onDetectorEnabledChange,
+                    )
+                },
             ) {
-                // SECTION 1: DÉTECTEUR DE BALISES CLIGNOTANTES (POINTS 1 ET 4)
-                Card(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, NvhDetectorAccent.copy(alpha = 0.6f), RoundedCornerShape(8.dp)),
-                    colors = CardDefaults.cardColors(containerColor = NvhSectionContainer),
-                    shape = RoundedCornerShape(8.dp),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.settings_detector_title),
-                                color = NvhDetectorAccent,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                            )
-                            Switch(
-                                checked = isDetectorEnabled,
-                                onCheckedChange = onDetectorEnabledChange,
-                            )
-                        }
+                if (isDetectorEnabled) {
+                    Column {
+                        Text(
+                            text = stringResource(R.string.settings_emergence_threshold, emergenceThresholdDb),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NvhOnSurface,
+                        )
+                        Slider(
+                            value = emergenceThresholdDb.toFloat(),
+                            onValueChange = { onEmergenceThresholdChange(it.toDouble()) },
+                            valueRange = 2f..10f,
+                        )
+                    }
 
-                        if (isDetectorEnabled) {
-                            Column {
-                                Text(
-                                    text = stringResource(R.string.settings_emergence_threshold, emergenceThresholdDb),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = NvhOnSurface,
+                    Column {
+                        Text(
+                            text = stringResource(R.string.settings_magnitude_gate, magnitudeGateDbFS.toInt()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NvhOnSurface,
+                        )
+                        Slider(
+                            value = magnitudeGateDbFS.toFloat(),
+                            onValueChange = { onMagnitudeGateChange(it.toDouble()) },
+                            valueRange = -100f..-30f,
+                        )
+                    }
+                }
+            }
+
+            // Temps d'affichage
+            if (isWavAnalyzerMode) {
+                Column {
+                    Text(
+                        text = stringResource(R.string.settings_time_window_wav, wavDurationSec),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = NvhModeWavAccent,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_time_window_wav_help, wavDurationSec),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NvhOnSurfaceVariant,
+                    )
+                }
+            } else {
+                Column {
+                    Text(
+                        stringResource(R.string.settings_time_window_live, timeWindowSec),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Slider(
+                        value = timeWindowSec.toFloat(),
+                        onValueChange = { onTimeWindowChange(it.toDouble()) },
+                        valueRange = 3f..30f,
+                    )
+                }
+            }
+
+            // dB Min / Max
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(NvhSpacing.md),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_min_db, minDb.toInt()), style = MaterialTheme.typography.bodySmall)
+                    Slider(
+                        value = minDb.toFloat(),
+                        onValueChange = { onMinDbChange(it.toDouble()) },
+                        valueRange = -120f..0f,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_max_db, maxDb.toInt()), style = MaterialTheme.typography.bodySmall)
+                    Slider(
+                        value = maxDb.toFloat(),
+                        onValueChange = { onMaxDbChange(it.toDouble()) },
+                        valueRange = -40f..50f,
+                    )
+                }
+            }
+
+            // Taille FFT N
+            if (isWavAnalyzerMode) {
+                Column {
+                    Text(
+                        text = stringResource(R.string.settings_fft_auto, AudioConfig.WAV_FFT_SIZE),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = NvhTheoretical,
+                    )
+                    Spacer(modifier = Modifier.height(NvhSpacing.xxs))
+                    Text(
+                        text = stringResource(R.string.settings_fft_auto_help, AudioConfig.WAV_FFT_SIZE),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NvhOnSurfaceVariant,
+                    )
+                }
+            } else {
+                Column {
+                    Text(
+                        stringResource(R.string.settings_fft_title),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(modifier = Modifier.height(NvhSpacing.xs))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                    ) {
+                        listOf(512, 1024).forEach { size ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = (fftSize == size),
+                                    onClick = { onFftSizeChange(size) },
                                 )
-                                Slider(
-                                    value = emergenceThresholdDb.toFloat(),
-                                    onValueChange = { onEmergenceThresholdChange(it.toDouble()) },
-                                    valueRange = 2f..10f,
+                                Text(
+                                    stringResource(R.string.settings_fft_points, size),
+                                    style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
+                        }
+                    }
 
-                            Column {
-                                Text(
-                                    text = stringResource(R.string.settings_magnitude_gate, magnitudeGateDbFS.toInt()),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = NvhOnSurface,
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                    ) {
+                        listOf(2048, 4096).forEach { size ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = (fftSize == size),
+                                    onClick = { onFftSizeChange(size) },
                                 )
-                                Slider(
-                                    value = magnitudeGateDbFS.toFloat(),
-                                    onValueChange = { onMagnitudeGateChange(it.toDouble()) },
-                                    valueRange = -100f..-30f,
+                                Text(
+                                    stringResource(R.string.settings_fft_points, size),
+                                    style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
                         }
                     }
                 }
+            }
 
-                // Temps d'affichage
-                if (isWavAnalyzerMode) {
-                    Column {
+            // TABLEAU RÉCAPITULATIF DSP EXPERT
+            NvhSection(
+                title = stringResource(R.string.settings_dsp_title, fftSize),
+                accent = NvhAccent,
+            ) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = NvhAlpha.OUTLINE), thickness = 1.dp)
+
+                DspInfoRow(stringResource(R.string.settings_dsp_overlap), stringResource(R.string.settings_dsp_overlap_value))
+                DspInfoRow(stringResource(R.string.settings_dsp_step), stringResource(R.string.settings_value_ms, dtStepMs))
+                DspInfoRow(stringResource(R.string.settings_dsp_block), stringResource(R.string.settings_value_ms, tBlockMs))
+                DspInfoRow(stringResource(R.string.settings_dsp_fps), stringResource(R.string.settings_value_fps, fps))
+                DspInfoRow(stringResource(R.string.settings_dsp_df), stringResource(R.string.settings_value_hz, dfHz))
+            }
+
+            // SECTION FILTRES AUDIO
+            if (isWavAnalyzerMode) {
+                NvhSection(
+                    title = stringResource(R.string.settings_filters_title),
+                    accent = NvhFilterAccent,
+                    trailing = {
+                        FilledIconButton(
+                            onClick = { showFilterDialog = true },
+                            enabled = activeFilters.size < MAX_FILTERS,
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = NvhFilter),
+                            modifier =
+                                Modifier
+                                    // [§12, plan 4.4] 48 dp target with a spoken label:
+                                    // "+" alone tells TalkBack nothing.
+                                    .size(NvhMinTouchTarget)
+                                    .semantics { contentDescription = addFilterLabel },
+                        ) {
+                            Icon(Icons.Filled.Add, contentDescription = null, tint = NvhOnSurface)
+                        }
+                    },
+                ) {
+                    if (activeFilters.isEmpty()) {
                         Text(
-                            text = stringResource(R.string.settings_time_window_wav, wavDurationSec),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = NvhModeWavAccent,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_time_window_wav_help, wavDurationSec),
-                            fontSize = 11.sp,
+                            stringResource(R.string.settings_filters_empty),
                             color = NvhOnSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
                         )
-                    }
-                } else {
-                    Column {
-                        Text(
-                            stringResource(R.string.settings_time_window_live, timeWindowSec),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Slider(
-                            value = timeWindowSec.toFloat(),
-                            onValueChange = { onTimeWindowChange(it.toDouble()) },
-                            valueRange = 3f..30f,
-                        )
-                    }
-                }
-
-                // dB Min / Max
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_min_db, minDb.toInt()), style = MaterialTheme.typography.bodySmall)
-                        Slider(
-                            value = minDb.toFloat(),
-                            onValueChange = { onMinDbChange(it.toDouble()) },
-                            valueRange = -120f..0f,
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_max_db, maxDb.toInt()), style = MaterialTheme.typography.bodySmall)
-                        Slider(
-                            value = maxDb.toFloat(),
-                            onValueChange = { onMaxDbChange(it.toDouble()) },
-                            valueRange = -40f..50f,
-                        )
-                    }
-                }
-
-                // Taille FFT N (Affichage aéré sur 2 lignes)
-                if (isWavAnalyzerMode) {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.settings_fft_auto, AudioConfig.WAV_FFT_SIZE),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = NvhTheoretical,
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = stringResource(R.string.settings_fft_auto_help, AudioConfig.WAV_FFT_SIZE),
-                            fontSize = 11.sp,
-                            color = NvhOnSurfaceVariant,
-                        )
-                    }
-                } else {
-                    Column {
-                        Text(
-                            stringResource(R.string.settings_fft_title),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround,
-                        ) {
-                            listOf(512, 1024).forEach { size ->
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    RadioButton(
-                                        selected = (fftSize == size),
-                                        onClick = { onFftSizeChange(size) },
-                                    )
-                                    Text(stringResource(R.string.settings_fft_points, size), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround,
-                        ) {
-                            listOf(2048, 4096).forEach { size ->
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    RadioButton(
-                                        selected = (fftSize == size),
-                                        onClick = { onFftSizeChange(size) },
-                                    )
-                                    Text(stringResource(R.string.settings_fft_points, size), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // TABLEAU RÉCAPITULATIF DSP EXPERT
-                Card(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, NvhAccent.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
-                    colors = CardDefaults.cardColors(containerColor = NvhSectionContainer),
-                    shape = RoundedCornerShape(8.dp),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.settings_dsp_title, fftSize),
-                            color = NvhAccent,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = 0.5.dp)
-
-                        DspInfoRow(stringResource(R.string.settings_dsp_overlap), stringResource(R.string.settings_dsp_overlap_value))
-                        DspInfoRow(stringResource(R.string.settings_dsp_step), stringResource(R.string.settings_value_ms, dtStepMs))
-                        DspInfoRow(stringResource(R.string.settings_dsp_block), stringResource(R.string.settings_value_ms, tBlockMs))
-                        DspInfoRow(stringResource(R.string.settings_dsp_fps), stringResource(R.string.settings_value_fps, fps))
-                        DspInfoRow(stringResource(R.string.settings_dsp_df), stringResource(R.string.settings_value_hz, dfHz))
-                    }
-                }
-
-                // SECTION FILTRES AUDIO (QUALITÉ AAA)
-                if (isWavAnalyzerMode) {
-                    Card(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .border(1.dp, NvhFilterAccent.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
-                        colors = CardDefaults.cardColors(containerColor = NvhSectionContainer),
-                        shape = RoundedCornerShape(8.dp),
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.settings_filters_title),
-                                    color = NvhFilterAccent,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                )
-                                IconButton(
-                                    onClick = { showFilterDialog = true },
-                                    enabled = activeFilters.size < 3,
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(NvhSpacing.sm)) {
+                            activeFilters.forEach { filter ->
+                                val removeLabel = stringResource(R.string.cd_remove_filter, filter.type.getDisplayName())
+                                Row(
                                     modifier =
                                         Modifier
-                                            // [§12, plan 4.4] 48 dp target with a spoken label:
-                                            // "+" alone tells TalkBack nothing.
-                                            .size(DIALOG_TOUCH_TARGET)
-                                            .semantics { contentDescription = addFilterLabel }
+                                            .fillMaxWidth()
                                             .background(
-                                                if (activeFilters.size <
-                                                    3
-                                                ) {
-                                                    NvhFilter
-                                                } else {
-                                                    NvhDisabledContainer
-                                                },
-                                                RoundedCornerShape(14.dp),
-                                            ),
+                                                filter.color.copy(alpha = NvhAlpha.FAINT),
+                                                MaterialTheme.shapes.small,
+                                            ).border(
+                                                1.dp,
+                                                filter.color.copy(alpha = NvhAlpha.OUTLINE),
+                                                MaterialTheme.shapes.small,
+                                            ).padding(horizontal = NvhSpacing.sm, vertical = NvhSpacing.xs),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text("+", color = NvhOnSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                }
-                            }
-
-                            if (activeFilters.isEmpty()) {
-                                Text(
-                                    stringResource(R.string.settings_filters_empty),
-                                    color = NvhOnSurfaceVariant,
-                                    fontSize = 11.sp,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            } else {
-                                // Liste des filtres sous forme de chips
-                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    activeFilters.forEach { filter ->
-                                        val removeLabel = stringResource(R.string.cd_remove_filter, filter.type.getDisplayName())
-                                        Row(
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxWidth()
-                                                    .background(filter.color.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
-                                                    .border(1.dp, filter.color.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
-                                                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Column {
-                                                Text(
-                                                    filter.type.getDisplayName(),
-                                                    color = filter.color,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 12.sp,
-                                                )
-                                                val freqText =
-                                                    when (filter.type) {
-                                                        FilterType.LOW_PASS -> stringResource(R.string.filter_low_pass_desc, filter.maxFreq)
-                                                        FilterType.HIGH_PASS ->
-                                                            stringResource(
-                                                                R.string.filter_high_pass_desc,
-                                                                filter.minFreq,
-                                                            )
-                                                        FilterType.BAND_PASS ->
-                                                            stringResource(
-                                                                R.string.filter_band_pass_desc,
-                                                                filter.minFreq,
-                                                                filter.maxFreq,
-                                                            )
-                                                        FilterType.BAND_STOP ->
-                                                            stringResource(
-                                                                R.string.filter_band_stop_desc,
-                                                                filter.minFreq,
-                                                                filter.maxFreq,
-                                                            )
-                                                    }
-                                                Text(freqText, color = NvhOnSurfaceVariant, fontSize = 10.sp)
+                                    Column {
+                                        Text(
+                                            filter.type.getDisplayName(),
+                                            color = filter.color,
+                                            style = MaterialTheme.typography.titleSmall,
+                                        )
+                                        val freqText =
+                                            when (filter.type) {
+                                                FilterType.LOW_PASS -> stringResource(R.string.filter_low_pass_desc, filter.maxFreq)
+                                                FilterType.HIGH_PASS ->
+                                                    stringResource(
+                                                        R.string.filter_high_pass_desc,
+                                                        filter.minFreq,
+                                                    )
+                                                FilterType.BAND_PASS ->
+                                                    stringResource(
+                                                        R.string.filter_band_pass_desc,
+                                                        filter.minFreq,
+                                                        filter.maxFreq,
+                                                    )
+                                                FilterType.BAND_STOP ->
+                                                    stringResource(
+                                                        R.string.filter_band_stop_desc,
+                                                        filter.minFreq,
+                                                        filter.maxFreq,
+                                                    )
                                             }
-                                            IconButton(
-                                                onClick = { onRemoveFilter(filter.id) },
-                                                modifier =
-                                                    Modifier
-                                                        .size(DIALOG_TOUCH_TARGET)
-                                                        .semantics {
-                                                            contentDescription = removeLabel
-                                                        },
-                                            ) {
-                                                Text("X", color = NvhOnSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                            }
-                                        }
+                                        Text(freqText, color = NvhOnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    IconButton(
+                                        onClick = { onRemoveFilter(filter.id) },
+                                        modifier =
+                                            Modifier
+                                                .size(NvhMinTouchTarget)
+                                                .semantics {
+                                                    contentDescription = removeLabel
+                                                },
+                                    ) {
+                                        Icon(Icons.Filled.Close, contentDescription = null, tint = NvhOnSurface)
                                     }
                                 }
                             }
                         }
                     }
-                } // Fin if (isWavAnalyzerMode)
+                }
+            } // Fin if (isWavAnalyzerMode)
 
-                // Plage de Fréquences d'analyse (Min & Max)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_freq_min, minFreq), style = MaterialTheme.typography.bodySmall)
-                        Slider(
-                            value = minFreq.toFloat(),
-                            onValueChange = { onMinFreqChange(it.toInt()) },
-                            valueRange = 0f..(maxFreq - 100).toFloat().coerceAtLeast(100f),
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_freq_max, maxFreq), style = MaterialTheme.typography.bodySmall)
-                        Slider(
-                            value = maxFreq.toFloat(),
-                            onValueChange = { onMaxFreqChange(it.toInt()) },
-                            valueRange = (minFreq + 100).toFloat().coerceAtMost(22000f)..22050f,
-                        )
-                    }
+            // Plage de Fréquences d'analyse (Min & Max)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(NvhSpacing.md),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_freq_min, minFreq), style = MaterialTheme.typography.bodySmall)
+                    Slider(
+                        value = minFreq.toFloat(),
+                        onValueChange = { onMinFreqChange(it.toInt()) },
+                        valueRange = 0f..(maxFreq - 100).toFloat().coerceAtLeast(100f),
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_freq_max, maxFreq), style = MaterialTheme.typography.bodySmall)
+                    Slider(
+                        value = maxFreq.toFloat(),
+                        onValueChange = { onMaxFreqChange(it.toInt()) },
+                        valueRange = (minFreq + 100).toFloat().coerceAtMost(22000f)..22050f,
+                    )
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_validate), fontWeight = FontWeight.Bold)
-            }
-        },
-    )
+        }
+    }
 
     if (showFilterDialog) {
         AddFilterDialog(
@@ -456,8 +401,9 @@ fun DspInfoRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(text = label, color = NvhOnSurfaceVariant, fontSize = 12.sp)
-        Text(text = value, color = NvhOnSurface, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        Text(text = label, color = NvhOnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        // [V14 UX-M1] Tabular figures: DSP indicators are measurements.
+        Text(text = value, color = NvhOnSurface, style = NvhReadoutSmall)
     }
 }
 
@@ -483,13 +429,16 @@ fun AddFilterDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.filter_dialog_title), fontWeight = FontWeight.Bold, color = NvhOnSurface) },
+        title = { Text(stringResource(R.string.filter_dialog_title), color = NvhOnSurface) },
         containerColor = NvhSurfaceVariant,
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.filter_dialog_type), color = NvhOnSurfaceVariant, fontSize = 12.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(NvhSpacing.md)) {
+                Text(
+                    stringResource(R.string.filter_dialog_type),
+                    color = NvhOnSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
 
-                // Dropdown or Radio buttons for type
                 Column {
                     FilterType.values().forEach { type ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -498,7 +447,7 @@ fun AddFilterDialog(
                                 onClick = { selectedType = type },
                                 colors = RadioButtonDefaults.colors(selectedColor = NvhFilterAccent),
                             )
-                            Text(type.getDisplayName(), color = NvhOnSurface, fontSize = 14.sp)
+                            Text(type.getDisplayName(), color = NvhOnSurface, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -556,7 +505,7 @@ fun AddFilterDialog(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = NvhFilter),
             ) {
-                Text(stringResource(R.string.action_add), fontWeight = FontWeight.Bold, color = NvhOnSurface)
+                Text(stringResource(R.string.action_add), color = NvhOnSurface)
             }
         },
         dismissButton = {
@@ -567,5 +516,5 @@ fun AddFilterDialog(
     )
 }
 
-/** 48 dp minimum interactive size for the settings controls [§12, plan 4.4]. */
-private val DIALOG_TOUCH_TARGET = 48.dp
+/** DSP filter chain cap [S1]. */
+private const val MAX_FILTERS = 3
